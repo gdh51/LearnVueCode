@@ -549,7 +549,7 @@ function enableStrictMode(store) {
 
 #### Store.prototype.\_withCommit
 
-在 Vuex 的内部修改`state`时,会事先用来该函数来将`state`的状态改变为可以修改的状态,并在回调执行完后变回原状态
+在 `Vuex` 的内部修改`state`时,会事先用来该函数来将`state`的状态改变为可以修改的状态,并在回调执行完后变回原状态
 
 ```js
 //在执行回调函数时, 开起严格模式
@@ -638,7 +638,7 @@ function unifyObjectStyle(type, payload, options) {
 
 #### Store.prototype.subscribe()
 
-之前在 commmit 结束后,会通过订阅者队列通知所有的订阅者调用这些订阅者函数, 它们都是从 subscribe()函数中产生:
+之前在 `commmit` 结束后,会通过订阅者队列通知所有的订阅者调用这些订阅者函数, 它们都是从 `subscribe()`函数中产生:
 
 ```js
 //订阅一个函数,并返回一个用于取消订阅函数的方法
@@ -666,7 +666,7 @@ function genericSubscribe(fn, subs) {
 
 #### Store.prototype.dispatch()——Action
 
-道理同 commit 差不多，但分为 3 个阶段,第一个阶段是在 state 改变前,执行 action 订阅者的 before 函数,第二个阶段改变 state 并执行相应类型的回调,第三个阶段触发改变状态后的 state,并执行 action 订阅者的 after 函数(**注意之前注册时的包装函数**)
+道理同 `commit` 差不多，但分为 3 个阶段,第一个阶段是在 `state` 改变前,执行 `action` 订阅者的 `before` 函数,第二个阶段改变 `state` 并执行相应类型的回调,第三个阶段触发改变状态后的 `state`,并执行 `action` 订阅者的 `after` 函数(**注意之前注册时的包装函数**)
 
 ```js
 //触发action函数
@@ -736,7 +736,7 @@ Store.prototype.dispatch = function dispatch(_type, _payload) {
 
 #### Store.prototype.watch()
 
-一个利用 new Vue.\$watch 实现的响应式监听, 会传入 store 中的响应式数据作为参数
+一个利用 `new Vue().$watch` 实现的响应式监听, 会传入 `store` 中的响应式数据作为参数
 
 ```js
 //通过Vue实例的$watch API来监听getter函数的返回值, 并传入store所有的响应式数据作为参数
@@ -766,7 +766,7 @@ Store.prototype.watch = function watch(getter, cb, options) {
 
 #### Store.prototype.registerModule()
 
-动态新增一个 module
+动态新增一个 `module`
 
 ```js
 //在path路径动态新注册一个module
@@ -806,7 +806,7 @@ Store.prototype.registerModule = function registerModule(
 
 #### Store.prototype.unregisterModule()
 
-解释了增加 module 肯定还有注销一个 module
+解释了增加 `module` 肯定还有注销一个 `module`
 
 ```js
 //动态注销模块
@@ -838,7 +838,7 @@ Store.prototype.unregisterModule = function unregisterModule(path) {
 
 ##### ModuleCollection.prototype.unregister()
 
-通过父模块移除其父模块中\_children 中对应的模块
+通过父模块移除其父模块中`_children `中对应的模块
 
 ```js
 ModuleCollection.prototype.unregister = function unregister(path) {
@@ -855,7 +855,7 @@ ModuleCollection.prototype.unregister = function unregister(path) {
 
 ##### util——resetStore()
 
-初始化其他属性,重新注册 module 树,并对 state 进行响应式处理
+初始化其他属性,重新注册 `module` 树,并对 `state` 进行响应式处理
 
 ```js
 function resetStore(store, hot) {
