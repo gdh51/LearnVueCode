@@ -949,6 +949,7 @@
     };
   }
 
+  //允许严格模式, 该模式下state只能通过mutation改变
   function enableStrictMode(store) {
     store._vm.$watch(function () {
       return this._data.$$state
@@ -1005,12 +1006,15 @@
 
   /**
    * Reduce the code which written in Vue.js for getting the state.
+   * 将states中的属性变为getter属性
    * @param {String} [namespace] - Module's namespace
    * @param {Object|Array} states # Object's item can be a function which accept state and getters for param, you can do something for state and getters in it.
    * @param {Object}
    */
   var mapState = normalizeNamespace(function (namespace, states) {
     var res = {};
+
+    //遍历state中属性, 为它们注册计算属性
     normalizeMap(states).forEach(function (ref) {
       var key = ref.key;
       var val = ref.val;
@@ -1018,6 +1022,8 @@
       res[key] = function mappedState() {
         var state = this.$store.state;
         var getters = this.$store.getters;
+
+        //有命名空间时,使用本地state与getters
         if (namespace) {
           var module = getModuleByNamespace(this.$store, 'mapState', namespace);
           if (!module) {
@@ -1026,6 +1032,8 @@
           state = module.context.state;
           getters = module.context.getters;
         }
+
+        //函数时就计算属性就是调用该函数的返回值, 字符串时就是state中的对应的值
         return typeof val === 'function' ?
           val.call(this, state, getters) :
           state[val]
@@ -1117,7 +1125,7 @@
           len = arguments.length;
         while (len--) args[len] = arguments[len];
 
-        // get dispatch function from store
+        // 获取dispatch函数, 当有命名空间时获取本地的dispatch函数
         var dispatch = this.$store.dispatch;
         if (namespace) {
           var module = getModuleByNamespace(this.$store, 'mapActions', namespace);
@@ -1149,7 +1157,7 @@
   };
 
   /**
-   * Normalize the map
+   * Normalize the map , 统一map参数为以下格式
    * normalizeMap([1, 2, 3]) => [ { key: 1, val: 1 }, { key: 2, val: 2 }, { key: 3, val: 3 } ]
    * normalizeMap({a: 1, b: 2, c: 3}) => [ { key: 'a', val: 1 }, { key: 'b', val: 2 }, { key: 'c', val: 3 } ]
    * @param {Array|Object} map
@@ -1173,12 +1181,14 @@
 
   /**
    * Return a function expect two param contains namespace and map. it will normalize the namespace and then the param's function will handle the new namespace and the map.
+   * 格式化fn
    * @param {Function} fn
    * @return {Function}
    */
   function normalizeNamespace(fn) {
     return function (namespace, map) {
       if (typeof namespace !== 'string') {
+        //传入一个参数时
         map = namespace;
         namespace = '';
       } else if (namespace.charAt(namespace.length - 1) !== '/') {
@@ -1190,6 +1200,7 @@
 
   /**
    * Search a special module from store by namespace. if module not exist, print error message.
+   * 在module MAP中查找该命名空间的module, 未找到时报错
    * @param {Object} store
    * @param {String} helper
    * @param {String} namespace

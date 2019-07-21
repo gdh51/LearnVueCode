@@ -871,3 +871,202 @@ function resetStore(store, hot) {
   resetStoreVM(store, state, hot);
 }
 ```
+
+## 自带的辅助函数
+
+### normalizeNamespace()
+介绍这几个辅助函数前, 先介绍它们的包装函数, 这个函数可以理解为格式化参数的,
+通过判断将两个参数放在固定的位置
+
+```js
+function normalizeNamespace(fn) {
+    return function (namespace, map) {
+      if (typeof namespace !== 'string') {
+        //传入一个参数时
+        map = namespace;
+        namespace = '';
+      } else if (namespace.charAt(namespace.length - 1) !== '/') {
+        namespace += '/';
+      }
+      return fn(namespace, map)
+    }
+  }
+```
+
+### normalizeMap()
+这是第二个要介绍的函数, 它主要的作用是将对象或函数格式化为这种格式：
+
+```js
+/**
+ * normalizeMap([1, 2, 3]) => [ { key: 1, val: 1 }, { key: 2, val: 2 }, { key: 3, val: 3 } ]
+ * normalizeMap({a: 1, b: 2, c: 3}) => [ { key: 'a', val: 1 }, { key: 'b', val: 2 }, { key: 'c', val: 3 } ]
+ *
+ */
+function normalizeMap(map) {
+    return Array.isArray(map) ?
+      map.map(function (key) {
+        return ({
+          key: key,
+          val: key
+        });
+      }) :
+      Object.keys(map).map(function (key) {
+        return ({
+          key: key,
+          val: map[key]
+        });
+      })
+  }
+```
+
+这两个方法会在之后的辅助函数中都使用到
+
+### Vuex.mapState()
+这个函数的作用就是简化我们在为组件创建计算属性时, 返回Vuex.state里面的状态
+
+```js
+var mapState = normalizeNamespace(function (namespace, states) {
+    var res = {};
+
+    //遍历state中属性, 为它们注册计算属性
+    normalizeMap(states).forEach(function (ref) {
+      var key = ref.key;
+      var val = ref.val;
+
+      res[key] = function mappedState() {
+        var state = this.$store.state;
+        var getters = this.$store.getters;
+
+        //有命名空间时,使用本地state与getters
+        if (namespace) {
+          var module = getModuleByNamespace(this.$store, 'mapState', namespace);
+          if (!module) {
+            return
+          }
+          state = module.context.state;
+          getters = module.context.getters;
+        }
+
+        //函数时就计算属性就是调用该函数的返回值, 字符串时就是state中的对应的值
+        return typeof val === 'function' ?
+          val.call(this, state, getters) :
+          state[val]
+      };
+      // mark vuex getter for devtools
+      res[key].vuex = true;
+    });
+    return res
+  });
+
+```
+
+### Vuex.mapMutations()
+简洁的在vue实例methods中注册快捷的mutation函数
+
+```js
+//同mapState, mapMuations是一种简化的在Vue实例.methods中注册muations提交函数
+  var mapMutations = normalizeNamespace(function (namespace, mutations) {
+    var res = {};
+    normalizeMap(mutations).forEach(function (ref) {
+      var key = ref.key;
+      var val = ref.val;
+
+      res[key] = function mappedMutation() {
+        //复制参数你懂的
+        var args = [],
+          len = arguments.length;
+        while (len--) args[len] = arguments[len];
+
+        // Get the commit method from store
+        var commit = this.$store.commit;
+        if (namespace) {
+          var module = getModuleByNamespace(this.$store, 'mapMutations', namespace);
+          if (!module) {
+            return
+          }
+          commit = module.context.commit;
+        }
+
+        //为函数时, 执行回调函数传入commit用于提交, 否则直接参数提交
+        return typeof val === 'function' ?
+          val.apply(this, [commit].concat(args)) :
+          commit.apply(this.$store, [val].concat(args))
+      };
+    });
+    return res
+  });
+```
+
+### Vuex.mapGetters()
+同上, 唯一不同的是在store对象中,如果getters设置namespaced为true时,会为其属性名添加命名空间前缀
+```js
+var mapGetters = normalizeNamespace(function (namespace, getters) {
+    var res = {};
+    normalizeMap(getters).forEach(function (ref) {
+      var key = ref.key;
+      var val = ref.val;
+
+      // The namespace has been mutated by normalizeNamespace
+      // 在有命名空间时, getter的命名会添加getter前缀, 所以这里要加
+      val = namespace + val;
+      res[key] = function mappedGetter() {
+        if (namespace && !getModuleByNamespace(this.$store, 'mapGetters', namespace)) {
+          return
+        }
+        if (!(val in this.$store.getters)) {
+          console.error(("[vuex] unknown getter: " + val));
+          return
+        }
+        return this.$store.getters[val]
+      };
+      // mark vuex getter for devtools
+      res[key].vuex = true;
+    });
+    return res
+  });
+```
+
+### Vuex.mapActions()
+过程同mapMutations一样
+```js
+var mapActions = normalizeNamespace(function (namespace, actions) {
+    var res = {};
+    normalizeMap(actions).forEach(function (ref) {
+      var key = ref.key;
+      var val = ref.val;
+
+      res[key] = function mappedAction() {
+        var args = [],
+          len = arguments.length;
+        while (len--) args[len] = arguments[len];
+
+        // get dispatch function from store
+        var dispatch = this.$store.dispatch;
+        if (namespace) {
+          var module = getModuleByNamespace(this.$store, 'mapActions', namespace);
+          if (!module) {
+            return
+          }
+          dispatch = module.context.dispatch;
+        }
+        return typeof val === 'function' ?
+          val.apply(this, [dispatch].concat(args)) :
+          dispatch.apply(this.$store, [val].concat(args))
+      };
+    });
+    return res
+  });
+```
+
+### Vuex.createNamespacedHelpers()
+创建一个绑定固定命名空间的辅助函数接口
+```js
+var createNamespacedHelpers = function (namespace) {
+    return ({
+      mapState: mapState.bind(null, namespace),
+      mapGetters: mapGetters.bind(null, namespace),
+      mapMutations: mapMutations.bind(null, namespace),
+      mapActions: mapActions.bind(null, namespace)
+    });
+  };
+```
