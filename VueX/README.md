@@ -29,7 +29,7 @@ function install(_Vue) {
 }
 ```
 
-关于`applyMixin(Vue)`,目的是将初始化 Vuex 逻辑注入到 Vue 构造函数中
+关于`applyMixin(Vue)`,目的是将初始化 Vuex 逻辑注入到 Vue 构造函数的beforeCreate生命周期函数中
 
 ### applyMixin()
 
@@ -666,7 +666,7 @@ function genericSubscribe(fn, subs) {
 
 #### Store.prototype.dispatch()——Action
 
-道理同 `commit` 差不多，但分为 3 个阶段,第一个阶段是在 `state` 改变前,执行 `action` 订阅者的 `before` 函数,第二个阶段改变 `state` 并执行相应类型的回调,第三个阶段触发改变状态后的 `state`,并执行 `action` 订阅者的 `after` 函数(**注意之前注册时的包装函数**)
+道理同 `commit` 差不多，但分为 3 个阶段,第一个阶段是在 `state` 改变前,执行 `action` 订阅者的 `before()` 函数,第二个阶段改变 `state` 并执行相应类型的回调,第三个阶段触发改变状态后的 `state`,并执行 `action` 订阅者的 `after()` 函数(**注意之前注册时的包装函数**)
 
 ```js
 //触发action函数
