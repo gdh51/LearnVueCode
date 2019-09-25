@@ -54,7 +54,17 @@
       在初始化props时, 会在defineReactive时通过判断是否是开发环境, 当是开发环境时, 会判断触发的属性是否处于updatingChildren中被修改, 不是则会发出警告。
       >如果传入的props是基本数据类型，子组件修改父组件传的props会警告，并且修改不成功，如果传入的是引用数据类型，那么修改改引用数据类型的某个属性值时，对应的props也会修改，并且vue不会发出警告并会修改成功。
 
-
+9. **Vue 的父组件和子组件生命周期钩子执行顺序是什么**
+    答：
+    1. 加载渲染过程
+       父`beforeCreate`->父`created`->父`beforeMount`->子`beforeCreate`->子`created`->子`beforeMount`->子`mounted`->父`mounted`
+    2. 子组件更新过程
+       父`beforeUpdate`->子`beforeUpdate`->子`updated`->父`updated`
+    3. 父组件更新过程
+       父`beforeUpdate`->父`updated`
+    4. 销毁过程
+       父`beforeDestroy`->子`beforeDestroy`->子`destroyed`->父`destroyed`
+    总结：从外到内，再从内到外
 
 ## Vuex
 1. **你有用过vuex的module吗, 主要是在什么场景下使用?**
