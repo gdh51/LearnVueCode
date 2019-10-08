@@ -29,6 +29,9 @@ class Watcher {
 
   constructor (
     vm: Component,
+
+    // 当为computed属性时，该值为函数，表示computed的求值表达式
+    // 当为watch属性时，该值表示watch的名称字符串
     expOrFn: string | Function,
     cb: Function,
     options?: ?Object,
@@ -57,7 +60,10 @@ class Watcher {
     this.cb = cb;
     this.id = ++uid; // uid for batching
     this.active = true;
-    this.dirty = this.lazy; // for lazy watchers
+
+    // for lazy watchers
+    // 只作用于computed属性的属性，表示是否允许对computed表达式进行求值与依赖项收集
+    this.dirty = this.lazy;
     this.deps = [];
     this.newDeps = [];
     this.depIds = new Set();
@@ -66,25 +72,26 @@ class Watcher {
         ? expOrFn.toString()
         : '';
 
-    // watcher变动所涉及的函数
+    // computed函数注册的地方
     if (typeof expOrFn === 'function') {
         this.getter = expOrFn;
     } else {
 
-      // 当watcher名为字符串时, 可以是.运算符指定对象的某个属性
-      // getter为一个函数, 返回watcher名所对应的属性
-      this.getter = parsePath(expOrFn);
+        // watch函数注册的地方
+        // 当watcher名为字符串时, 可以是.运算符指定对象的某个属性
+        // getter为一个函数, 返回watcher名所对应的属性
+        this.getter = parsePath(expOrFn);
 
-      // 当存在不规范的定义时会报错
-      if (!this.getter) {
-        this.getter = noop
-        process.env.NODE_ENV !== 'production' && warn(
-          `Failed watching path: "${expOrFn}" ` +
-          'Watcher only accepts simple dot-delimited paths. ' +
-          'For full control, use a function instead.',
-          vm
-        )
-      }
+        // 当存在不规范的定义时会报错
+        if (!this.getter) {
+            this.getter = noop
+            process.env.NODE_ENV !== 'production' && warn(
+            `Failed watching path: "${expOrFn}" ` +
+            'Watcher only accepts simple dot-delimited paths. ' +
+            'For full control, use a function instead.',
+            vm
+            )
+        }
     }
 
     // 该watcher为computed计算属性的watcher时，不直接进行求值

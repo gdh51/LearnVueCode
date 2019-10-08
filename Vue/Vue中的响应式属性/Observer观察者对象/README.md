@@ -106,7 +106,7 @@ function defineReactive(
             if (newVal === value || (newVal !== newVal && value !== value)) {
                 return;
             }
-            /* eslint-enable no-self-compare */
+
             // 自定义的setter, 不用管，主要用来不允许用户修改属性值, 修改时报错(如prop中属性)
             if (process.env.NODE_ENV !== 'production' && customSetter) {
                 customSetter();
@@ -122,14 +122,14 @@ function defineReactive(
             // 如果更新的属性的值为对象或数组时, 继续递归为该属性添加观察者对象(变更为响应式)
             childOb = !shallow && observe(newVal);
 
-            // 更新依赖该值的所以属性
+            // 更新观察该依赖项的所有watcher
             dep.notify();
         }
     });
 }
 ```
 
-顺便一笔带过一个 def 方法, 它相当于`Object.defineProperty()`,看下知道了就行，没什么好说的
+顺便一笔带过一个` def `方法, 它相当于`Object.defineProperty()`,看下知道了就行，没什么好说的
 
 ```js
 function def(obj: Object, key: string, val: any, enumerable?: boolean) {
