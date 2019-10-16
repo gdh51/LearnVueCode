@@ -40,7 +40,7 @@ function initComputed(vm: Component, computed: Object) {
         // component-defined computed properties are already defined on the
         // component prototype. We only need to define computed properties defined
         // at instantiation here.
-        // 注册computed属性
+        // 注册computed属性, 这里注意如果与method同名时，根本不会挂载在computed属性在Vue实例上
         if (!(key in vm)) {
             defineComputed(vm, key, userDef);
         } else if (process.env.NODE_ENV !== 'production') {

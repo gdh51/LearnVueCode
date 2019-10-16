@@ -5,3 +5,4 @@
 + [Vue.use](./Vue.use)
 + [Vuex](./VueX)
 + [Vue相关](./Vue)
++ [Vue中的diff算法](./Vue中的diff算法)
