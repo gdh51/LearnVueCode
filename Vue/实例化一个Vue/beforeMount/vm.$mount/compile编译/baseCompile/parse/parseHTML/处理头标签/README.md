@@ -364,14 +364,11 @@ function makeAttrsMap(attrs: Array < Object > ): Object {
 之后便是对AST元素对象的位置信息进行补充，然后又对AST对象上的`rawAttrsMap`属性进行更新，这个属性其实就是`attrs`数组转换为对象的形式：属性名做键名，之前的数组元素做值，还是放张图：
 ![rawAttrsMap](./imgs/rawAttrsMap.png)
 
-之后便是调用`preTransforms`数组中的方法，对ast元素对象上一些属性进行预处理；`preTransforms`数组中仅存在一个方法即`preTransformNode()`，该方法只是针对`<input>`元素来做单独的处理的：
+之后便是调用`preTransforms`数组中的方法，对ast元素对象上一些属性进行预处理；`preTransforms`数组中仅存在一个方法即`preTransformNode()`，该方法只是针对`<input>`元素来做单独的处理的。
 
-```js
+[点击初略浏览](../../一群工具方法/README.md#pretransformnode%e5%a4%84%e7%90%86%e5%8f%8c%e5%90%91%e7%bb%91%e5%ae%9a%e7%9a%84input%e5%85%83%e7%b4%a0)
 
-
-```
-
-我们可以看出，能被做处理的input元素还应该满足两个条件：
+我们可以看出，能被做处理的`input`元素还应该满足两个条件：
 
 1. 具有`v-model`属性
 2. 动态或静态定义了`type`属性
