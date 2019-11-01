@@ -306,7 +306,7 @@ const parseStyleText = cached(function (cssText) {
 
 ## parseModifiers()——解析.修饰符
 
-该函数用于来解析模版字符串中的`.`修饰符，会返回一个存在修饰符的对象。
+该函数用于来解析模版字符串中的`.`修饰符，会返回一个对象，对象中有这些修饰符作为字段。
 
 ```js
 // 解析标识符
@@ -370,7 +370,7 @@ function parseFor(exp: string): ? ForParseResult {
 }
 ```
 
-## parseModel()——解析v-model
+## parseModel()——解析对象
 
 该函数用于解析双向绑定语法绑定的值，支持.和[]运算符，该函数用于将对象属性查找语法解析为一个路径和最后一个键名的形式，举个例子：
 

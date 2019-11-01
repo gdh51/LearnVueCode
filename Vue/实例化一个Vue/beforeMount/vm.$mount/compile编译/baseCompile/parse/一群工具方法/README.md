@@ -77,16 +77,20 @@ function preTransformNode(el: ASTElement, options: CompilerOptions) {
             // 添加一个静态type属性至这个新建的ast元素
             addRawAttr(branch0, 'type', 'checkbox');
 
-            // 处理该元素上的其他属性
+            // 处理该元素上的其他属性，比如动态属性，指令还有普通的属性
             processElement(branch0, options);
 
             // 标记该AST对象为已处理, 防止二次处理
-            branch0.processed = true // prevent it from double-processed
+            branch0.processed = true; // prevent it from double-processed
+
+            // 添加该元素显示的条件
             branch0.if = `(${typeBinding})==='checkbox'` + ifConditionExtra
             addIfCondition(branch0, {
                 exp: branch0.if,
                 block: branch0
-            })
+            });
+
+            // 其余两个一样
             // 2. add radio else-if condition
             const branch1 = cloneASTElement(el)
             getAndRemoveAttr(branch1, 'v-for', true)
@@ -106,6 +110,7 @@ function preTransformNode(el: ASTElement, options: CompilerOptions) {
                 block: branch2
             })
 
+            // 对checkbox元素添加else/else-if条件
             if (hasElse) {
                 branch0.else = true
             } else if (elseIfCondition) {
@@ -122,18 +127,38 @@ function preTransformNode(el: ASTElement, options: CompilerOptions) {
 
 不满足上述条件时，不做处理，之后便是对三个处理元素显示情况的元素做处理，分别为`v-if`、`v-else`、`v-else-if`，每处理一个属性都会删除对应`ast`元素对象`attrList`(未处理属性数组)上的对应属性的值，这里还会删除它们在`attrMap`上的值。
 
-之后因为input为一元元素，所以要对其进行闭合，而增对它的type属性，闭合要分为三种情况：
-
-1. checkbox
-2. radio
-3. other
 ___
-闭合完毕后，接下来便是处理[v-for](../一群工具方法/处理属性/README.md)属性
+之后因为`input`为一元元素，所以要对其进行闭合，而针对它的`type`属性，闭合要分为三种情况：
 
+1. `checkbox`
+2. `radio`
+3. `other`
+
+但是当闭合一个元素时，都是一样的方式，之后的属性处理也大致一样——调用`cloneASTElement()`创建闭合元素的ast对象：
+
+```js
+function cloneASTElement(el) {
+
+    // 创建一个具有剩余属性的相同ast元素对象
+    return createASTElement(el.tag, el.attrsList.slice(), el.parent)
+}
+```
+
+>上面需要注意的是`slice()`方法，这说明了几个分支type拥有的属性是一样的，但维护的不是一个队列。(不懂我在说什么就无视)
+
+之后变身调用[`processFor()`](./处理属性/README.md#processfor%e5%a4%84%e7%90%86v-for%e8%a1%a8%e8%be%be%e5%bc%8f)处理其`v-for`属性
+
+___
+闭合完毕后，接下来便是处理[v-for](../一群工具方法/处理属性/README.md)属性，之后调用[`addRawAttr()`](./添加属性/README.md#addrawattr%e6%b7%bb%e5%8a%a0%e5%8e%9f%e5%a7%8b%e5%b1%9e%e6%80%a7)添加一个未处理的`type`属性至这个新建的`input`元素上，最后调用[`processElement()`](./处理属性/README.md#processelement%e5%a4%84%e7%90%86%e5%85%83%e7%b4%a0%e4%b8%8a%e5%85%b6%e4%bd%99%e7%9a%84%e5%b1%9e%e6%80%a7)处理其余的属性。
+___
+
+处理完后，使用`process`标记该元素已初步处理完毕，最后重写`v-if`的判断条件，加入元素的`type`类型。
+
+待三个类型都处理完后，返回第一个分支，**注意这里，貌似其他的两个分支都废弃了，其实它们的联系已经建立在if条件对象数组中了**。
 
 ### transformNode()——处理元素class属性
 
-该函数用于处理元素的`class`属性的动态值与静态值，其中[`parseText()`](#parsetext%e8%a7%a3%e6%9e%90%e6%96%87%e6%9c%ac)用来将`class`表达式解析为`token`(这其实是兼容以前的写法，现在用`v-bind`代替了动态值写法了)
+该函数用于处理元素的`class`属性的动态值与静态值，其中[`parseText()`](./解析属性/README.md#parsetext%e8%a7%a3%e6%9e%90%e6%96%87%e6%9c%ac)用来将`class`表达式解析为`token`(这其实是兼容以前的写法，现在用`v-bind`代替了动态值写法了)
 
 ```js
 function transformNode(el: ASTElement, options: CompilerOptions) {
@@ -174,7 +199,7 @@ function transformNode(el: ASTElement, options: CompilerOptions) {
 ### transformNode()——处理元素内联style属性
 
 该函数用于处理元素的内联`style`属性的动态值与静态值，
-其中关于[`parseStyleText()`](#parsestyletext%e8%a7%a3%e6%9e%90%e9%9d%99%e6%80%81style%e5%ad%97%e7%ac%a6%e4%b8%b2)信息在上方
+其中关于[`parseStyleText()`](./解析属性/README.md#parsestyletext%e8%a7%a3%e6%9e%90%e9%9d%99%e6%80%81style%e5%ad%97%e7%ac%a6%e4%b8%b2)信息在上方
 
 ```js
 function transformNode(el: ASTElement, options: CompilerOptions) {
