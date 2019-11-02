@@ -22,8 +22,9 @@ const baseOptions: CompilerOptions = {
         }
         model: {
 
-            // 一个方法
-            preTransformNode
+            // 两个个方法
+            preTransformNode,
+            postTransformNode
         }
     ],
 
@@ -58,4 +59,5 @@ const baseOptions: CompilerOptions = {
 }
 ```
 
-上面没有说具体函数的作用是什么，简单说明了一下是个什么东西，具体作用在用到时说明
+上面没有说具体函数的作用是什么，简单说明了一下是个什么东西，具体作用在用到时说明。
+[部分方法说明](./../compile编译/baseCompile/parse/一群工具方法/README.md)

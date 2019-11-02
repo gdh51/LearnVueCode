@@ -1,6 +1,9 @@
 # 其他属性处理方法
 
-这里是一些不具有大同性的属性处理方法
+这里是一些不具有大同性的属性处理方法：
+
+- [genAssignmentCode()——将变量与$event绑定](#genassignmentcode%e5%b0%86%e5%8f%98%e9%87%8f%e4%b8%8eevent%e7%bb%91%e5%ae%9a)
+- [checkRootConstraints()——检测模版更元素合法性](#checkrootconstraints%e6%a3%80%e6%b5%8b%e6%a8%a1%e7%89%88%e6%9b%b4%e5%85%83%e7%b4%a0%e5%90%88%e6%b3%95%e6%80%a7)
 
 ## genAssignmentCode()——将变量与$event绑定
 
@@ -30,6 +33,37 @@ function genAssignmentCode(
         // 创建一个新值或更改该属性的值绑定为$event
         // 注意这个地方，即使你绑定一个不存在的对象的值也行
         return `$set(${res.exp}, ${res.key}, ${assignment})`
+    }
+}
+```
+
+## checkRootConstraints()——检测模版更元素合法性
+
+该函数用于检测模版的根元素是否和法：
+
+1. 不能为可能为多个元素的元素，如`slot` `template`
+2. 不能具有`v-for`属性
+
+```js
+function checkRootConstraints(el) {
+
+    // 不能用slot、template作为根元素，因为它们可能含有多个元素
+    if (el.tag === 'slot' || el.tag === 'template') {
+        warnOnce(
+            `Cannot use <${el.tag}> as component root element because it may ` +
+            'contain multiple nodes.', {
+                start: el.start
+            }
+        )
+    }
+
+    // 根节点不能使用v-for属性
+    if (el.attrsMap.hasOwnProperty('v-for')) {
+        warnOnce(
+            'Cannot use v-for on stateful component root element because ' +
+            'it renders multiple elements.',
+            el.rawAttrsMap['v-for']
+        )
     }
 }
 ```

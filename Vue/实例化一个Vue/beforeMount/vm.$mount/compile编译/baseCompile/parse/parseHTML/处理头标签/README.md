@@ -254,7 +254,7 @@ start(tag, attrs, unary, start, end) {
         element = preTransforms[i](element, options) || element;
     }
 
-    // 默认标签不做v-pre处理
+    // // 确认当前元素是否在父元素有v-pre属性的元素中
     if (!inVPre) {
 
         // 移除AST attr中v-pre属性，并给元素添加pre属性作为标记
@@ -262,6 +262,9 @@ start(tag, attrs, unary, start, end) {
 
         // 检测元素是否具有标记
         if (element.pre) {
+
+            // 标记当前编译状态
+            // 未到闭合元素之前，都处于该元素之中，所以不做编译处理
             inVPre = true;
         }
     }
@@ -271,7 +274,7 @@ start(tag, attrs, unary, start, end) {
         inPre = true;
     }
 
-    // 如果具有v-pre属性，则直接将属性配置到attrs属性中
+    // 当前元素处于v-pre元素或父元素中，不处理for/if/once属性
     if (inVPre) {
         processRawAttrs(element);
 
@@ -289,7 +292,7 @@ start(tag, attrs, unary, start, end) {
         processOnce(element);
     }
 
-    // 如果还未确定根元素时，使当前元素为根元素
+    // 如果还未确定根元素时，那当前元素作为根元素
     if (!root) {
         root = element;
 
@@ -372,3 +375,201 @@ function makeAttrsMap(attrs: Array < Object > ): Object {
 2. 动态定义了`type`属性
 
 具体[preTransformNode()](../../一群工具方法/README.md#pretransformnode%e5%a4%84%e7%90%86%e5%8f%8c%e5%90%91%e7%bb%91%e5%ae%9a%e7%9a%84input%e5%85%83%e7%b4%a0)
+
+接下来会检查该元素是否处于具有`v-pre`的祖先元素中，是则跳过该段代码，不是则检测当前元素是否具有`v-pre`属性，具有时调用[`processPre()`](../../一群工具方法/处理属性/README.md#processpre%e5%a4%84%e7%90%86v-pre%e5%b1%9e%e6%80%a7)给该元素添加`pre`标记位，并标记当前检测从当前元素深度开始的元素都不进行编译处理。
+___
+
+接下来是对`<pre>`元素的检测，是该元素时，标记当前检测开始处于该元素中。之后是针对是否处于`v-pre`的元素中，做出的两种处理：
+
+- 处于：调用[`processRawAttrs()`](../../一群工具方法/处理属性/README.md#processrawattrs%e7%9b%b4%e6%8e%a5%e6%a0%87%e8%ae%b0%e6%9c%aa%e5%a4%84%e7%90%86%e5%b1%9e%e6%80%a7%e4%b8%ba%e5%b7%b2%e5%a4%84%e7%90%86)处理
+- 不处于且从未处理过该元素属性时：分别处理[`v-for`](../../一群工具方法/处理属性/README.md#processfor%e5%a4%84%e7%90%86v-for%e8%a1%a8%e8%be%be%e5%bc%8f)/[`v-if`](../../一群工具方法/处理属性/README.md#processif%e5%a4%84%e7%90%86%e5%85%83%e7%b4%a0v-ifv-elsev-else-if%e5%b1%9e%e6%80%a7)/[`v-once`](../../一群工具方法/处理属性/README.md#processonce%e5%a4%84%e7%90%86v-once%e5%b1%9e%e6%80%a7)属性
+
+之后就是对当前模版中的根元素的确认，并调用`checkRootConstraints()`检查其是否合法，最后检测该元素是否为一元元素：
+
+- 是：使用[`closeElement(element)`](#closeelementelement%e9%97%ad%e5%90%88%e5%85%83%e7%b4%a0)进行闭合
+- 否：该元素还缺个闭合标签，所以将该元素推入`stack`中，更新当前父元素为该元素(为下一个元素的父元素做准备)
+
+## closeElement(element)——闭合元素
+
+先看代码，因为不简单：
+
+```js
+    function closeElement(element) {
+
+        // 清空最后的空格节点
+        trimEndingWhitespace(element);
+
+        // 非处于v-pre元素中且元素还未完成属性处理时，对其剩余属性进行处理
+        if (!inVPre && !element.processed) {
+            element = processElement(element, options);
+        }
+
+        // tree management
+        // 当元素不为根元素且当前元素不处于其他元素内部时
+        if (!stack.length && element !== root) {
+
+            // allow root elements with v-if, v-else-if and v-else
+            // 允许根元素带有if属性，当前元素是否存在else条件语法
+            if (root.if && (element.elseif || element.else)) {
+
+                // 检查当前元素是否为多个元素
+                if (process.env.NODE_ENV !== 'production') {
+                    checkRootConstraints(element);
+                }
+
+                // 将该元素添加至另一个条件判断中
+                addIfCondition(root, {
+                    exp: element.elseif,
+                    block: element
+                });
+            } else if (process.env.NODE_ENV !== 'production') {
+
+                // 报错，肯定用了多个元素做根元素
+                warnOnce(
+                    `Component template should contain exactly one root element. ` +
+                    `If you are using v-if on multiple elements, ` +
+                    `use v-else-if to chain them instead.`, {
+                        start: element.start
+                    }
+                )
+            }
+        }
+
+        // 当前元素为子元素时，且未被禁用时
+        if (currentParent && !element.forbidden) {
+
+            // 处理元素elseif与else条件
+            if (element.elseif || element.else) {
+
+                // 添加该元素至上一个v-if元素的显示判断条件队列中
+                processIfConditions(element, currentParent)
+            } else {
+
+                // 具有插槽绑定值时
+                if (element.slotScope) {
+
+                    // scoped slot
+                    // 插槽名称
+                    const name = element.slotTarget || '"default"';
+
+                    // 将该元素存储到父元素的插槽作用域中
+                    (currentParent.scopedSlots || (currentParent.scopedSlots = {}))[name] = element
+                }
+
+                // keep it in the children list so that v-else(-if) conditions can
+                // find it as the prev node.
+                // 将当前元素加入父元素的子队列中
+                currentParent.children.push(element);
+                element.parent = currentParent;
+            }
+        }
+
+        // final children cleanup
+        // filter out scoped slots
+        // 最后对children属性进行清理，删除插槽元素
+        element.children = element.children.filter(c => !(c: any).slotScope);
+
+        // remove trailing whitespace node again
+        // 这个为就不用解释了
+        trimEndingWhitespace(element);
+
+        // check pre state
+        // 最后归还状态
+        if (element.pre) {
+            inVPre = false;
+        }
+        if (platformIsPreTag(element.tag)) {
+            inPre = false;
+        }
+
+        // apply post-transforms
+        for (let i = 0; i < postTransforms.length; i++) {
+            postTransforms[i](element, options)
+        }
+    }
+```
+
+首先国际管理，调用`trimEndingWhitespace()`清除子节点中最后的全部空白节点：
+
+```js
+function trimEndingWhitespace(el) {
+
+    // remove trailing whitespace node
+    // 清除最后的全部空格节点
+    if (!inPre) {
+        let lastNode;
+
+        // 尾节点不为空白节点就结束
+        while (
+            (lastNode = el.children[el.children.length - 1]) &&
+            lastNode.type === 3 &&
+            lastNode.text === ' '
+        ) {
+            el.children.pop()
+        }
+    }
+}
+```
+
+之后调用[processElement()](../../一群工具方法/处理属性/README.md#processelement%e5%a4%84%e7%90%86%e5%85%83%e7%b4%a0%e4%b8%8a%e5%85%b6%e4%bd%99%e7%9a%84%e5%b1%9e%e6%80%a7)对元素的剩余属性进行处理，包括`vue`的各种语法属性，和一些普通属性。(**前提是该元素属性未处理完且不存在于`v-pre`元素中**)
+___
+
+接下来是检查当前元素是否是这种情况——**该元素不为根元素且当前元素不处于其他元素内部时**，按我之前的理解它肯定应该是个根元素。再继续看就会发现，Vue允许有多个根节点，但它们之间必须存在`v-if`/`v-else`/`v-else-if`之类的关系:
+
+```js
+// 允许多个根元素，但必须存在条件显示关系
+if (root.if && (element.elseif || element.else)) {
+
+    // 检查当前元素是否为多个元素
+    if (process.env.NODE_ENV !== 'production') {
+        checkRootConstraints(element);
+    }
+
+    // 将该元素添加至另一个条件判断中
+    addIfCondition(root, {
+        exp: element.elseif,
+        block: element
+    });
+}
+```
+
+处理完根元素，当然现在该处理子元素了，但凡该子元素未被禁用，它就会被处理，具体处理方式两种，也很容易想：
+
+- 具有`v-else`/`v-else-if`，就将其加入`v-if`元素的条件队列中
+- 其余元素加入父元素子队列中
+
+```js
+// 当前元素为子元素时，且未被禁用时
+if (currentParent && !element.forbidden) {
+
+    // 处理元素elseif与else条件
+    if (element.elseif || element.else) {
+
+        // 添加该元素至上一个v-if元素的显示判断条件队列中
+        processIfConditions(element, currentParent)
+    } else {
+
+        // 具有插槽绑定值时
+        if (element.slotScope) {
+
+            // scoped slot
+            // 插槽名称
+            const name = element.slotTarget || '"default"';
+
+            // 将该元素存储到父元素的插槽作用域中
+            (currentParent.scopedSlots || (currentParent.scopedSlots = {}))[name] = element
+        }
+
+        // keep it in the children list so that v-else(-if) conditions can
+        // find it as the prev node.
+        // 将当前元素加入父元素的子队列中
+        currentParent.children.push(element);
+        element.parent = currentParent;
+    }
+}
+```
+
+上面[`processIfConditions()`](../../一群工具方法/处理属性/README.md#processifconditions%e6%b7%bb%e5%8a%a0elseelse-if%e6%9d%a1%e4%bb%b6%e8%af%ad%e5%8f%a5%e5%9d%97)就是用来将`v-else/v-else-if`元素添加至`v-if`元素的显示条件队列的。
+___
+
+之后清除父元素下的插槽元素，然后还原两个`pre`状态。最后调用
