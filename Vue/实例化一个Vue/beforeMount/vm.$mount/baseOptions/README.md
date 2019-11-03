@@ -22,9 +22,8 @@ const baseOptions: CompilerOptions = {
         }
         model: {
 
-            // 两个个方法
-            preTransformNode,
-            postTransformNode
+            // 一个个方法
+            preTransformNode
         }
     ],
 

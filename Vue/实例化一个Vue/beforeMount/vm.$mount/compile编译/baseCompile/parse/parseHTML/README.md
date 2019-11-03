@@ -164,7 +164,8 @@ function parseHTML(html, options) {
 
 一眼观察过来，整个解析字符串过程全是在`while`循环中完成的。
 
-首先在while循环内部，大致按情况会进行两个操作
+首先在`while`循环内部，大致按情况会进行两个操作
+
 ```js
 const isPlainTextElement = makeMap('script,style,textarea', true);
 
@@ -187,17 +188,26 @@ while (html) {
 ```
 
 接下来开始对第一种情况，进行深入了解，下面先看一下简化后的代码：
+
 ```js
-// 找到第一个 < 的位置
+// 情况一：找到第一个 < 的位置
 let textEnd = html.indexOf('<');
 if (textEnd === 0) { /**/ }
 
 let text, rest, next;
+
+// 情况二：截取文本内容
 if (textEnd >= 0) { /**/ }
+
+// 情况三：
 if (textEnd < 0) { /**/ }
+
+// 存在文本内容，则生成文本的ast对象
 if (text) { /**/ }
 if (options.chars && text)
 ```
+
+## 解析标签——当前模版首位为<
 
 首先我们对`<`字符进行了一次查找，因为之前调用`parse()`传入模版时，对模版进行了`template.trim()`处理，所以第一次找到的位置一定是0。
 
@@ -210,7 +220,7 @@ if (options.chars && text)
 - `<doctype>`文档类型定义
 - 普通的字符
 
-但由于处于位置的问题，它一定不是第6种情况。(因为我们最初取的是元素的`outerHTML`)，首先看一个`advance()`方法，用于更新当前模版：
+但由于处于位置的问题，它第一次一定不是第6种情况。(因为我们最初取的是元素的`outerHTML`，而且第六种情况被归并到上面第二种情况中了)，首先看一个`advance()`方法，用于更新当前模版：
 
 ```js
 // 截取剩下的模版字符串， 移动当前指针的下标
@@ -309,7 +319,27 @@ if (textEnd === 0) {
 }
 ```
 
+下面我们将具体多这几种情况进行研究：
+
+- [解析头标签](#%e8%a7%a3%e6%9e%90%e5%a4%b4%e6%a0%87%e7%ad%be)
+- [解析尾标签](#%e8%a7%a3%e6%9e%90%e5%b0%be%e6%a0%87%e7%ad%be)
+- [解析注释标签](#%e8%a7%a3%e6%9e%90%e6%b3%a8%e9%87%8a%e6%a0%87%e7%ad%be)
+- [解析文档类型标签](#%e8%a7%a3%e6%9e%90%e6%96%87%e6%a1%a3%e7%b1%bb%e5%9e%8b%e6%a0%87%e7%ad%be)
+
+### 解析头标签
+
+篇幅过多，单独写一篇来处理[前往](./处理头标签/README.md)
+
+### 解析尾标签
+
+篇幅过多，单独写一篇来处理[前往](./处理尾标签/README.md)
+
+### 解析注释标签
+
+很轻松的，我们可以看出，就是根据用户配置来决定是否保存注释，如果保存就将当前注释调用`options.comment()`方法创建个AST对象挂载到当前父元素的子数组中；而对于条件注释，简直无情，直接忽略。
+
 上面使用到的`options.comment()`方法是用来处理注释节点的，生成一个注释节点的AST对象：
+
 ```js
 comment(text: string, start, end) {
     // adding anyting as a sibling to the root node is forbidden
@@ -333,191 +363,64 @@ comment(text: string, start, end) {
 }
 ```
 
-在上述过程中，调用了`parseEndTag()`来处理结束标签，传入了尾标签名和整个结束标签在原始模版中的位置信息，它具体的流程是：
+### 解析文档类型标签
+
+对于文档注释标签，Vue也选择忽略的方式，不进行处理。
+
+## 解析文本——当前<不在首位
+
+你现在应该知道，每解析一段模版，就会去掉解析过的该段字符串，然后取剩下的模版，所以当现在这个模版的下一个<出现在大于0的位置时，那么它位置之前的肯定为文本。
+
+那么它之后的是否为文本呢，请先自己看看代码理解下：
+
 ```js
-function parseEndTag(tagName, start, end) {
-    let pos, lowerCasedTagName;
+// 模版第一位为<或<前存在其他字符
+if (textEnd >= 0) {
 
-    // 未传入结束位置时，手动获取下
-    if (start == null) start = index;
-    if (end == null) end = index
+    // 取首个<后的模版(即已经截取了确认为文本的部分)
+    rest = html.slice(textEnd);
 
-    // Find the closest opened tag of the same type
-    // 找到最近的同类型且未闭合的标签
-    if (tagName) {
-        lowerCasedTagName = tagName.toLowerCase();
+    // 从当前<开始不能组成一个标签时，取下一个<直至解析到标签或头标签前部分
+    // 简单说就是取到下一个疑是标签的<为止
+    while (
+        !endTag.test(rest) &&
 
-        // 取出存放入栈中的未闭合标签，一个个匹配
-        for (pos = stack.length - 1; pos >= 0; pos--) {
+        // 这里匹配开标签前部分
+        !startTagOpen.test(rest) &&
+        !comment.test(rest) &&
+        !conditionalComment.test(rest)
+    ) {
+        // < in plain text, be forgiving and treat it as text
+        // 说明当前<是字符串，那么再取下一个<的位置
+        next = rest.indexOf('<', 1);
 
-            // 匹配标签名时，赶紧退出，保留pos信息
-            if (stack[pos].lowerCasedTag === lowerCasedTagName) {
-                break;
-            }
-        }
-    } else {
-        // If no tag name is provided, clean shop
-        // 标签名都没有时，
-        pos = 0;
+        // 说明没有标签了，剩下全为文本
+        if (next < 0) break;
+
+        // 将下个< 之前的文本追加上去
+        textEnd += next;
+
+        // 继续截取模版，取最新<后的模版
+        rest = html.slice(textEnd);
     }
 
-    // 通过上面，我们可以知道未匹配到对应标签时，pos的值为-1
-    // 此时找到对应标签的情况时
-    if (pos >= 0) {
-
-        // Close all the open elements, up the stack
-        // 闭合所有匹配位置后的开启的标签
-        for (let i = stack.length - 1; i >= pos; i--) {
-            if (process.env.NODE_ENV !== 'production' &&
-
-                // 正常情况下，结束标签应该匹配栈中最后个开启的标签，不然就说明中间有无闭合标签的标签
-                (i > pos || !tagName) &&
-                options.warn
-            ) {
-                options.warn(
-                    `tag <${stack[i].tag}> has no matching end tag.`, {
-                        start: stack[i].start,
-                        end: stack[i].end
-                    }
-                )
-            }
-
-            // 手动帮你闭合所有应该闭合的标签，参数为在原始模版中的位置
-            if (options.end) {
-                options.end(stack[i].tag, start, end);
-            }
-        }
-
-        // Remove the open elements from the stack
-        // 移除上面for循环中已闭合的标签
-        stack.length = pos;
-        lastTag = pos && stack[pos - 1].tag;
-
-    // 全部栈中都未匹配到头标签时，两种情况，自闭和标签或br标签
-    } else if (lowerCasedTagName === 'br') {
-        if (options.start) {
-            options.start(tagName, [], true, start, end)
-        }
-    } else if (lowerCasedTagName === 'p') {
-        if (options.start) {
-            options.start(tagName, [], false, start, end)
-        }
-        if (options.end) {
-            options.end(tagName, start, end)
-        }
-    }
+    // 截取模版开始到下一个<之间的文本
+    text = html.substring(0, textEnd);
 }
 ```
 
-这期间，调用了`options.end()`方法来进行标签的闭合，具体代码为：
-```js
-end(tag, start, end) {
+从代码我们可以看出`Vue`首先用`rest`保留了当前模版最新的`<`之后的文本(即已经截去了**确认为文本**部分)，然后通过一个`while`循环来查看下一个`<`是否**疑是**一个标签：如果疑是，则更新`rest`为最新这个`<`之后的模版内容，并更新`textEnd`的值；如果不是则什么都不做。最后更新**确认的文本**内容至`text`。
 
-    // 取出当前元素，pop操作
-    const element = stack[stack.length - 1];
-    stack.length -= 1;
-
-    // 取出其父元素
-    currentParent = stack[stack.length - 1];
-
-    // 因为元素已经找到闭合位置了，所以就可以更新具体结束位置了
-    if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
-        element.end = end;
-    }
-    closeElement(element);
-}
-```
+之后便是我们熟悉的更新模版和指针，创建文本的`ast`对象环节：
 
 ```js
-function trimEndingWhitespace(el) {
-
-    // remove trailing whitespace node
-    // 清除el子节点中最后的空格节点(不处理v-pre标签)
-    if (!inPre) {
-        let lastNode;
-        while (
-            (lastNode = el.children[el.children.length - 1]) &&
-            lastNode.type === 3 &&
-            lastNode.text === ' '
-        ) {
-            el.children.pop()
-        }
-    }
+if (text) {
+    // 存在文本时，更新模版
+    advance(text.length);
 }
 
-function closeElement(element) {
-
-    // 清空element子节点中最后的空格节点
-    trimEndingWhitespace(element);
-
-    // 非v-pre元素且元素还未处理属性时，对其属性进行处理
-    if (!inVPre && !element.processed) {
-        element = processElement(element, options);
-    }
-
-    // tree management
-    // 当元素不为根元素且不为内部元素时
-    if (!stack.length && element !== root) {
-
-        // allow root elements with v-if, v-else-if and v-else
-        // 运行根元素带有if属性
-        if (root.if && (element.elseif || element.else)) {
-
-            // 检查根元素是否为多个元素
-            if (process.env.NODE_ENV !== 'production') {
-                checkRootConstraints(element);
-            }
-
-            // 为根元素添加if属性
-            addIfCondition(root, {
-                exp: element.elseif,
-                block: element
-            });
-        } else if (process.env.NODE_ENV !== 'production') {
-            warnOnce(
-                `Component template should contain exactly one root element. ` +
-                `If you are using v-if on multiple elements, ` +
-                `use v-else-if to chain them instead.`, {
-                    start: element.start
-                }
-            )
-        }
-    }
-
-    // 当前元素为子元素时，且未被禁用时，处理if属性与slot属性
-    if (currentParent && !element.forbidden) {
-        if (element.elseif || element.else) {
-            processIfConditions(element, currentParent)
-        } else {
-            if (element.slotScope) {
-                // scoped slot
-                // keep it in the children list so that v-else(-if) conditions can
-                // find it as the prev node.
-                const name = element.slotTarget || '"default"';
-                (currentParent.scopedSlots || (currentParent.scopedSlots = {}))[name] = element
-            }
-            currentParent.children.push(element);
-            element.parent = currentParent;
-        }
-    }
-
-    // final children cleanup
-    // filter out scoped slots
-    // 对children属性进行清理，删除插槽children
-    element.children = element.children.filter(c => !(c: any).slotScope);
-    // remove trailing whitespace node again
-    trimEndingWhitespace(element);
-
-    // check pre state
-    if (element.pre) {
-        inVPre = false
-    }
-    if (platformIsPreTag(element.tag)) {
-        inPre = false
-    }
-    // apply post-transforms
-    for (let i = 0; i < postTransforms.length; i++) {
-        postTransforms[i](element, options)
-    }
+// 创建文本的ast对象
+if (options.chars && text) {
+    options.chars(text, index - text.length, index);
 }
 ```

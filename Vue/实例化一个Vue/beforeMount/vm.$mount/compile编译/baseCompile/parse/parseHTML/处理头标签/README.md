@@ -1,4 +1,5 @@
 # 处理头标签
+
 我们知道当匹配到`<`时，有一种情况就是头标签，此时就会对头标签进行处理，具体的处理过程我们来详细看一下：
 
 ```js
@@ -9,14 +10,18 @@ if (startTagMatch) {
 
     // 处理元素对象的各种属性
     handleStartTag(startTagMatch);
+
+    // 处理浏览器对pre/textarea的换行符问题
     if (shouldIgnoreFirstNewline(startTagMatch.tagName, html)) {
+
+        // 跳过该换行符
         advance(1);
     }
     continue;
 }
 ```
 
-我们先从`parseStartTag()`函数看起
+我们先从`parseStartTag()`函数看起：
 
 ## parseStartTag()——简单解释头标签信息
 
@@ -101,11 +106,11 @@ function parseStartTag() {
 
 ## handleStartTag()——处理标签DOM位置信息、属性信息
 
-该方法首先用来处理了头标签的一些特殊的情况，如`<p>`标签不能包含块级元素，自闭合标签不能嵌套自身等问题，之后便根据匹配对象上原始的属性数组简单处理下便挂载在新的标签对象中，根据标签具体的位置和自身情况（是否为一元标签），将标签的信息所代表的对象加入到了栈中，之后对标签上的属性全部进行处理。
+该方法首先用来处理了头标签的一些特殊的情况，如`<pre>`标签不能包含块级元素，自闭合标签不能嵌套自身等问题，之后便根据匹配对象上原始的属性数组简单处理下便挂载在新的标签对象中，根据标签具体的位置和自身情况（是否为一元标签），将标签的信息所代表的对象加入到了栈中，之后对标签上的属性全部进行处理。
 
 >加入栈中这个情况很好理解，因为如果你不是一元标签，那么说明当前标签还处于开起状态，待里面内容处理完成后才能对其进行闭合。
 
-具体的代码如下：
+具体的代码如下，因为基本上没有复杂的地方，所以直接在注释中解释：
 
 ```js
     function handleStartTag(match) {
@@ -389,9 +394,9 @@ ___
 - 是：使用[`closeElement(element)`](#closeelementelement%e9%97%ad%e5%90%88%e5%85%83%e7%b4%a0)进行闭合
 - 否：该元素还缺个闭合标签，所以将该元素推入`stack`中，更新当前父元素为该元素(为下一个元素的父元素做准备)
 
-## closeElement(element)——闭合元素
+### closeElement(element)——闭合元素
 
-先看代码，因为不简单：
+先看代码，因为不简单，为先总结下，处理元素剩余的属性，然后建立和父元素的关系：
 
 ```js
     function closeElement(element) {
@@ -483,6 +488,7 @@ ___
         }
 
         // apply post-transforms
+        // 只存在于weex下
         for (let i = 0; i < postTransforms.length; i++) {
             postTransforms[i](element, options)
         }
@@ -572,4 +578,39 @@ if (currentParent && !element.forbidden) {
 上面[`processIfConditions()`](../../一群工具方法/处理属性/README.md#processifconditions%e6%b7%bb%e5%8a%a0elseelse-if%e6%9d%a1%e4%bb%b6%e8%af%ad%e5%8f%a5%e5%9d%97)就是用来将`v-else/v-else-if`元素添加至`v-if`元素的显示条件队列的。
 ___
 
-之后清除父元素下的插槽元素，然后还原两个`pre`状态。最后调用
+之后清除父元素下的插槽元素，然后还原两个`pre`状态，就结束了。
+
+## shouldIgnoreFirstNewline()——处理头标签后换行符
+
+待我们处理完一个新的标签头时，还会检查该元素是否为`pre`或`textarea`元素，如果是则要查看模版当前位置是否为换行符，是要直接跳过。
+
+```js
+// #5992
+// 是否为pre/textarea元素
+const isIgnoreNewlineTag = makeMap('pre,textarea', true);
+
+// 符合上面的条件，然后下一个元素为换行符时，忽略
+const shouldIgnoreFirstNewline = (tag, html) => tag && isIgnoreNewlineTag(tag) && html[0] === '\n';
+```
+
+具体原因是因为这两个元素自身在开始标记之后会立即放置一个`\n`，即使我们并没有换行，即
+
+```html
+<pre>
+    html
+</pre>
+
+<pre>html</pre>
+```
+
+上面两种写法是等价的。[W3C文档说明](https://html.spec.whatwg.org/multipage/syntax.html#element-restrictions)
+[#5992 Vue issue](https://github.com/vuejs/vue/issues/5992)
+
+## 总结——结尾
+
+到此为止对一个头标签的解析就结束了，我们可以总结一下这个过程，总共分为两个阶段：
+
+1. 通过`while`循环，从标签`<`解析到`>`，生成匹配对象，将其中的属性按键值形式添加至`attrs`中
+2. 生成该元素的`ast`元素对象，解析该匹配对象`attrs`中的属性到该`ast`对象上，再按该元素是否为一元元素做出两种抉择：
+   1. 一元元素：闭合该元素
+   2. 非一元元素：将该元素推入`stack`中等待闭合

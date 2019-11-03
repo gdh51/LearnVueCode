@@ -11,14 +11,13 @@
 
 ## transform——属性处理函数
 
-Vue中有4个这种函数用于处理ast元素对象的属性
+Vue中有3个这种函数用于处理ast元素对象的属性
 
 分别为：
 
 - [preTransformNode()——处理双向绑定的input元素](#pretransformnode%e5%a4%84%e7%90%86%e5%8f%8c%e5%90%91%e7%bb%91%e5%ae%9a%e7%9a%84input%e5%85%83%e7%b4%a0)
 - [transformNode()——处理元素class属性](#transformnode%e5%a4%84%e7%90%86%e5%85%83%e7%b4%a0class%e5%b1%9e%e6%80%a7)
 - [transformNode()——处理元素内联style属性](#transformnode%e5%a4%84%e7%90%86%e5%85%83%e7%b4%a0%e5%86%85%e8%81%94style%e5%b1%9e%e6%80%a7)
-- [post]
 
 ### preTransformNode()——处理双向绑定的input元素
 
@@ -231,7 +230,3 @@ function transformNode(el: ASTElement, options: CompilerOptions) {
     }
 }
 ```
-
-### postTransformNode()
-
-这个方法一看又是一大坨。。
