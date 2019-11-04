@@ -11,8 +11,15 @@ function parseHTML(html, options) {
 
     // 一个指针，表示当前解析到原始模版的具体位置
     let index = 0;
-    let last, lastTag;
+
+    // 解析前模版
+    let last,
+
+        // 表示栈中最后一个标签
+        lastTag;
     while (html) {
+
+        // 存储解析前的模版
         last = html;
 
         // Make sure we're not in a plaintext content element like script/style
@@ -115,10 +122,12 @@ function parseHTML(html, options) {
                 text = html
             }
 
+            // 截取更新模版和指针
             if (text) {
                 advance(text.length)
             }
 
+            // 生成文本ast对象
             if (options.chars && text) {
                 options.chars(text, index - text.length, index)
             }
@@ -140,12 +149,15 @@ function parseHTML(html, options) {
                     options.chars(text)
                 }
                 return ''
-            })
-            index += html.length - rest.length
-            html = rest
-            parseEndTag(stackedTag, index - endTagLength, index)
+            });
+            index += html.length - rest.length;
+            html = rest;
+
+            // 解析并闭合当前标签。
+            parseEndTag(stackedTag, index - endTagLength, index);
         }
 
+        // 一次解析后模版未变，则视为之后所有的内容为文本
         if (html === last) {
             options.chars && options.chars(html)
             if (process.env.NODE_ENV !== 'production' && !stack.length && options.warn) {
@@ -196,15 +208,15 @@ if (textEnd === 0) { /**/ }
 
 let text, rest, next;
 
-// 情况二：截取文本内容
+// 情况二：截取<前文本内容
 if (textEnd >= 0) { /**/ }
 
-// 情况三：
+// 情况三：剩余全为文本
 if (textEnd < 0) { /**/ }
 
 // 存在文本内容，则生成文本的ast对象
 if (text) { /**/ }
-if (options.chars && text)
+if (options.chars && text) { /**/ }
 ```
 
 ## 解析标签——当前模版首位为<
@@ -369,7 +381,7 @@ comment(text: string, start, end) {
 
 ## 解析文本——当前<不在首位
 
-你现在应该知道，每解析一段模版，就会去掉解析过的该段字符串，然后取剩下的模版，所以当现在这个模版的下一个<出现在大于0的位置时，那么它位置之前的肯定为文本。
+你现在应该知道，每解析一段模版，就会去掉解析过的该段字符串，然后取剩下的模版，所以当现在这个模版的下一个`<`出现在大于0的位置时，那么它位置之前的肯定为文本。(**这里经常出现一个情况就是，我们的标签换行那一段空白**)
 
 那么它之后的是否为文本呢，请先自己看看代码理解下：
 
@@ -424,3 +436,195 @@ if (options.chars && text) {
     options.chars(text, index - text.length, index);
 }
 ```
+
+### options.chars()——解析文本
+
+该方法用于解析文本来生成一个文本`ast`对象，具体代码如下：
+
+```js
+function isTextTag(el) {
+    return el.tag === 'script' || el.tag === 'style';
+}
+
+// 用于解除转义的函数，大家不妨自己动手试试，自己在html中写个<，然后从innerHTML与innerText看取出来的是什么
+var he = {
+    decode: function decode(html) {
+        decoder = decoder || document.createElement('div');
+        decoder.innerHTML = html;
+        return decoder.textContent;
+    }
+};
+
+chars(text: string, start: number, end: number) {
+
+    // 没有父元素时，报错
+    if (!currentParent) {
+        if (process.env.NODE_ENV !== 'production') {
+
+            // 是否模版为纯文本
+            if (text === template) {
+                warnOnce(
+                    'Component template requires a root element, rather than just text.', {
+                        start
+                    }
+                )
+
+            // 将文本写在根元素外
+            } else if ((text = text.trim())) {
+                warnOnce(
+                    `text "${text}" outside root element will be ignored.`, {
+                        start
+                    }
+                )
+            }
+        }
+        return
+    }
+
+    // IE textarea placeholder bug
+    // 处理IE textarea placeholder 的bug
+    // IE中的placeholder中内容会出现在元素中
+    if (isIE &&
+        currentParent.tag === 'textarea' &&
+        currentParent.attrsMap.placeholder === text
+    ) {
+        return;
+    }
+    const children = currentParent.children;
+
+    // 如果目前为pre元素的内容或非空文本
+    if (inPre || text.trim()) {
+
+        // 根据父元素是否为style或script标签，决定是否要解除文本的转义
+        text = isTextTag(currentParent) ? text : decodeHTMLCached(text)
+
+    // 子节点数组只存在一个空文本节点，则移除空文本（实际浏览器并不会移除）
+    } else if (!children.length) {
+        // remove the whitespace-only node right after an opening tag
+        text = ''
+
+    // 默认为undefined
+    } else if (whitespaceOption) {
+
+        // 压缩模式下，如果该空格字符串包含换行符，则清空为空字符串，否则转换为单独的空格字符串
+        if (whitespaceOption === 'condense') {
+            // in condense mode, remove the whitespace node if it contains
+            // line break, otherwise condense to a single space
+            text = lineBreakRE.test(text) ? '' : ' '
+        } else {
+            text = ' '
+        }
+
+    // 其余多个空格一路替换为一个空格
+    } else {
+
+        // 默认为true
+        text = preserveWhitespace ? ' ' : ''
+    }
+
+    // 如果还存在文本
+    if (text) {
+
+        // 在非pre元素外的其他文本，在压缩模式下，文本中空格最大长度不超过1
+        if (!inPre && whitespaceOption === 'condense') {
+            // condense consecutive whitespaces into single space
+            text = text.replace(whitespaceRE, ' ')
+        }
+        let res
+        let child: ? ASTNode
+
+        // 非v-pre且非空元素，解析字符串表达式后，生成属性节点ast对象，则里会解析是否为Vue语法，是的化则为属性节点
+        if (!inVPre && text !== ' ' && (res = parseText(text, delimiters))) {
+
+            // 属性节点，DOM4级中已废弃
+            child = {
+                type: 2,
+                expression: res.expression,
+                tokens: res.tokens,
+                text
+            }
+
+        // 文本不为空或父节点只存在这一个文本子节点或子节点最后一个不为空格节点
+        } else if (text !== ' ' || !children.length || children[children.length - 1].text !== ' ') {
+
+            // 文本节点
+            child = {
+                type: 3,
+                text
+            }
+        }
+
+        // 将该ast对象加入父级的子节点数组
+        if (child) {
+            if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
+                child.start = start
+                child.end = end
+            }
+            children.push(child);
+        }
+    }
+}
+```
+
+咋一看解析一个文本居然这么复杂，里面首先处理了`IE`浏览器`textarea`元素在设置`placeholder`时的`bug`，如图：
+
+正常的`textarea`：
+![正常的textarea](./imgs/正常的textarea.png)
+`IE`下的`textarea`：
+![IE下的textarea](./imgs/IE下的textarea.png)
+
+之后对文本的内容进行了处理，一般的非空格文本，都会保留下来；而对于只存在一个空文本子节点的元素，其中的空格会被全部清空；其他情况下默认会将多个空格合并为一个空格；最后通过文本中是否包含`Vue`的插值表达式来决定生成何种节点：
+
+- 有：生成元素的属性节点
+- 无：生成普通的文本节点
+
+值得注意的是这里有个`decodeHTMLCached()`函数，用`dom`来进行转义和反转义，这里总结下：
+
+1. `dom`中通过`innerHTML`或`outerHTML`取出的字符串中字符是转义的
+2. `dom`中通过`innerText`或`textContent`取出的字符串中字符是未转义的
+
+[parseText()过程](../一群工具方法/解析属性/README.md#parsetext%e8%a7%a3%e6%9e%90%e6%96%87%e6%9c%ac)
+
+## 解析文本——当前未找到<
+
+这个很好理解，如果未找到该符号，说明剩下的模版全为文本字符串
+
+```js
+// 未找到 < 时，视为全部为文本
+if (textEnd < 0) {
+    text = html;
+}
+```
+
+这个时候肯定有人会问了，假如有一种这个情况的模版字符串该怎么解析`<div> <asd<asd < sd </div>`，这种特殊情况[等会](#%e8%a7%a3%e6%9e%90%e5%90%8e%e7%9a%84%e6%a3%80%e6%9f%a5)会解释到。
+
+___
+
+现在来看一下第二种情况，即对`textarea`、`style`、`script`三个元素的处理
+
+## 单独解析的特殊元素
+
+目前我知道的三个特殊情况的标签为上面三个，`Vue`会单独对其进行处理，直接截取其中间的文本生成`ast`对象，然后调用[`parseEndTag()`](../一群工具方法/解析属性/README.md#parseendtag%e9%97%ad%e5%90%88%e8%af%a5%e6%a0%87%e7%ad%be%e4%b8%8e%e4%b9%8b%e5%86%85%e7%9a%84%e6%89%80%e6%9c%89%e6%a0%87%e7%ad%be)将其闭合。
+
+## 解析后的检查
+
+每次`Vue`解析完一轮后，就会对解析前模版和解析后模版进行对比，如果一样说明Vue解析失败了，那么会直接将剩余的模版全部视为字符串调用[`options.chars()`](#optionschars%e8%a7%a3%e6%9e%90%e6%96%87%e6%9c%ac)进行解析，这也是我们刚刚说的特殊情况的解析结果。
+
+最后的最后，再次调用[`parseEndTag()`](../一群工具方法/解析属性/README.md#parseendtag%e9%97%ad%e5%90%88%e8%af%a5%e6%a0%87%e7%ad%be%e4%b8%8e%e4%b9%8b%e5%86%85%e7%9a%84%e6%89%80%e6%9c%89%e6%a0%87%e7%ad%be)将`stack`中的剩余标签全部丢弃，这样模版就解析完成了。
+
+## 总结
+
+现在来战术总结下，`Vue`模版解析为`token`的过程：
+
+1. 每次解析会按以下顺序搜寻：
+   1. `<!-->`普通注释
+   2. `<![]>`条件注释
+   3. `<doctype>`文档类型定义
+   4. `</div>`闭合标签
+   5. `<div>`头标签
+   6. 文本
+   7. 无法解析时，剩下的所有模版当作文本解析
+2. 每次解析到一个头标签，在解析完它的部分属性后，会将其存入一个栈中，待模版解析到对应的闭合标签时，会将对应的闭合标签从栈中删除，然后解析完剩下的属性。
+3. 每次解析`1`中某个部分时，都会去掉模版中该部分，取剩下的部分作为新的模版进行下一次解析。
+4. 每次解析的结果为一个`AST`对象，上面有具体解析的属性。
+5. 最后返回模版解析的根节点

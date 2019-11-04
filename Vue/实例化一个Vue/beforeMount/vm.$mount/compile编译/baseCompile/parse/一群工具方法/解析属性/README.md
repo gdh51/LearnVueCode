@@ -1,5 +1,16 @@
 # parse——解析函数
 
+目录：
+
+- [parseFilters()——解析过滤器](#parsefilters%e8%a7%a3%e6%9e%90%e8%bf%87%e6%bb%a4%e5%99%a8)
+- [parseText()——解析过滤器](#parsetext%e8%a7%a3%e6%9e%90%e6%96%87%e6%9c%ac)
+- [parseStyleText()——解析静态style字符串](#parsestyletext%e8%a7%a3%e6%9e%90%e9%9d%99%e6%80%81style%e5%ad%97%e7%ac%a6%e4%b8%b2)
+- [parseModifiers()——解析.修饰符](#parsemodifiers%e8%a7%a3%e6%9e%90%e4%bf%ae%e9%a5%b0%e7%ac%a6)
+- [parseFor()——解析v-for](#parsefor%e8%a7%a3%e6%9e%90v-for)
+- [parseModel()——解析对象](#parsemodel%e8%a7%a3%e6%9e%90%e5%af%b9%e8%b1%a1)
+- [parseString()——是否为引号](#parsestring%e6%98%af%e5%90%a6%e4%b8%ba%e5%bc%95%e5%8f%b7)
+- [parseEndTag()——闭合该标签与之内的所有标签](#parseendtag%e9%97%ad%e5%90%88%e8%af%a5%e6%a0%87%e7%ad%be%e4%b8%8e%e4%b9%8b%e5%86%85%e7%9a%84%e6%89%80%e6%9c%89%e6%a0%87%e7%ad%be)
+
 ## parseFilters()——解析过滤器
 
 该函数用于解析模版字符串中的过滤器表达式，还是遵循从左到右对字符串进行解析，在解析的过程中，会匹配符号，但凡符号不能成对匹配，就会出错，当然这只是初步匹配，如果你要专空子，那也是可以匹配成功的；具体匹配如下：
@@ -513,3 +524,143 @@ function parseString(chr: number): void {
     }
 }
 ```
+
+## parseEndTag()——闭合该标签与之内的所有标签
+
+该函数用于来处理尾标签，它将闭合该标签以及其内的所有标签，代码如下：
+
+```js
+function parseEndTag(tagName, start, end) {
+    let pos, lowerCasedTagName;
+
+    // 未传入结束位置时，手动获取下
+    if (start == null) start = index;
+    if (end == null) end = index
+
+    // Find the closest opened tag of the same type
+    // 找到最近的同类型且未闭合的标签，未找到则pos为-1
+    if (tagName) {
+        lowerCasedTagName = tagName.toLowerCase();
+
+        // 取出存放入栈中的未闭合标签，一个个匹配
+        for (pos = stack.length - 1; pos >= 0; pos--) {
+
+            // 匹配标签名时，赶紧退出，保留pos信息
+            if (stack[pos].lowerCasedTag === lowerCasedTagName) {
+                break;
+            }
+        }
+    } else {
+        // If no tag name is provided, clean shop
+        // 未提供标签名时，清空栈中所有标签
+        pos = 0;
+    }
+
+    // 通过上面，我们可以知道未匹配到对应标签时，pos的值为-1
+    // 此时找到对应标签的情况时
+    if (pos >= 0) {
+
+        // Close all the open elements, up the stack
+        // 闭合所有匹配位置后的开启的标签
+        for (let i = stack.length - 1; i >= pos; i--) {
+            if (process.env.NODE_ENV !== 'production' &&
+
+                // 正常情况下，结束标签应该匹配栈中最后个开启的标签，不然就说明中间有无闭合标签的标签
+                (i > pos || !tagName) &&
+                options.warn
+            ) {
+                options.warn(
+                    `tag <${stack[i].tag}> has no matching end tag.`, {
+                        start: stack[i].start,
+                        end: stack[i].end
+                    }
+                )
+            }
+
+            // 手动帮你闭合所有应该闭合的标签，参数为在原始模版中的位置
+            if (options.end) {
+                options.end(stack[i].tag, start, end);
+            }
+        }
+
+        // Remove the open elements from the stack
+        // 移除上面for循环中已闭合的标签
+        stack.length = pos;
+        lastTag = pos && stack[pos - 1].tag;
+
+    // 全部栈中都未匹配到头标签时，两种情况，自闭和标签或br标签
+    } else if (lowerCasedTagName === 'br') {
+        if (options.start) {
+
+            // 生成个新的br标签对象
+            options.start(tagName, [], true, start, end)
+        }
+    } else if (lowerCasedTagName === 'p') {
+        if (options.start) {
+
+            // 生成个新的p标签ast对象
+            options.start(tagName, [], false, start, end)
+        }
+        if (options.end) {
+            options.end(tagName, start, end)
+        }
+    }
+}
+```
+
+还记得`stack`用来做什么吗，它用来存放那些还未闭合的头部标签，它是一个**栈**；一个开标签应该对应一个闭标签，每当有一个开标签时，我们会将它暂时存入栈底，待遇到其闭合标签时，再将其取出；所以正常情况下，如果我们遇到一个闭合标签，那么栈口一定是它的头标签，基于这个原理，于是就有了下面这个代码：
+
+```js
+lowerCasedTagName = tagName.toLowerCase();
+
+// 取出存放入栈中的未闭合标签，一个个匹配
+for (pos = stack.length - 1; pos >= 0; pos--) {
+
+    // 匹配标签名时，赶紧退出，保留pos信息
+    if (stack[pos].lowerCasedTag === lowerCasedTagName) {
+        break;
+    }
+}
+```
+
+一次循环下来，如果有和闭合标签同名的头标签，则说明匹配成功，此时的`pos`正是头标签在`stack`栈中的位置。
+
+### 存在闭合标签
+
+那么找到后，就会从栈口开始闭合到`pos`位置的所有标签，为什么呢？因为正常情况，`pos`就应该为栈口位置，但如果不是，那么就说明中间有没有闭合标签的头标签存在，所以都要进行闭合，下面提供图片：
+![匹配栈中某个标签](./imgs/闭合某个标签.jpg)
+
+闭合完毕后，便更新一下栈。
+
+### 不存在闭合标签
+
+并非所有的标签都有闭合标签，未找到时，这里有两种特殊的情况：
+
+- 自闭和标签`p`
+- 换行标签`br`
+
+#### p标签的情况
+
+是什么情况能单独留一个`</p>`标签呢，也有两种情况：
+
+- 有意为之，用户自己写的
+- `</p>`标签嵌套自己
+
+因为之前说过，`</p>`标签为自闭和标签，不能嵌套自己及块级元素，像这种情况就会被当成3个`</p>`解析
+
+```html
+<p>
+    <p></p>
+</p>
+<!-- 等价于 -->
+<p></p>
+    <p></p>
+<p></p>
+```
+
+### 传入无标签名标签
+
+目的就是为了清空`stack`(`parseHTML`)，一般会在模版解析完后清洗一次。
+___
+
+所有的情况最后，都是调用[`options.end()`](./../../parseHTML/处理尾标签/README.md#optionsend%e9%97%ad%e5%90%88%e5%85%83%e7%b4%a0)来进行标签的闭合，现在我们就来看看！

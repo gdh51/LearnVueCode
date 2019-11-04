@@ -1,4 +1,5 @@
 # baseCompiler——解析模版为ast与render函数
+
 还记得之前创建编译函数时，利用闭包缓存的`baseCompiler()`函数吗，它用于正式解析模版，代码如下：
 ```js
 function baseCompile(
@@ -6,7 +7,7 @@ function baseCompile(
     options: CompilerOptions
 ): CompiledResult {
 
-    // 根据模版生成ast树
+    // 根据模版生成ast树，返回根AST元素节点对象
     const ast = parse(template.trim(), options);
     if (options.optimize !== false) {
         optimize(ast, options)
@@ -19,4 +20,7 @@ function baseCompile(
     }
 }
 ```
-很明显这里有三部曲：parse、optimize、generate
+
+很明显这里有三部曲：`parse()`、`optimize()`、`generate()`
+
+1. [parse()——解析模版为AST对象](./parse/README.md)

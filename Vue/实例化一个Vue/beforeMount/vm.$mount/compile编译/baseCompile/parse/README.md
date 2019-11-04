@@ -1,5 +1,6 @@
 # parse——解析模版字符串
-从该函数开始，便正式对真个模版`template`进行字符串解析成AST语法树，这个过程很很很很很复杂，我们不具体看匹配的正则表达式，只知道它匹配什么就行了；下面简单的就直接用注释写在代码中了
+
+从该函数开始，便正式对整个模版`template`进行字符串解析成`AST`语法树，这个过程很很很很很复杂，我们不具体看匹配的正则表达式，只知道它匹配什么就行了；下面简单的就直接用注释写在代码中了
 
 ```js
 /**
@@ -52,7 +53,7 @@ export function parse(
     let inPre = false;
     let warned = false;
 
-    // 这才是正式开始编译模版字符串
+    // 解析模版生成ast对象，返回根节点的ast对象
     parseHTML(template, {
         warn,
         expectHTML: options.expectHTML,
@@ -81,6 +82,7 @@ export function parse(
 ```
 
 对于上述验证函数，还是贴一下代码，首先看一个通用的工具函数，用于返回一个检测函数：
+
 ```js
 /**
  * 将传入的字符串表达式转换为一个hash表，可以设置是否大小写敏感
@@ -158,4 +160,4 @@ function pluckModuleFunction < F: Function > (
 }
 ```
 
-在这些准备工作做好之后，就调用`parseHTML()`函数来正式进行模版编译了
+在这些准备工作做好之后，就调用`parseHTML()`函数来正式进行模版编译了，由于这个过程有点复杂，所以另起了一篇文章。[parseHTML超详细解析](./parseHTML/README.md)
