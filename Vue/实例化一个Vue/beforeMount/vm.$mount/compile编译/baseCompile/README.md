@@ -9,6 +9,8 @@ function baseCompile(
 
     // 根据模版生成ast树，返回根AST元素节点对象
     const ast = parse(template.trim(), options);
+
+    // 针对静态节点的优化
     if (options.optimize !== false) {
         optimize(ast, options)
     }
@@ -23,4 +25,5 @@ function baseCompile(
 
 很明显这里有三部曲：`parse()`、`optimize()`、`generate()`
 
-1. [parse()——解析模版为AST对象](./parse/README.md)
+1. [parse()——解析模版为AST对象](./parse解析/README.md)
+2. [optimze()——标记静态节点](./optimze优化/README.md)
