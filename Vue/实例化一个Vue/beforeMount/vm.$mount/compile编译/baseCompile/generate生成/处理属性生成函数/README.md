@@ -255,3 +255,49 @@ function genIfConditions(
 ```
 
 最终结果为`(if条件)?(当前元素的处理结果的渲染函数):(下一个else-if条件)...`
+
+## genDirectives()——生成指令对象
+
+该函数用于处理指令语法来生成一个数组字符串的指令对象的副本，过程比较简单，中间涉及了几个之前的原生指令函数。
+
+```js
+function genDirectives(el: ASTElement, state: CodegenState): string | void {
+    const dirs = el.directives;
+    if (!dirs) return;
+    let res = 'directives:['
+    let hasRuntime = false;
+    let i, l, dir, needRuntime;
+    for (i = 0, l = dirs.length; i < l; i++) {
+        dir = dirs[i];
+        needRuntime = true;
+
+        // 匹配原生指令
+        const gen: DirectiveFunction = state.directives[dir.name];
+        if (gen) {
+            // compile-time directive that manipulates AST.
+            // returns true if it also needs a runtime counterpart.
+            // 操作AST的编译时的指令，返回true表示仍需要运行时的副本
+            needRuntime = !!gen(el, dir, state.warn);
+        }
+
+
+        if (needRuntime) {
+            hasRuntime = true;
+
+            // 每次循环的res的结果为 {...指令属性},  分隔
+            res += `{name:"${dir.name}",rawName:"${dir.rawName}"${
+                dir.value ? `,value:(${dir.value}),expression:${JSON.stringify(dir.value)}` : ''
+            }${
+                dir.arg ? `,arg:${dir.isDynamicArg ? dir.arg : `"${dir.arg}"`}` : ''
+                    }${
+                dir.modifiers ? `,modifiers:${JSON.stringify(dir.modifiers)}` : ''
+            }},`;
+        }
+    }
+    if (hasRuntime) {
+
+        // 返回全部指令对象组成的数组字符串
+        return res.slice(0, -1) + ']';
+    }
+}
+```
