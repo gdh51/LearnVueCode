@@ -351,7 +351,7 @@ function processSlotContent(el) {
 
 ### 为什么组件后解析
 
-在解析插槽内容时，明显组件是比其中的具名插槽后解析的，不然里面的逻辑就有问题，但这就与dom解析的逻辑不符了。(占时原因未知)
+这里其实不是组件后解析了，观察整个解析流程，我们可以知道，`processSlotContent()`的调用是在该元素闭合时，而`el.scopedSlots`属性的生成其实早在子元素调用`closeElement()`闭合时就已经在父元素中生成了，这之后才有`processSlotContent()`的调用，所以并不是组件后解析了。
 
 ## processSlotOutlet()——处理插槽位
 

@@ -110,6 +110,8 @@ ___
 
 该函数用来标记当前节点是否为根静态节点，还有是否为`v-for`形式的根节点；它不允许当前静态节点只有一个子节点且是文本节点，因为这样用于存储它的消耗大于它带来的收益。
 
+一旦确认某个节点为静态根节点，那么就直接退出不会在对其子节点进行标记。
+
 ```js
 function markStaticRoots(node: ASTNode, isInFor: boolean) {
     if (node.type === 1) {
@@ -125,12 +127,14 @@ function markStaticRoots(node: ASTNode, isInFor: boolean) {
         // are not just static text. Otherwise the cost of hoisting out will
         // outweigh the benefits and it's better off to just always render it fresh.
         // 如果一个节点为静态节点，那么其子节点不能仅仅是个静态文本节点，不然用于存储的损耗就大于它带来的收益
-        // 节点为静态节点，并有多个子节点
+        // 节点为静态节点，并有多个子节点或一个子节点时，不为文本节点
         if (node.static && node.children.length && !(
                 node.children.length === 1 &&
                 node.children[0].type === 3
             )) {
-            node.staticRoot = true
+
+            // 注意这里只要确认了静态根节点，就直接返回了，不会继续查询子节点了
+            node.staticRoot = true;
             return;
 
         // 仅一个子节点且为文本
