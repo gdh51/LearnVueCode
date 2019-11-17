@@ -38,7 +38,7 @@ function genStatic(el: ASTElement, state: CodegenState): string {
 }
 ```
 
-从代码看出，每次调用`genStatic()`函数时，`state`的`pre`状态总会为上一个拥有`pre`状态的节点的状态。那么`state.pre`的状态是用来做什么的呢？在[`genElement()`]()中处理模版时，防止不对`<template>`元素上本身的属性进行处理。待`genElement()`调用完毕后，便归还状态`state.pre`状态。
+从代码看出，每次调用`genStatic()`函数时，`state`的`pre`状态总会为上一个拥有`pre`状态的节点的状态。那么`state.pre`的状态是用来做什么的呢？在[`genElement()`](../README.md)中处理模版时，防止不对`<template>`元素上本身的属性进行处理。待`genElement()`调用完毕后，便归还状态`state.pre`状态。
 
 之后每一个调用`genStatic()`函数处理的结果都会被加入`state.staticRenderFns`数组，最后返回一个带有该静态函数位置的函数`_m()`
 

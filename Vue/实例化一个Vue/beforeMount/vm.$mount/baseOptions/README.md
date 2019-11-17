@@ -1,6 +1,6 @@
 # baseOptions 基础配置
 
-在了解如何编译前，先看一下这个模版的基础配置属性。这里我直接将` baseOptions `从几个文件里面汇总成一个代码段，具体注释标记在代码中：
+在了解如何编译前，先看一下这个模版的基础配置属性。这里我直接将`baseOptions`从几个文件里面汇总成一个代码段，具体注释标记在代码中：
 
 ```js
 const baseOptions: CompilerOptions = {

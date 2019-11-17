@@ -2,12 +2,12 @@
 
 这里是一些不具有大同性的属性处理方法：
 
-- [genAssignmentCode()——将变量与$event绑定](#genassignmentcode%e5%b0%86%e5%8f%98%e9%87%8f%e4%b8%8eevent%e7%bb%91%e5%ae%9a)
+- [genAssignmentCode()——将变量赋值给另一个变量](#genassignmentcode%e5%b0%86%e5%8f%98%e9%87%8f%e8%b5%8b%e5%80%bc%e7%bb%99%e5%8f%a6%e4%b8%80%e4%b8%aa%e5%8f%98%e9%87%8f)
 - [checkRootConstraints()——检测模版更元素合法性](#checkrootconstraints%e6%a3%80%e6%b5%8b%e6%a8%a1%e7%89%88%e6%9b%b4%e5%85%83%e7%b4%a0%e5%90%88%e6%b3%95%e6%80%a7)
 
-## genAssignmentCode()——将变量与$event绑定
+## genAssignmentCode()——将变量赋值给另一个变量
 
-该函数用于解析一个变量，将该变量与`$event`值进行绑定，绑定的方式有两种：
+该函数用于解析一个变量，将该变量与另一个变量进行绑定，绑定的方式有两种：
 
 1. 无深度变量直接绑定
 2. 具有深度的变量，只绑定其最后键的值
@@ -26,11 +26,11 @@ function genAssignmentCode(
     // 不以[]结尾或没有.操作符时，即没有任何操作符时
     if (res.key === null) {
 
-        // 绑定该表达式值为$event
+        // 将assignment 表达式赋值给value
         return `${value}=${assignment}`
     } else {
 
-        // 创建一个新值或更改该属性的值绑定为$event
+        // 创建一个新值或更改该属性的值绑定为value
         // 注意这个地方，即使你绑定一个不存在的对象的值也行
         return `$set(${res.exp}, ${res.key}, ${assignment})`
     }

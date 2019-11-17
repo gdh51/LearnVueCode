@@ -278,3 +278,46 @@ function hash(str) {
 - `scopedSlots:_u([{key: key1, fn: fn1}, {key: key2, fn: fn2}], null, true)`
 - `scopedSlots:_u([{key: key1, fn: fn1}, {key: key2, fn: fn2}])`
 - `scopedSlots:_u([{key: key1, fn: fn1}, {key: key2, fn: fn2}], null, false, 1010123)`
+
+## 针对slot元素的处理——genSlot()
+
+`Vue`对于`<slot>`元素中的默认内容进行了处理，之后对其上的属性和绑定的作用域进行了处理：
+
+```js
+function genSlot(el: ASTElement, state: CodegenState): string {
+    const slotName = el.slotName || '"default"';
+
+    // 获取子元素数组的渲染函数表达式(用作后备内容)
+    const children = genChildren(el, state);
+    let res = `_t(${slotName}${children ? `,${children}` : ''}`;
+
+    // 获取插槽上的attribute属性
+    const attrs = el.attrs || el.dynamicAttrs ?
+        genProps((el.attrs || []).concat(el.dynamicAttrs || []).map(attr => ({
+
+            // slot props are camelized
+            // 将插槽上的属性驼峰化
+            name: camelize(attr.name),
+            value: attr.value,
+            dynamic: attr.dynamic
+        }))) : null;
+
+    // 获取插槽的作用域(即绑定的属性)
+    const bind = el.attrsMap['v-bind'];
+    if ((attrs || bind) && !children) {
+        res += `,null`
+    }
+    if (attrs) {
+        res += `,${attrs}`
+    }
+    if (bind) {
+        res += `${attrs ? '' : ',null'},${bind}`
+    }
+    return res + ')'
+}
+```
+
+相关方法连接：
+
+- [genProps()](../生成数据表达式/README.md#genprops%e8%bd%ac%e5%8c%96%e4%b8%ba%e8%bf%90%e8%a1%8c%e6%97%b6%e7%bc%96%e8%af%91%e4%bb%a3%e7%a0%81)
+- [genChildren()](../README.md)

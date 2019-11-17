@@ -2,6 +2,11 @@
 
 Vue中有三个方法来获取ast元素对象中的属性
 
+- [getBindingAttr()——获取bind属性](#getbindingattr%e8%8e%b7%e5%8f%96bind%e5%b1%9e%e6%80%a7)
+- [getAndRemoveAttr()——用于移除AST对象中attrsList和attrsMap对应属性](#getandremoveattr%e7%94%a8%e4%ba%8e%e7%a7%bb%e9%99%a4ast%e5%af%b9%e8%b1%a1%e4%b8%adattrslist%e5%92%8cattrsmap%e5%af%b9%e5%ba%94%e5%b1%9e%e6%80%a7)
+- [getRawBindingAttr()——获取未处理属性的对象信息](#getrawbindingattr%e8%8e%b7%e5%8f%96%e6%9c%aa%e5%a4%84%e7%90%86%e5%b1%9e%e6%80%a7%e7%9a%84%e5%af%b9%e8%b1%a1%e4%bf%a1%e6%81%af)
+- [getAndRemoveAttrByRegex——通过正则表达式获取未处理属性](#getandremoveattrbyregex%e9%80%9a%e8%bf%87%e6%ad%a3%e5%88%99%e8%a1%a8%e8%be%be%e5%bc%8f%e8%8e%b7%e5%8f%96%e6%9c%aa%e5%a4%84%e7%90%86%e5%b1%9e%e6%80%a7)
+
 ## getBindingAttr()——获取bind属性
 
 刚方法用于获取动态或静态的`name`的值字符串表达式（即`:`或`v-bind`），同时会调用`getAndRemoveAttr()`方法删除该`name`值在`AST.attrsList`中的值，注意第三个参数，唯有指明传入`false`时，才不查找静态值。
