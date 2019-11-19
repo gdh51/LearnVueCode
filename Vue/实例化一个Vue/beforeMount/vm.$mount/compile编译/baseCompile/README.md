@@ -1,6 +1,7 @@
 # baseCompiler——解析模版为ast与render函数
 
 还记得之前创建编译函数时，利用闭包缓存的`baseCompiler()`函数吗，它用于正式解析模版，代码如下：
+
 ```js
 function baseCompile(
     template: string,
@@ -27,3 +28,4 @@ function baseCompile(
 
 1. [parse()——解析模版为AST对象](./parse解析/README.md)
 2. [optimze()——标记静态节点](./optimze优化/README.md)
+3. [generate()——生成渲染函数](./generate生成/README.md)
