@@ -1,4 +1,5 @@
 # 初始化渲染相关属性和方法
+
 ```js
 function initRender(vm: Component) {
 

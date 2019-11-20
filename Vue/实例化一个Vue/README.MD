@@ -1,5 +1,7 @@
 # 实例化一个Vue
+
 从`Vue`的构造函数可以看出，它的实例化源于其自身的`_init()`方法，这个方法是在最初`initMixin()`时注入到`Vue`原型上的方法。
+
 ```js
 function Vue(options) {
     //只能做构造函数使用
@@ -15,6 +17,7 @@ function Vue(options) {
 ```
 
 其具体的代码为：
+
 ```js
 Vue.prototype._init = function (options ? : Object) {
         const vm: Component = this;
@@ -83,7 +86,9 @@ Vue.prototype._init = function (options ? : Object) {
 ```
 
 ## beforeCreate
+
 当我们实例化一个`Vue`时，首先其会合并一些用户设置的`Options`配置[详情](./合并Options/README.md)，之后便调用各种模块的初始化函数：
+
 1. [initProxy——初始化Vue实例对自身的代理](./beforeCreate/初始化Proxy)
 2. [initLifeCycle——初始化实例自身的一些属性](./beforeCreate/初始化生命周期)
 3. [initEvents——初始化组件的自定义事件](./beforeCreate/初始化Events)
@@ -92,7 +97,9 @@ Vue.prototype._init = function (options ? : Object) {
 这时便开始调用第一个生命周期函数`beforeCreate`，我们可以知道，此时什么还未进行各种属性的初始化和`dom`的挂载
 
 ## create
+
 之后便在这个阶段进行数据的初始化：
+
 1. [initInject——初始化inject属性](./create/初始化Inject)
 2. [initState——初始化各种属性(重要)](./create/初始化State)
 3. [initProvide](./create/初始化Provide)
@@ -100,4 +107,5 @@ Vue.prototype._init = function (options ? : Object) {
 最后触发一下`create`钩子函数，在这个阶段，可以看出，所有的数据都已经准备就绪了。
 
 ## vm.$mount
+
 如果实例配置有`el`属性，则需对

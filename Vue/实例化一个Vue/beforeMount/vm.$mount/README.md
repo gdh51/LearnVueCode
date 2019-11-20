@@ -63,3 +63,26 @@ const { render, staticRenderFns } = compileToFunctions(
 
 `compileToFunctions()`函数通过两个阶段(生成+转换)来将模版转换一个真正的渲染函数，现在必须看了
 [createCompiler运作及其生成渲染函数的过程](./createCompiler/README.md)
+_____
+通过上面的函数，我们可以知道`compileToFunctions()`返回的两个函数就是编译后的渲染函数和其中的静态节点的渲染函数，最后返回`mount.call(this, el, hydrating)`的调用结果。注意此处的`mount()`方法，它来源于最初的初始化Vue时挂载的方法，而非当前函数的递归调用([原函数文件](../../../vueSourceCode/src/platforms/web/runtime/index.js))：
+
+```js
+// public mount method
+Vue.prototype.$mount = function (
+    el ? : string | Element,
+    hydrating ? : boolean
+): Component {
+
+    // 获取挂载的DOM元素
+    el = el && inBrowser ? query(el) : undefined;
+
+    // 解析组件
+    return mountComponent(this, el, hydrating)
+}
+
+// 这是之前的mount方法
+const mount = Vue.prototype.$mount
+
+// 重写mount方法，这就是我们用来编译第一个Vue实例模版的方法
+Vue.prototype.$mount = function
+```
