@@ -27,7 +27,7 @@ export function normalizeScopedSlots(
 ): any {
     let res;
 
-    // 具有插槽元素时
+    // 是否存在slot语法(2.5语法具名插槽)
     const hasNormalSlots = Object.keys(normalSlots).length > 0;
 
     // 是否稳定，父元素使用插槽时，$stable属性为true；未使用时，不具有插槽

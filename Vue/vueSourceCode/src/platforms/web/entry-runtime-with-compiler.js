@@ -25,10 +25,10 @@ import {
 const idToTemplate = cached(id => {
     const el = query(id)
     return el && el.innerHTML
-})
+});
 
-// 这是之前的mount方法
-const mount = Vue.prototype.$mount
+// 这是之前的mount方法，用于挂载组件
+const mount = Vue.prototype.$mount;
 
 // 重写mount方法
 Vue.prototype.$mount = function (

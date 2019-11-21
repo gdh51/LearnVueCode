@@ -45,6 +45,7 @@ export function initRender(vm: Component) {
     const renderContext = parentVnode && parentVnode.context;
 
     // 将最新的插槽，和父级上下文作为参数
+    // 该对象用于处理2.5以下的旧语法slot指令
     vm.$slots = resolveSlots(options._renderChildren, renderContext);
     vm.$scopedSlots = emptyObject;
 
@@ -99,15 +100,17 @@ export function renderMixin(Vue: Class < Component > ) {
         // 获取渲染函数和其父节点
         const {
             render,
+
+            // 代表该组件父节点的占位符
             _parentVnode
         } = vm.$options
 
-        // 存在父节点时，
+        // 存在父节点时(根Vue实例不存在)
         if (_parentVnode) {
             vm.$scopedSlots = normalizeScopedSlots(
                 _parentVnode.data.scopedSlots,
 
-                // 当前vm实例的具名插槽
+                // 当前vm实例的具名插槽(该对象只在2.5版本旧语法slot的情况下存在)
                 vm.$slots,
 
                 // 当前vm实例的作用域插槽
@@ -117,14 +120,20 @@ export function renderMixin(Vue: Class < Component > ) {
 
         // set parent vnode. this allows render functions to have access
         // to the data on the placeholder node.
-        vm.$vnode = _parentVnode
+        // 设置父节点，这允许渲染函数可以通过该节点来访问父节点上的data
+        vm.$vnode = _parentVnode;
+
         // render self
-        let vnode
+        let vnode;
         try {
             // There's no need to maintain a stack becaues all render fns are called
             // separately from one another. Nested component's render fns are called
             // when parent component is patched.
-            currentRenderingInstance = vm
+            // 这里没有必要去维护一个栈，因为所有渲染函数会独立调用。
+            // 嵌套的组件渲染函数会在其父组件打补丁时进行渲染
+            currentRenderingInstance = vm;
+
+            // 调用渲染函数
             vnode = render.call(vm._renderProxy, vm.$createElement)
         } catch (e) {
             handleError(e, vm, `render`)

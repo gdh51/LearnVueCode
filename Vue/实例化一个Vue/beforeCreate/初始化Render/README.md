@@ -3,14 +3,22 @@
 ```js
 function initRender(vm: Component) {
 
-    // 该vm实例代表的Vnode
+    // 该vm实例的根Vnode
     vm._vnode = null; // the root of the child tree
+
+    // 用于存储v-once渲染的vnode片段
     vm._staticTrees = null; // v-once cached trees
     const options = vm.$options;
-    const parentVnode = vm.$vnode = options._parentVnode; // the placeholder node in parent tree
 
-    // 父级的上下文对象
+    // the placeholder node in parent tree
+    // 代表父Vnode树的占位符
+    const parentVnode = vm.$vnode = options._parentVnode;
+
+    // 父级Vnode片段的上下文
     const renderContext = parentVnode && parentVnode.context;
+
+    // 将最新的插槽，和父级上下文作为参数
+    // 该对象用于处理2.5以下的旧语法slot指令(无视)
     vm.$slots = resolveSlots(options._renderChildren, renderContext);
     vm.$scopedSlots = emptyObject;
 

@@ -59,12 +59,15 @@ function queueWatcher(watcher: Watcher) {
     }
 }
 ```
+
 >上面的`nextTick()`之所以在一开始就调用，是因为其模拟了异步任务(微任务或宏任务)，所以其传入的回调函数在当前`eventloop`是不会调用的。
 
 待第一轮的`watcher`全部添加后，就会通过`nextTick()`在下一轮微任务(或宏任务)时调用`flushSchedulerQueue()`函数，来更新队列中的`watcher`
 
 先看一下`nextTick()`函数的代码：
+
 ## nextTick()
+
 ```js
 const callbacks = [];
 let pending = false;
@@ -99,6 +102,7 @@ function nextTick(cb?: Function, ctx?: Object) {
     }
 }
 ```
+
 这里我们可以看出`nextTick()`函数干了两件事：
 
 1. 依次存储本轮`eventLoop`中全部`nextTick()`传入的的回调函数
@@ -110,6 +114,7 @@ function nextTick(cb?: Function, ctx?: Object) {
 [Vue异步更新的模拟——timerFunc()](./Vue异步更新的模拟)
 
 在该函数中也即微任务阶段或下一个宏任务阶段便会执行`flushCallbacks()`, `flushCallbacks()`函数中便取出之前通过`nextTick()`函数存入的回调函数来依次执行：
+
 ```js
 
 // 在微任务阶段或下一个宏任务阶段执行nextTick中所有的回调即我们刚刚存入callbacks队列中的函数

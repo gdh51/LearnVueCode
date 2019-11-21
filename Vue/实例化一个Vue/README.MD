@@ -96,7 +96,7 @@ Vue.prototype._init = function (options ? : Object) {
 
 这时便开始调用第一个生命周期函数`beforeCreate`，我们可以知道，此时什么还未进行各种属性的初始化和`dom`的挂载
 
-## create
+## created
 
 之后便在这个阶段进行数据的初始化：
 
@@ -106,6 +106,14 @@ Vue.prototype._init = function (options ? : Object) {
 
 最后触发一下`create`钩子函数，在这个阶段，可以看出，所有的数据都已经准备就绪了。
 
-## vm.$mount
+## beforeMount
 
-如果实例配置有`el`属性，则需对
+这个阶段`Vue`会对用户配置的模版进行解析和编译，生成一个`render`函数，这里必须要求用户在第一个`Vue.options`中挂载一个具体的元素，或则自己稍后手动调用`$mount()`函数挂载，我们直接看正常情况下：
+
+```js
+if (vm.$options.el) {
+    vm.$mount(vm.$options.el);
+}
+```
+
+查看[`beforeMount`](./beforeMount/README.md)阶段所作所为

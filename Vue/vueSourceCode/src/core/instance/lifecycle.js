@@ -191,7 +191,7 @@ export function mountComponent(
 
     let updateComponent
 
-    // 是否记录性能
+    // 赋值updateComponent函数，记录是否记录渲染性能
     if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
         updateComponent = () => {
             const name = vm._name
@@ -201,7 +201,6 @@ export function mountComponent(
 
             mark(startTag)
 
-            //
             const vnode = vm._render()
             mark(endTag)
             measure(`vue ${name} render`, startTag, endTag)
@@ -220,6 +219,7 @@ export function mountComponent(
     // we set this to vm._watcher inside the watcher's constructor
     // since the watcher's initial patch may call $forceUpdate (e.g. inside child
     // component's mounted hook), which relies on vm._watcher being already defined
+    // 为vue的dom创建一个watcher
     new Watcher(vm, updateComponent, noop, {
         before() {
             if (vm._isMounted && !vm._isDestroyed) {
@@ -233,8 +233,9 @@ export function mountComponent(
     // mounted is called for render-created child components in its inserted hook
     if (vm.$vnode == null) {
         vm._isMounted = true
-        callHook(vm, 'mounted')
-    }
+        callHook(vm, 'mounted');
+    };
+
     return vm
 }
 

@@ -4,7 +4,7 @@ import type VNode from 'core/vdom/vnode'
 
 /**
  * Runtime helper for resolving raw children VNodes into a slot object.
- * 运行时助手，用于将子Vnode转换为插槽对象
+ * 运行时助手，用于将子Vnode转换为插槽对象(处理2.5以下的废弃语法slot)
  */
 export function resolveSlots(
     children: ? Array < VNode > ,

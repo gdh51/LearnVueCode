@@ -3,6 +3,7 @@
 在我们定义的`watcher`和`computed`属性中，它们都是依赖于`Watcher`对象来进行对属性的监听。在初始化`computed`时, 不会对其进行求值与依赖项的收集,只有当真正使用它时才会开始计算。同时我们的模版字符串(也代表一个`Watcher`)中所用的变量，也要被收集在该 Vue 实例之下。
 
 所以`watcher`具体分为3大类：
+
 1. 渲染`watcher`
 2. 计算属性`watcher`(`lazy`属性为`true`)
 3. 监听函数`watcher`
@@ -35,16 +36,18 @@ class Watcher {
     expOrFn: string | Function,
     cb: Function,
     options?: ?Object,
+
+    // 是否为渲染watcher
     isRenderWatcher?: boolean
   ) {
     this.vm = vm
 
-    // 一个vm实例渲染时
+    // 当前渲染的watcher为一个vm实例时
     if (isRenderWatcher) {
         vm._watcher = this;
     }
 
-    // 加入vm上的_watchers数组
+    // 将该watcher加入vm实例的所有_watchers数组
     vm._watchers.push(this);
 
     // options
@@ -102,6 +105,7 @@ class Watcher {
 ```
 
 在我们设置一个`watch`监听函数时，可能设置的是一个对象中的某个属性，那么此时，该函数就会解析这个字符串，返回那个对应的属性
+
 ## parsePath(path)——返回指定 path 的属性
 
 我们可以使用对象`.`运算符的形式指定对象的内部属性，如`a.b.c`,那么具体含义就为监听对象`a`中对象`b`中的`c`属性的值
@@ -123,9 +127,11 @@ function parsePath(path: string): any {
     };
 }
 ```
+
 >这里我们需要注意的是，此处返回的是一个函数并未直接用其求得对应字符串所取得的值，而在求值时，如果存在`a.b.c`这种类型的字符串，则进行依赖项收集时，会同时收集`a、b、c`三个属性的依赖项
 
 所以我们会出现以下这种情况, 假如我们注册了三个监听函数如下：
+
 ```js
 data () {
     return a1: {
@@ -159,7 +165,9 @@ watch: {
 ```
 
 ## Watcher.prototype.get()
+
 该方法用来触发`computed`或`watcher`的函数，对其进行求值，并收集依赖项, 并按以下的顺序：
+
 1. 首先通过`pushTarget()`指定要进行收集依赖项的`watcher`
 2. 对`watcher`函数进行求值，收集依赖项(注意有`.`运算符时的特殊性情况)
 3. 如果是深度监听`(deep = true)`，则还要遍历整个求值结果(是对象的其他下)，进行依赖项收集
@@ -167,6 +175,7 @@ watch: {
 5. 通过`popTarget()`移除当前指定的`watcher`
 
 具体过程为：
+
 ```js
   /**
    * Evaluate the getter, and re-collect dependencies.
@@ -210,10 +219,14 @@ get () {
 ```
 
 其中，当我们深度监听对象时，会调用以下函数：
+
 ### traverse(value)——遍历 value，将其所有属性的依赖添加到当前 watcher
+
 该函数的目的有两个：
+
 1. 添加每个属性的依赖项
 2. 当属性值为对象或数组时，还要添加其自身的`dep`依赖项(用于对象或数组的增加或删除元素)
+
 ```js
 // 生成一个Set数组，防止重复添加dep依赖项(防止循环引用)
 const seenObjects = new Set();
@@ -261,10 +274,14 @@ function _traverse(val: any, seen: SimpleSet) {
 ```
 
 最后，我们需要对该`watcher`依赖项队列的变更，进行整理，具体过程如下：
+
 ### Watcher.prototype.cleanupDeps()——清除已不存在依赖项，交替依赖项
+
 整个过程做了两件事：
+
 1. 如果该`watcher`某些旧的`dep`依赖项已不存在最新的队列中，则移除旧的`dep`依赖项的该`watcher`
 2. 替换新旧`deps`依赖项队列，并清空新的依赖项队列。
+
 ```js
     cleanupDeps() {
         let i = this.deps.length
@@ -299,6 +316,7 @@ function _traverse(val: any, seen: SimpleSet) {
 
 至此，就是watcher函数全部的求值过程，用一张图来总结一下一个watcher的具体求值过程：
 ![watcher求值过程](../img/watcher求值.svg)
+
 ### Watcher.ptototype.update()——更新 watcher
 
 ```js
@@ -312,3 +330,21 @@ update() {
     }
 }
 ```
+
+## 渲染Watcher
+
+先看下一渲染`Watcher`实例化时，如何传入的参数:
+
+```js
+new Watcher(vm, updateComponent, noop, {
+    before() {
+        if (vm._isMounted && !vm._isDestroyed) {
+            callHook(vm, 'beforeUpdate')
+        }
+    }
+}, true /* isRenderWatcher */ )
+```
+
+其中`updateComponent()`可以理解为生成DOM结构，这里的[`before()`](../../nextTick与渲染更新/README.MD#nexttick)函数就是我们之前在更新`Watcher`前，看到调用的方法，现在可以确认是生命周期函数。
+
+在初始化`Wathcer`的最后个阶段，通过调用`Watcher.prototype.get()`来开始调用`updateComponent()`函数，进行依赖项的收集。
