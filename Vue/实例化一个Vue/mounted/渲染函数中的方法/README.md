@@ -1,37 +1,97 @@
-/* @flow */
+# 渲染函数中的方法
 
-import config from '../config'
-import VNode, {
-    createEmptyVNode
-} from './vnode'
-import {
-    createComponent
-} from './create-component'
-import {
-    traverse
-} from '../observer/traverse'
+这里是介绍渲染函数中方法的目录：
 
-import {
-    warn,
-    isDef,
-    isUndef,
-    isTrue,
-    isObject,
-    isPrimitive,
-    resolveAsset
-} from '../util/index'
+## _m()——renderStatic()渲染静态节点
 
-import {
-    normalizeChildren,
-    simpleNormalizeChildren
-} from './helpers/index'
+该方法用于渲染静态的节点dom片段，当然它自身不存在渲染函数，它调用静态渲染函数数组中对应的函数来进行渲染：
 
-const SIMPLE_NORMALIZE = 1
-const ALWAYS_NORMALIZE = 2
+```js
+function renderStatic(
 
+    // 静态render数组中的坐标
+    index: number,
+    isInFor: boolean
+): VNode | Array < VNode > {
+
+    // 缓存生成的静态根节点生成的Vnode片段的结构
+    const cached = this._staticTrees || (this._staticTrees = []);
+
+    // 有缓存则直接使用
+    let tree = cached[index];
+
+    // if has already-rendered static tree and not inside v-for,
+    // we can reuse the same tree.
+    // 有缓存，且不再v-for中，则复用之前的
+    if (tree && !isInFor) {
+        return tree
+    }
+
+    // otherwise, render a fresh tree.
+    // 否则渲染一个新的Vnode片段
+    // 取出对应的静态渲染函数进行渲染
+    tree = cached[index] = this.$options.staticRenderFns[index].call(
+
+        // vue实例的代理对象
+        this._renderProxy,
+        null,
+
+        // 用于为functional组件模版生成渲染函数
+        this // for render fns generated for functional component templates
+    );
+
+    // 为该Vnode片段的节点添加静态属性标记
+    markStatic(tree, `__static__${index}`, false);
+    return tree;
+}
+```
+
+该方法就是根据传入的静态函数的`index`，来调用`staticRenderFns`数组中对应的静态渲染函数来生成dom片段，之后调用`markStatic()`方法来标记所有的静态节点
+
+### markStatic()——标记静态根节点
+
+为所有静态根`Vnode`添加`isStatic`与`key`属性，未给其子节点添加哦
+
+```js
+function markStatic(
+    tree: VNode | Array < VNode > ,
+    key: string,
+    isOnce: boolean
+) {
+    // 遍历全部静态根节点，为所有元素节点添加静态节点标记
+    if (Array.isArray(tree)) {
+        for (let i = 0; i < tree.length; i++) {
+            if (tree[i] && typeof tree[i] !== 'string') {
+                markStaticNode(tree[i], `${key}_${i}`, isOnce)
+            }
+        }
+    } else {
+        markStaticNode(tree, key, isOnce)
+    }
+}
+
+function markStaticNode(node, key, isOnce) {
+    node.isStatic = true;
+    node.key = key;
+    node.isOnce = isOnce;
+}
+```
+
+## _c()——createElement()创建元素
+
+该方法来自于最初的`initRender()`函数，它在最初实例化`Vue`时绑定的，那么问题来了，为什么要在实例化时绑定，因为此时绑定就能获取对应实例上的属性，那么我们看看它的函数：
+
+```js
+// args: tag, data, children, normalizationType, alwaysNormalize
+vm._c = (a, b, c, d) => createElement(vm, a, b, c, d, false);
+```
+
+`_c()`函数的四个参数分别为标签名、元素属性、子节点、标准化类型；而`createElement()`函数的6个参数分别为绑定的vm实例、标签名、元素属性、子节点、标准化类型、是否深度标准化，一般情况下是否深度标准化是否定的。
+
+```js
 // wrapper function for providing a more flexible interface
 // without getting yelled at by flow
-export function createElement(
+function createElement(
 
     // 上下文环境，即vm实例
     context: Component,
@@ -62,7 +122,30 @@ export function createElement(
     return _createElement(context, tag, data, children, normalizationType)
 }
 
-export function _createElement(
+// 全等===
+function isTrue(v: any): boolean % checks {
+    return v === true;
+}
+
+// 是否为原始值
+function isPrimitive(value: any): boolean % checks {
+    return (
+        typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'symbol' ||
+        typeof value === 'boolean'
+    )
+}
+```
+
+这里可以看出`createElement()`函数并非正真的处理函数，而是包装起来用作对其传入参数的处理，还是可以看出第六个参数除非指定为`true`，不然永远不主动进行标准化。
+
+### _createElement()——创建Vnode节点
+
+该函数正式用于创建`Vnode`节点，当然只创建，不干其他的。
+
+```js
+function _createElement(
     context: Component,
     tag ? : string | Class < Component > | Function | Object,
     data ? : VNodeData,
@@ -70,7 +153,7 @@ export function _createElement(
     normalizationType ? : number
 ): VNode | Array < VNode > {
 
-    // 禁止使用使用有监听器属性的对象作为data
+    // 禁止使用使用已被监听的对象作为data
     if (isDef(data) && isDef((data: any).__ob__)) {
         process.env.NODE_ENV !== 'production' && warn(
             `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +
@@ -89,6 +172,7 @@ export function _createElement(
 
     // 无标签，这种情况就is属性设置了一个假值
     if (!tag) {
+
         // in case of component :is set to falsy value
         return createEmptyVNode()
     }
@@ -128,7 +212,6 @@ export function _createElement(
 
 
     let vnode, ns;
-
     // 直接提供标签名时，按照提供标签名的情况进行创建Vnode节点
     if (typeof tag === 'string') {
         let Ctor;
@@ -158,6 +241,8 @@ export function _createElement(
                 undefined, undefined, context
             )
         }
+
+    // 未提供标签名时，说明为组件
     } else {
 
         // direct component options / constructor
@@ -172,44 +257,18 @@ export function _createElement(
     // 对单个节点的属性进行处理
     } else if (isDef(vnode)) {
         if (isDef(ns)) applyNS(vnode, ns);
+
+        // 如果存在动态style或class属性，则要对其进行依赖项收集，便于父组件的重新渲染
         if (isDef(data)) registerDeepBindings(data);
         return vnode
 
     // 无节点生成则返回空节点
     } else {
-        return createEmptyVNode()
+        return createEmptyVNode();
     }
 }
+```
 
-function applyNS(vnode, ns, force) {
-    vnode.ns = ns
-    if (vnode.tag === 'foreignObject') {
-        // use default namespace inside foreignObject
-        ns = undefined
-        force = true
-    }
-    if (isDef(vnode.children)) {
-        for (let i = 0, l = vnode.children.length; i < l; i++) {
-            const child = vnode.children[i]
-            if (isDef(child.tag) && (
-                    isUndef(child.ns) || (isTrue(force) && child.tag !== 'svg'))) {
-                applyNS(child, ns, force)
-            }
-        }
-    }
-}
+1. 首先对承载数据的`data`对象进行检查，防止其为已被观察的对象(一般情况不会因为我们操作不到这个属性，除非自己写渲染函数)。
 
-// ref #5318
-// necessary to ensure parent re-render when deep bindings like :style and
-// :class are used on slot nodes
-// 当使用:style或:class时保证父元素的重新渲染
-function registerDeepBindings(data) {
-
-    // 动态绑定style属性时，遍历该属性收集依赖项
-    if (isObject(data.style)) {
-        traverse(data.style)
-    }
-    if (isObject(data.class)) {
-        traverse(data.class)
-    }
-}
+2. 接下来是对`tag`属性的确认，确保其存在，无论以何种形式，否则返回一个空的`Vnode`节点。

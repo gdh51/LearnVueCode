@@ -378,6 +378,7 @@ function lifecycleMixin(Vue) {
 ```js
 //绑定与渲染有关的实例方法
 function renderMixin(Vue) {
+
     // 在原型上绑定一些运行时会用到的内部函数
     installRenderHelpers(Vue.prototype);
 

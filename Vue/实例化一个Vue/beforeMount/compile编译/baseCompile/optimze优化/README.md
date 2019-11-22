@@ -102,7 +102,49 @@ function markStatic(node: ASTNode) {
 }
 ```
 
-上面部分判断函数，我直接用注释写明用意了。
+首先不仅仅是`v-pre`或`v-once`的节点为静态节点，如果满足`isStatic()`属性，那么它同样也能为静态节点
+
+### isStatic()——称得上静态节点的节点
+
+首先，文本节点必定为静态节点，其次没有任何其他`vue`指令属性等等：
+
+```js
+// 是pre元素，或其他符合规定的元素
+function isStatic(node: ASTNode): boolean {
+
+    // 属性节点，在这里即我们的插值绑定时
+    if (node.type === 2) { // expression
+        return false
+    }
+
+    // 文本节点，为静态节点
+    if (node.type === 3) { // text
+        return true
+    }
+
+    //
+    return !!(node.pre || (
+
+        // 无动态绑定属性
+        !node.hasBindings && // no dynamic bindings
+
+        // 无v-if和v-for
+        !node.if && !node.for && // not v-if or v-for or v-else
+
+        // 非slot或component标签
+        !isBuiltInTag(node.tag) && // not a built-in
+
+        // 原生标签
+        isPlatformReservedTag(node.tag) && // not a component
+
+        // 是否为v-for模版元素的直接子元素(即中间可以存在其他子元素，但也要为模版)
+        !isDirectChildOfTemplateFor(node) &&
+
+        // 节点中每个属性都为静态键，即没有其他多余的指令
+        Object.keys(node).every(isStaticKey)
+    ))
+}
+```
 ___
 之后便进行第二次遍历，来标记那些静态节点的根节点：
 
