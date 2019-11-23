@@ -198,7 +198,7 @@ function _createElement(
     ) {
         data = data || {}
         data.scopedSlots = {
-            default: children[0]
+            default: children[0];
         }
         children.length = 0
     }
@@ -227,7 +227,7 @@ function _createElement(
                 undefined, undefined, context
             )
 
-        // 无属性或非静态节点
+        // 无属性或非静态节点的组件
         } else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
             // component
             vnode = createComponent(Ctor, data, context, children, tag)
@@ -272,3 +272,91 @@ function _createElement(
 1. 首先对承载数据的`data`对象进行检查，防止其为已被观察的对象(一般情况不会因为我们操作不到这个属性，除非自己写渲染函数)。
 
 2. 接下来是对`tag`属性的确认，确保其存在，无论以何种形式，否则返回一个空的`Vnode`节点。
+
+3. 根据标准化等级，针对子节点进行标准化。
+
+4. 事到至此就该对该元素的标签进行确认了，如果我们指定的是动态的变量在这里也会开始求值了。(这里的动态标签名的情况即指`:is`语法)
+   1. 如果标签名为字符串，那么就是一个确切的标签，那么不是原生标签就是组件标签
+   2. 如果标签名是对象，那么就是一个组件
+
+5. 最后返回这个`Vnode`节点。
+
+## _l()——renderList()渲染v-for列表
+
+该函数用于渲染`v-for`队列，它会遍历我们传入的可迭代的值(即使是对象也没关系)，然后按其可迭代的个数来生成`VNode`节点，返回这些节点的数组。
+
+```js
+function renderList(
+
+    // v-for指定的可迭代变量
+    val: any,
+
+    // v-for循环中的子节点渲染函数
+    render: (
+        val: any,
+        keyOrIndex: string | number,
+        index ? : number
+    ) => VNode
+): ? Array < VNode > {
+    let ret: ? Array < VNode > , i, l, keys, key;
+
+    // 传入数组或字符串时
+    if (Array.isArray(val) || typeof val === 'string') {
+        ret = new Array(val.length);
+
+        // 遍历全部元素，并传入每个元素至渲染函数
+        for (i = 0, l = val.length; i < l; i++) {
+            ret[i] = render(val[i], i);
+        }
+
+    // 传入数字时, 从1开始为值进行传递
+    } else if (typeof val === 'number') {
+        ret = new Array(val)
+        for (i = 0; i < val; i++) {
+            ret[i] = render(i + 1, i)
+        }
+
+    // 传入对象时，只要保证其能遍历
+    } else if (isObject(val)) {
+
+        // 是否支持迭代器
+        if (hasSymbol && val[Symbol.iterator]) {
+            ret = [];
+            const iterator: Iterator < any > = val[Symbol.iterator]()
+            let result = iterator.next();
+
+            // 将迭代其返回值传入
+            while (!result.done) {
+                ret.push(render(result.value, ret.length))
+                result = iterator.next()
+            }
+
+        // 不支持迭代器时(即为普通对象)，按键值顺序传入
+        } else {
+            keys = Object.keys(val)
+            ret = new Array(keys.length)
+            for (i = 0, l = keys.length; i < l; i++) {
+                key = keys[i]
+                ret[i] = render(val[key], key, i)
+            }
+        }
+    }
+
+    // 传入val为其他值时，无效，返回空数组
+    if (!isDef(ret)) {
+        ret = []
+    }
+
+    // 挂载v-list标记位
+    (ret: any)._isVList = true;
+    return ret;
+}
+```
+
+我们可以看到，对于数组和含有迭代器的对象或字符串，它们会遍历它们，然后按它们每个元素为单位来生成`Vnode`节点；而对于数字，它按`1~num`给定数字的方式来生成；对于不可迭代的对象，它按键值对个数来生成`Vnode`节点。
+
+**无论如何，在调用渲染函数时，都会传入所有的相关参数**，具体能使用哪些参数，根据用户定义情况。
+
+## _v()——createTextVNode()
+
+该函数就是直接创建个文本`VNode`节点，非常简单，无其他操作[详情](../VNode构造函数/README.md#%e5%85%b6%e4%bb%96%e8%8a%82%e7%82%b9%e7%9a%84%e5%88%9b%e5%bb%ba)
