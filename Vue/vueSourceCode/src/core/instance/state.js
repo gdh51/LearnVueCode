@@ -40,7 +40,10 @@ const sharedPropertyDefinition = {
     set: noop
 }
 
+// 拦截target对象的getter与setter使其查询或修改属性时，直接跨级修改sourceKey中的属性
 export function proxy(target: Object, sourceKey: string, key: string) {
+
+    // 直接跨层访问
     sharedPropertyDefinition.get = function proxyGetter() {
         return this[sourceKey][key]
     }

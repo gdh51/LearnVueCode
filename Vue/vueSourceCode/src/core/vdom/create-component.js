@@ -110,25 +110,43 @@ const componentVNodeHooks = {
 const hooksToMerge = Object.keys(componentVNodeHooks)
 
 export function createComponent(
+
+    // 组件的配置实例对象
     Ctor: Class < Component > | Function | Object | void,
+
+    // 外置与组件元素上的属性
     data: ? VNodeData,
+
+    // 当前组件所处于的上下文对象，即父组件
     context : Component,
+
+    // 当前组件中的子节点们
     children: ? Array < VNode > ,
+
+    // 组件名称
     tag ? : string
 ): VNode | Array < VNode > | void {
+
+    // 不存在组件配置对象时直接返回。
     if (isUndef(Ctor)) {
-        return
+        return;
     }
 
+    // 取出基础Vue构造函数
     const baseCtor = context.$options._base
 
     // plain options object: turn it into a constructor
+    // 如果是组件配置对象时，将配置与基础配置对象混合，
+    // 并生成一个新的构造函数
     if (isObject(Ctor)) {
-        Ctor = baseCtor.extend(Ctor)
+
+        // 生成组件的构造函数
+        Ctor = baseCtor.extend(Ctor);
     }
 
     // if at this stage it's not a constructor or an async component factory,
     // reject.
+    // 如果在这一步它还不是一个构造或工厂函数，那么报错
     if (typeof Ctor !== 'function') {
         if (process.env.NODE_ENV !== 'production') {
             warn(`Invalid Component definition: ${String(Ctor)}`, context)
@@ -137,10 +155,14 @@ export function createComponent(
     }
 
     // async component
-    let asyncFactory
+    let asyncFactory;
+
+    // 是否具有cid(只有通过extend生成的组件构造函数才有)
     if (isUndef(Ctor.cid)) {
-        asyncFactory = Ctor
-        Ctor = resolveAsyncComponent(asyncFactory, baseCtor)
+
+        // 处理异步组件
+        asyncFactory = Ctor;
+        Ctor = resolveAsyncComponent(asyncFactory, baseCtor);
         if (Ctor === undefined) {
             // return a placeholder node for async component, which is rendered
             // as a comment node but preserves all the raw information for the node.
@@ -155,15 +177,18 @@ export function createComponent(
         }
     }
 
-    data = data || {}
+    // 初始化节点的属性
+    data = data || {};
 
     // resolve constructor options in case global mixins are applied after
     // component constructor creation
-    resolveConstructorOptions(Ctor)
+    // 检查构造函数的父级构造函数前后两个版本的options以防全局的mixins是在组件构造函数后调用
+    resolveConstructorOptions(Ctor);
 
     // transform component v-model data into props & events
+    // 将v-model属性转换为对应的属性与事件(包括组件中的model配置)
     if (isDef(data.model)) {
-        transformModel(Ctor.options, data)
+        transformModel(Ctor.options, data);
     }
 
     // extract props
@@ -218,7 +243,7 @@ export function createComponent(
         return renderRecyclableComponentTemplate(vnode)
     }
 
-    return vnode
+    return vnode;
 }
 
 export function createComponentInstanceForVnode(
@@ -264,21 +289,37 @@ function mergeHook(f1: any, f2: any): Function {
 // transform component v-model info (value and callback) into
 // prop and event handler respectively.
 function transformModel(options, data: any) {
-    const prop = (options.model && options.model.prop) || 'value'
+
+    // 是否指定prop绑定的值，否则默认绑定其value属性
+    const prop = (options.model && options.model.prop) || 'value';
+
+    // 是否指定v-model绑定的事件，默认绑定input
     const event = (options.model && options.model.event) || 'input';
-    (data.attrs || (data.attrs = {}))[prop] = data.model.value
-    const on = data.on || (data.on = {})
-    const existing = on[event]
-    const callback = data.model.callback
+
+    // 在元素属性中添加绑定的元素属性的值
+    (data.attrs || (data.attrs = {}))[prop] = data.model.value;
+
+    // 获取元素上的事件处理器对象
+    const on = data.on || (data.on = {});
+
+    // 取出该类型的事件对象
+    const existing = on[event];
+    const callback = data.model.callback;
+
+    // 如果存在同类型事件，转化为数组添加添加在最前
     if (isDef(existing)) {
         if (
             Array.isArray(existing) ?
+
+            // 不为同一事件处理函数
             existing.indexOf(callback) === -1 :
             existing !== callback
         ) {
             on[event] = [callback].concat(existing)
         }
     } else {
+
+        // 不存在时，直接添加
         on[event] = callback
     }
 }

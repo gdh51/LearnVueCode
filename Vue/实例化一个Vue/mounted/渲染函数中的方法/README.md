@@ -281,6 +281,12 @@ function _createElement(
 
 5. 最后返回这个`Vnode`节点。
 
+[源码文件](../../../vueSourceCode/src/core/vdom/create-element.js)
+
+### createComponent()——创建组件VNode
+
+该方法用于创建组件的VNode节点
+
 ## _l()——renderList()渲染v-for列表
 
 该函数用于渲染`v-for`队列，它会遍历我们传入的可迭代的值(即使是对象也没关系)，然后按其可迭代的个数来生成`VNode`节点，返回这些节点的数组。

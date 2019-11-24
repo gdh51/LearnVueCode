@@ -496,25 +496,38 @@ export function mergeOptions(
      * Resolve an asset.
      * This function is used because child instances need access
      * to assets defined in its ancestor chain.
+     * 解析options中的某个值，该函数用于子vm实例可能要使用其祖先组件中的某个属性
      */
     export function resolveAsset(
         options: Object,
+
+        // 传入的类型
         type: string,
+
+        // 标签名称或id
         id: string,
         warnMissing ? : boolean
     ): any {
-        /* istanbul ignore if */
+
         if (typeof id !== 'string') {
-            return
+            return;
         }
-        const assets = options[type]
+
+        // 取出挂载在用户自定义配置上的属性
+        const assets = options[type];
+
         // check local registration variations first
-        if (hasOwn(assets, id)) return assets[id]
-        const camelizedId = camelize(id)
-        if (hasOwn(assets, camelizedId)) return assets[camelizedId]
-        const PascalCaseId = capitalize(camelizedId)
-        if (hasOwn(assets, PascalCaseId)) return assets[PascalCaseId]
+        // 优先检查是否为自有属性，优先返回自有属性
+        if (hasOwn(assets, id)) return assets[id];
+
+        // 下面分别返回其名称的-连接符式和驼峰式
+        const camelizedId = camelize(id);
+        if (hasOwn(assets, camelizedId)) return assets[camelizedId];
+        const PascalCaseId = capitalize(camelizedId);
+        if (hasOwn(assets, PascalCaseId)) return assets[PascalCaseId];
+
         // fallback to prototype chain
+        // 如果本地变量没有则，依次检测其对应对象的原型链
         const res = assets[id] || assets[camelizedId] || assets[PascalCaseId]
         if (process.env.NODE_ENV !== 'production' && warnMissing && !res) {
             warn(
@@ -522,5 +535,5 @@ export function mergeOptions(
                 options
             )
         }
-        return res
+        return res;
     }

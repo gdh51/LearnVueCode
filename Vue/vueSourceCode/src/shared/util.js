@@ -150,6 +150,8 @@ export function remove(arr: Array < any > , item: any): Array < any > | void {
  */
 const hasOwnProperty = Object.prototype.hasOwnProperty
 export function hasOwn(obj: Object | Array < * > , key: string): boolean {
+
+    // 是否为自有属性
     return hasOwnProperty.call(obj, key)
 }
 

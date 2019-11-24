@@ -101,3 +101,38 @@ with(this) {
 + 如果`a`为假值，则调用`_c('div', [_v("None")])]))`返回一个`div`节点
 
 最后`_l()`函数生成的所有`VNode`节点作为`app`节点的子节点，生成`app`的`VNode`节点，然后返回。
+
+## 例子3
+
+```html
+<!-- 模版 -->
+<div id='app'>
+    <child1 :a="a"></child1>
+    <div @click="changeA"></div>
+</div>
+
+<!-- 子组件 -->
+<div>空</div>
+```
+
+渲染函数为：
+
+```js
+with(this) {
+    return _c('div', {
+        attrs: {
+            "id": "app"
+        }
+    }, [_c('child1', {
+        attrs: {
+            "a": a
+        }
+    }), _v(" "), _c('div', {
+        on: {
+            "click": changeA
+        }
+    })], 1);
+}
+```
+
+首先先执行`_c('child1', {attrs: {"a": a}})`

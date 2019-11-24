@@ -1,7 +1,9 @@
 ## initGlobalAPI()
+
 在最初初始化Vue构造函数时，会调用该方法来对Vue构造函数添加一些属性、API
 
 以下是它的具体代码：
+
 ```js
 const ASSET_TYPES = [
   'component',
@@ -66,7 +68,9 @@ function initGlobalAPI(Vue: GlobalAPI) {
 ```
 
 ## extend()——将from对象的属性混入目标对象中
+
 简单易懂，相当于我们的浅复制
+
 ```js
 function extend(to: Object, _from: ? Object): Object {
     for (const key in _from) {
@@ -75,3 +79,7 @@ function extend(to: Object, _from: ? Object): Object {
     return to;
 }
 ```
+
+## initExtend(Vue)——拓展构造函数方法
+
+为`Vue`的构造函数添加一个`.extend()`，用于混合生成组件的构造函数。

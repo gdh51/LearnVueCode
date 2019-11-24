@@ -116,23 +116,24 @@ export function initInternalComponent(vm: Component, options: InternalComponentO
 
 export function resolveConstructorOptions(Ctor: Class < Component > ) {
 
-    // 获取构造函数上的默认options属性
+    // 获取构造函数上的options属性
     let options = Ctor.options;
 
-    // 如果该构造函数有父级
+    // 如果该构造函数有父级(没有父级弹什么mixins)
     if (Ctor.super) {
 
-        // 获取父级构造函数的options
+        // 获取父级组件构造函数的options
         const superOptions = resolveConstructorOptions(Ctor.super);
 
-        // 获取父级构造函数上之前的缓存options
+        // 获取父级构造函数上options
         const cachedSuperOptions = Ctor.superOptions;
 
-        // 当父级options与缓存的options不同时, 更新缓存
+        // 当父级options与缓存的options不同时(因为这两个都是对同一个对象的引用详情参考Vue.extend函数), 更新缓存
         if (superOptions !== cachedSuperOptions) {
 
             // super option changed,
             // need to resolve new options.
+            // 父级options变动时，更新其缓存
             Ctor.superOptions = superOptions;
 
             // check if there are any late-modified/attached options (#4976)
@@ -140,12 +141,15 @@ export function resolveConstructorOptions(Ctor: Class < Component > ) {
             const modifiedOptions = resolveModifiedOptions(Ctor);
 
             // update base extend options
-            // 将两者差异属性追加到extendOptions上
+            // 将两者差异属性追加到组件的options上(即用户编写的组件模块文件里面的配置)
             if (modifiedOptions) {
                 extend(Ctor.extendOptions, modifiedOptions);
             }
 
-            options = Ctor.options = mergeOptions(superOptions, Ctor.extendOptions)
+            // 更新组件的Superoptions
+            options = Ctor.options = mergeOptions(superOptions, Ctor.extendOptions);
+
+            // 更新组件名称挂载的组件
             if (options.name) {
                 options.components[options.name] = Ctor
             }
@@ -154,14 +158,19 @@ export function resolveConstructorOptions(Ctor: Class < Component > ) {
     return options;
 }
 
+// 对比新旧两个options，返回其变更部分填充的对象
 function resolveModifiedOptions(Ctor: Class < Component > ): ? Object {
     let modified;
     const latest = Ctor.options;
+
+    // 组件密封的对上一个父级属性的copy
     const sealed = Ctor.sealedOptions;
 
-    // 遍历封装的Options与现有的Options, 将其不同的key/value
+    // 遍历封装的Options与现有的Options, 将其不同(必须全等)的key/value
     // 存入modified对象中返回
     for (const key in latest) {
+
+        // 全等，用来筛选与原始options不同的部分
         if (latest[key] !== sealed[key]) {
             if (!modified) modified = {};
             modified[key] = latest[key];

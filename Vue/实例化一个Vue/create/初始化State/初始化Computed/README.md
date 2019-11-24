@@ -60,8 +60,10 @@ function initComputed(vm: Component, computed: Object) {
 }
 ```
 
-## defineComputed()
+## defineComputed()——在目标对象上定义计算属性
+
 `Vue`通过该函数来向`Vue`实例上定义该`computed`属性
+
 ```js
 const sharedPropertyDefinition = {
     enumerable: true,
@@ -109,6 +111,7 @@ function defineComputed(target: any, key: string, userDef: Object | Function) {
 通过该函数返回一个计算属性的`getter`
 
 > 在计算属性的watcher中，有一个dirty属性用于控制是否进行计算该computed属性
+
 ```js
 function createComputedGetter(key) {
     return function computedGetter() {
@@ -134,54 +137,63 @@ function createComputedGetter(key) {
     }
 }
 ```
+
 ## 触发一个computed属性
+
 当我们对一个`computed`属性进行求值时，首先会触发它的`computedGetter()`函数(就在上方)，然后分为以下步骤得出其值：
+
 1. 找到该`computed`属性对应的`watcher`实例
 2. `computed`是否有更新？
    1. 有：重新求值，并重新收集依赖项
    2. 无：直接返回旧值
 
 ### 何时与怎么进行computed属性更新？
+
 当我们第一次或`computed`的依赖项更新后对`computed`属性进行求值时，就会经历`computedGetter()`函数。而是否能对其进行求值还是取决于其`watcher.dirty`属性的值，该值只会在第一次或计算属性依赖项更新后才会变化为`true`。
 
 >这里只解释依赖项更新时的流程：其按以下步骤
+
 1. 某个所依赖的值发生变化，触发其`dep.notify()`
 2. 通过`dep.notify()`通知对应的`watcher`触发`watcher.update()`
 3. 在`update()`方法中，`computed`走第一条路线，改变其`watcher.dirty`的值为`true`，其含义为**允许**`computed`重新进行求值和依赖项收集。
-   ```js
-   Watcher.prototype.update() {
-       if (this.lazy) {
 
-           // 会触发这里
-           this.dirty = true
-       } else ...
+```js
+Watcher.prototype.update() {
+        if (this.lazy) {
 
-       // 后面就略了
-   }
-   ```
+        // 会触发这里
+        this.dirty = true
+    } else ...
+
+    // 后面就略了
+}
+```
 
 4. 因为`computed`属性所依赖的依赖项是直接和使用`computed`属性的`watcher`挂钩的，所以其依赖项更新时还会触发依赖`computed`属性的值的`watcher`进行更新。在此更新[过程](../../Vue中的响应式属性/Dep依赖项#如何触发依赖更新)中，会重新对`computed`的值进行计算即调用它的`getter`函数——`computedGetter()`
    >这里可能描述得不清晰，用图片描述下：
    ![computed属性的dep依赖项关系](../imgs/computed属性的dep依赖项关系.svg)
 5. 此时再触发`watcher.evaluate()`, 调用[watcher.get()](../../Vue中的响应式属性/Watcher监听者对象#Watcher.prototype.get())函数进行求值和依赖项收集，然后关闭求值的权限
-   ```js
-   evaluate() {
-       // 对computed函数进行取值，依赖项收集
-       this.value = this.get();
-       this.dirty = false;
-   }
-   ```
 
-6. 最后将该`computed`所需的依赖项添加到所需的该计算属性的`watcher`中去(有点难理解多看几遍)
-   ```js
-   if (Dep.target) {
-       watcher.depend();
-   }
-   // 可以理解为
-   Dep.target.addDep(...watcher.deps);
-   ```
+```js
+evaluate() {
+    // 对computed函数进行取值，依赖项收集
+    this.value = this.get();
+    this.dirty = false;
+}
+```
+
+1. 最后将该`computed`所需的依赖项添加到所需的该计算属性的`watcher`中去(有点难理解多看几遍)
+
+```js
+if (Dep.target) {
+    watcher.depend();
+}
+// 可以理解为
+Dep.target.addDep(...watcher.deps);
+```
 
 ![computed属性的依赖项发生了变化的流程](../imgs/computed属性的依赖项发生了变化的流程.svg)
 
 ## computed属性依赖项收集的整理
+
 从上面代码我们看出：`computed`自身无`dep`依赖项，它不作为一个值来进行处理。**此时以computed属性作为依赖项目标的`watcher`将直接观察`computed`所依赖的依赖项**来判断是否对自身进行更新。所以，只要目标`watcher`要重新进行求值计算，无论`computed`属性是否变化都需要重新进行计算(无变化时返回原值即可)
