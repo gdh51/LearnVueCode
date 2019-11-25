@@ -283,9 +283,19 @@ function _createElement(
 
 [源码文件](../../../vueSourceCode/src/core/vdom/create-element.js)
 
+下面是具体如何生成组件：
+
 ### createComponent()——创建组件VNode
 
-该方法用于创建组件的VNode节点
+该方法用于创建组件的`VNode`节点，具体处理三种组件：
+
+- 异步组件
+- 普通组件
+- 函数式组件
+
+[详情](./创建组件VNode/README.md)
+____
+最后如果还留有元素属性时，要对其中的`:style/:class`属性进行依赖项的收集，防止其变更时无法更新。
 
 ## _l()——renderList()渲染v-for列表
 

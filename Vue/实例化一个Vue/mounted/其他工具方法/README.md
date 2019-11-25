@@ -1,5 +1,13 @@
 # 一些运行时编译的工具方法
 
+下面是在`mounted`阶段所用到的工具方法的目录:
+
+- [resolveAsset()——获取指定对象上的资源](#resolveasset%e8%8e%b7%e5%8f%96%e6%8c%87%e5%ae%9a%e5%af%b9%e8%b1%a1%e4%b8%8a%e7%9a%84%e8%b5%84%e6%ba%90)
+- [hasOwn()——是否为自有属性](#hasown%e6%98%af%e5%90%a6%e4%b8%ba%e8%87%aa%e6%9c%89%e5%b1%9e%e6%80%a7)
+- [proxy()——拦截访问与修改](#proxy%e6%8b%a6%e6%88%aa%e8%ae%bf%e9%97%ae%e4%b8%8e%e4%bf%ae%e6%94%b9)
+- [transformModel()——处理组件上v-model](#transformmodel%e5%a4%84%e7%90%86%e7%bb%84%e4%bb%b6%e4%b8%8av-model)
+- [extractPropsFromVNodeData()——提取组件的prop值](#extractpropsfromvnodedata%e6%8f%90%e5%8f%96%e7%bb%84%e4%bb%b6%e7%9a%84prop%e5%80%bc)
+
 ## resolveAsset()——获取指定对象上的资源
 
 该方法会获取传入对象的指定属性名称的值，如果没有，则会按该属性名称的原始值、`-`连接符值、驼峰式值依次查找。如果还没找到则会依赖查询其原型链来获取属性。
@@ -136,5 +144,107 @@ function transformModel(options, data: any) {
         // 不存在时，直接添加
         on[event] = callback
     }
+}
+```
+
+## extractPropsFromVNodeData()——提取组件的prop值
+
+该函数用于来获取组件中的`props`的各个属性在某个`vm`上下文环境中具体真实值的。
+
+```js
+function extractPropsFromVNodeData(
+    data: VNodeData,
+    Ctor: Class < Component > ,
+    tag ? : string
+): ? Object {
+    // we are only extracting raw values here.
+    // validation and default values are handled in the child
+    // component itself.
+    // 这里只提取原始值，效验器和默认值的处理会在initState处理
+
+    // 取出组件中定义的prop
+    const propOptions = Ctor.options.props;
+    if (isUndef(propOptions)) {
+        return;
+    }
+    const res = {};
+
+    // 取出元素的attribute，这里的porps占时未知来自于哪里
+    const {
+        attrs,
+        props
+    } = data;
+    if (isDef(attrs) || isDef(props)) {
+        for (const key in propOptions) {
+
+            // 连接符化prop的键名
+            const altKey = hyphenate(key);
+
+            // 开发模式下，如果prop中包含大写字母，则提示
+            if (process.env.NODE_ENV !== 'production') {
+                const keyInLowerCase = key.toLowerCase()
+                if (
+                    key !== keyInLowerCase &&
+                    attrs && hasOwn(attrs, keyInLowerCase)
+                ) {
+                    tip(
+                        `Prop "${keyInLowerCase}" is passed to component ` +
+                        `${formatComponentName(tag || Ctor)}, but the declared prop name is` +
+                        ` "${key}". ` +
+                        `Note that HTML attributes are case-insensitive and camelCased ` +
+                        `props need to use their kebab-case equivalents when using in-DOM ` +
+                        `templates. You should probably use "${altKey}" instead of "${key}".`
+                    )
+                }
+            }
+
+            // 优先取处理props，没有则处理attrs
+            checkProp(res, props, key, altKey, true) || checkProp(res, attrs, key, altKey, false)
+        }
+    }
+    return res
+}
+```
+
+对于某个键名具体的值的提取调用的`checkProp()`函数，目前还不知道`props`的来源，因为如果是`domProps`是不存在`vm.props`中的。
+
+### checkProp()——检测是否hash中是否存在key
+
+该函数用于检查`hash`中是否存在`key`键名，如果存在，则将其键值存入`res`中
+
+```js
+function checkProp(
+
+    // 结果
+    res: Object,
+
+    // 元素属性对象
+    hash: ? Object,
+    key : string,
+
+    // key连接符化后的值
+    altKey: string,
+
+    // 是否保留该属性的由来
+    preserve: boolean
+) : boolean {
+
+    // 存在property，优先按模版中定义的名称添加到最终结果
+    if (isDef(hash)) {
+        if (hasOwn(hash, key)) {
+            res[key] = hash[key]
+            if (!preserve) {
+                delete hash[key]
+            }
+            return true;
+        } else if (hasOwn(hash, altKey)) {
+            res[key] = hash[altKey]
+            if (!preserve) {
+                delete hash[altKey]
+            }
+            return true;
+        }
+    }
+    return false;
 }
 ```

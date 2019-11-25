@@ -107,7 +107,7 @@ const componentVNodeHooks = {
     }
 }
 
-const hooksToMerge = Object.keys(componentVNodeHooks)
+const hooksToMerge = Object.keys(componentVNodeHooks);
 
 export function createComponent(
 
@@ -192,36 +192,46 @@ export function createComponent(
     }
 
     // extract props
+    // 获取组件的`props`在该VM实例中的值
     const propsData = extractPropsFromVNodeData(data, Ctor, tag)
 
     // functional component
+    // 处理函数式组件
     if (isTrue(Ctor.options.functional)) {
         return createFunctionalComponent(Ctor, propsData, data, context, children)
     }
 
     // extract listeners, since these needs to be treated as
     // child component listeners instead of DOM listeners
-    const listeners = data.on
+    // 提取事件监听器，这些事件监听器为自定义事件监听器而非DOM的
+    const listeners = data.on;
+
     // replace with listeners with .native modifier
     // so it gets processed during parent component patch.
-    data.on = data.nativeOn
+    // 将之前的元素的on属性全部替换为dom监听器，这样它可以在父组件打补丁时被处理
+    data.on = data.nativeOn;
 
+    // 是否为抽象组件
     if (isTrue(Ctor.options.abstract)) {
         // abstract components do not keep anything
         // other than props & listeners & slot
+        // 抽象组件除了props、listeners、slot外不保留任何属性
 
         // work around flow
-        const slot = data.slot
+        // 清空data，只保留slot
+        const slot = data.slot;
         data = {}
         if (slot) {
-            data.slot = slot
+            data.slot = slot;
         }
     }
 
     // install component management hooks onto the placeholder node
+    // 初始化组件的管理钩子函数到data中
     installComponentHooks(data)
 
     // return a placeholder vnode
+    // 返回一个占位符VNode
     const name = Ctor.options.name || tag
     const vnode = new VNode(
         `vue-component-${Ctor.cid}${name ? `-${name}` : ''}`,
@@ -265,25 +275,38 @@ export function createComponentInstanceForVnode(
 }
 
 function installComponentHooks(data: VNodeData) {
-    const hooks = data.hook || (data.hook = {})
+
+    // 初始化该组件的钩子函数
+    const hooks = data.hook || (data.hook = {});
+
+    // 向其添加钩子函数
     for (let i = 0; i < hooksToMerge.length; i++) {
-        const key = hooksToMerge[i]
-        const existing = hooks[key]
-        const toMerge = componentVNodeHooks[key]
+        const key = hooksToMerge[i];
+
+        // 已存在的钩子函数
+        const existing = hooks[key];
+
+        // 原始的钩子函数
+        const toMerge = componentVNodeHooks[key];
+
+        // 不存在或两个函数不等或未混合时，向hooks中添加该钩子函数
         if (existing !== toMerge && !(existing && existing._merged)) {
             hooks[key] = existing ? mergeHook(toMerge, existing) : toMerge
         }
     }
 }
 
+// 在已存在时添加时，优先调用原始的钩子函数
 function mergeHook(f1: any, f2: any): Function {
     const merged = (a, b) => {
         // flow complains about extra args which is why we use any
         f1(a, b)
         f2(a, b)
     }
+
+    // 打上标记位
     merged._merged = true
-    return merged
+    return merged;
 }
 
 // transform component v-model info (value and callback) into

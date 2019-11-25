@@ -17,18 +17,27 @@ export function extractPropsFromVNodeData(
     // we are only extracting raw values here.
     // validation and default values are handled in the child
     // component itself.
-    const propOptions = Ctor.options.props
+    // 这里只提取原始值，效验器和默认值的处理会在initState处理
+
+    // 取出组件中定义的prop
+    const propOptions = Ctor.options.props;
     if (isUndef(propOptions)) {
-        return
+        return;
     }
-    const res = {}
+    const res = {};
+
+    // 取出元素的attribute，这里的porps占时未知来自于哪里
     const {
         attrs,
         props
-    } = data
+    } = data;
     if (isDef(attrs) || isDef(props)) {
         for (const key in propOptions) {
-            const altKey = hyphenate(key)
+
+            // 连接符化prop的键名
+            const altKey = hyphenate(key);
+
+            // 开发模式下，如果prop中包含大写字母，则提示
             if (process.env.NODE_ENV !== 'production') {
                 const keyInLowerCase = key.toLowerCase()
                 if (
@@ -45,34 +54,45 @@ export function extractPropsFromVNodeData(
                     )
                 }
             }
-            checkProp(res, props, key, altKey, true) ||
-                checkProp(res, attrs, key, altKey, false)
+
+            // 优先取处理props，没有则处理attrs
+            checkProp(res, props, key, altKey, true) || checkProp(res, attrs, key, altKey, false)
         }
     }
     return res
 }
 
 function checkProp(
+
+    // 结果
     res: Object,
+
+    // 元素属性对象
     hash: ? Object,
     key : string,
+
+    // key连接符化后的值
     altKey: string,
+
+    // 是否保留该属性的由来
     preserve: boolean
 ) : boolean {
+
+    // 存在property，优先按模版中定义的名称添加到最终结果
     if (isDef(hash)) {
         if (hasOwn(hash, key)) {
             res[key] = hash[key]
             if (!preserve) {
                 delete hash[key]
             }
-            return true
+            return true;
         } else if (hasOwn(hash, altKey)) {
             res[key] = hash[altKey]
             if (!preserve) {
                 delete hash[altKey]
             }
-            return true
+            return true;
         }
     }
-    return false
+    return false;
 }
