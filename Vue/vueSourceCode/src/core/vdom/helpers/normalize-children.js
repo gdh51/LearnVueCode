@@ -1,89 +1,136 @@
 /* @flow */
 
-import VNode, { createTextVNode } from 'core/vdom/vnode'
-import { isFalse, isTrue, isDef, isUndef, isPrimitive } from 'shared/util'
+import VNode, {
+    createTextVNode
+} from 'core/vdom/vnode'
+import {
+    isFalse,
+    isTrue,
+    isDef,
+    isUndef,
+    isPrimitive
+} from 'shared/util'
 
 // The template compiler attempts to minimize the need for normalization by
 // statically analyzing the template at compile time.
+// 模版编译器在编译时通过静态分析模版，尝试去最小化标准化的需求
 //
 // For plain HTML markup, normalization can be completely skipped because the
 // generated render function is guaranteed to return Array<VNode>. There are
 // two cases where extra normalization is needed:
+// 对于普通的HTML标签，标准化可以直接跳过，因为生成渲染函数一定会返回数组形式的VNode节点
+// 但这里有两种情况需要额外的标准化
 
 // 1. When the children contains components - because a functional component
 // may return an Array instead of a single root. In this case, just a simple
 // normalization is needed - if any child is an Array, we flatten the whole
 // thing with Array.prototype.concat. It is guaranteed to be only 1-level deep
 // because functional components already normalize their own children.
-export function simpleNormalizeChildren (children: any) {
-  for (let i = 0; i < children.length; i++) {
-    if (Array.isArray(children[i])) {
-      return Array.prototype.concat.apply([], children)
+// 当子节点中包含组件时——因为一个函数式组件可能会返回一个数组的VNode节点而不仅仅是一个。
+// 在折后总情况下，需要简单的标准化：如果任何单个子节点为数组，那么我们就用concat扁平它。
+// 它能保证只有一层深度，因为函数式组件已经自己标准化过它的子数组
+export function simpleNormalizeChildren(children: any) {
+
+    // 将子节点中为多个根VNode的子节点扁平化
+    for (let i = 0; i < children.length; i++) {
+        if (Array.isArray(children[i])) {
+            return Array.prototype.concat.apply([], children)
+        }
     }
-  }
-  return children
+    return children
 }
 
 // 2. When the children contains constructs that always generated nested Arrays,
 // e.g. <template>, <slot>, v-for, or when the children is provided by user
 // with hand-written render functions / JSX. In such cases a full normalization
 // is needed to cater to all possible types of children values.
-export function normalizeChildren (children: any): ?Array<VNode> {
-  return isPrimitive(children)
-    ? [createTextVNode(children)]
-    : Array.isArray(children)
-      ? normalizeArrayChildren(children)
-      : undefined
+// 如果子节点中包含经常生成嵌套子节点数组的构造函数，如<template>, <slot>, v-for或
+// 子节点数组是用户写的渲染函数。这种情况下需要普通标准化去满足所有类型的子节点
+export function normalizeChildren(children: any): ? Array < VNode > {
+
+    // 仅一个文本节点时，直接创建一个文本节点返回
+    return isPrimitive(children) ? [createTextVNode(children)] :
+
+        // 处理多个节点时
+        (Array.isArray(children) ? normalizeArrayChildren(children) : undefined);
 }
 
-function isTextNode (node): boolean {
-  return isDef(node) && isDef(node.text) && isFalse(node.isComment)
+// 是否为文本节点，而非注释节点
+function isTextNode(node) : boolean {
+    return isDef(node) && isDef(node.text) && isFalse(node.isComment)
 }
 
-function normalizeArrayChildren (children: any, nestedIndex?: string): Array<VNode> {
-  const res = []
-  let i, c, lastIndex, last
-  for (i = 0; i < children.length; i++) {
-    c = children[i]
-    if (isUndef(c) || typeof c === 'boolean') continue
-    lastIndex = res.length - 1
-    last = res[lastIndex]
-    //  nested
-    if (Array.isArray(c)) {
-      if (c.length > 0) {
-        c = normalizeArrayChildren(c, `${nestedIndex || ''}_${i}`)
-        // merge adjacent text nodes
-        if (isTextNode(c[0]) && isTextNode(last)) {
-          res[lastIndex] = createTextVNode(last.text + (c[0]: any).text)
-          c.shift()
+function normalizeArrayChildren(children: any, nestedIndex ? : string): Array < VNode > {
+    const res = [];
+    let i, c, lastIndex, last;
+
+    // 遍历子节点数组
+    for (i = 0; i < children.length; i++) {
+        c = children[i];
+
+        // 无定义或布尔值时直接跳过
+        if (isUndef(c) || typeof c === 'boolean') continue;
+
+        // 记录结果中上一个节点的下标，和上一个节点
+        lastIndex = res.length - 1;
+        last = res[lastIndex];
+
+        //  nested
+        // 如果子节点为多个根节点
+        if (Array.isArray(c)) {
+            if (c.length > 0) {
+
+                // 递归进行标准化，返回一个节点
+                c = normalizeArrayChildren(c, `${nestedIndex || ''}_${i}`);
+
+                // merge adjacent text nodes
+                // 如果上一个节点和当前标准化后节点都为文本节点，则合并相邻的文本节点
+                if (isTextNode(c[0]) && isTextNode(last)) {
+                    res[lastIndex] = createTextVNode(last.text + (c[0]: any).text)
+                    c.shift()
+                }
+
+                // 特别注意这里，可能不起眼，你可以理解为concat的变形，但它改变的是元素组
+                res.push.apply(res, c);
+            }
+
+        // 是否为原始值(文本)
+        } else if (isPrimitive(c)) {
+
+            // 如果上一个节点的结果是文本节点，而当前节点又为文本节点则又合并为单个文本节点
+            if (isTextNode(last)) {
+                // merge adjacent text nodes
+                // this is necessary for SSR hydration because text nodes are
+                // essentially merged when rendered to HTML strings
+                res[lastIndex] = createTextVNode(last.text + c);
+
+            // 上一个节点不为文本节点，且当前文本节点不为空，则新建一个节点
+            } else if (c !== '') {
+                // convert primitive to vnode
+                res.push(createTextVNode(c))
+            }
+
+        // 及不为原始值，也不为数组，那么就是对象，那么它可能为一个VNode节点
+        } else {
+
+            // 同样的对比当前与前一个节点是否为文本节点，是就合并
+            if (isTextNode(c) && isTextNode(last)) {
+                // merge adjacent text nodes
+                res[lastIndex] = createTextVNode(last.text + c.text);
+
+            // 那么此时就为VNode节点
+            } else {
+
+                // default key for nested array children (likely generated by v-for)
+                if (isTrue(children._isVList) &&
+                    isDef(c.tag) &&
+                    isUndef(c.key) &&
+                    isDef(nestedIndex)) {
+                    c.key = `__vlist${nestedIndex}_${i}__`
+                }
+                res.push(c)
+            }
         }
-        res.push.apply(res, c)
-      }
-    } else if (isPrimitive(c)) {
-      if (isTextNode(last)) {
-        // merge adjacent text nodes
-        // this is necessary for SSR hydration because text nodes are
-        // essentially merged when rendered to HTML strings
-        res[lastIndex] = createTextVNode(last.text + c)
-      } else if (c !== '') {
-        // convert primitive to vnode
-        res.push(createTextVNode(c))
-      }
-    } else {
-      if (isTextNode(c) && isTextNode(last)) {
-        // merge adjacent text nodes
-        res[lastIndex] = createTextVNode(last.text + c.text)
-      } else {
-        // default key for nested array children (likely generated by v-for)
-        if (isTrue(children._isVList) &&
-          isDef(c.tag) &&
-          isUndef(c.key) &&
-          isDef(nestedIndex)) {
-          c.key = `__vlist${nestedIndex}_${i}__`
-        }
-        res.push(c)
-      }
     }
-  }
-  return res
+    return res
 }

@@ -133,7 +133,7 @@ export function renderMixin(Vue: Class < Component > ) {
             // 嵌套的组件渲染函数会在其父组件打补丁时进行渲染
             currentRenderingInstance = vm;
 
-            // 调用渲染函数
+            // 调用渲染函数，生成我们根Vue实例的Vnode节点们
             vnode = render.call(vm._renderProxy, vm.$createElement)
         } catch (e) {
             handleError(e, vm, `render`)
@@ -151,13 +151,19 @@ export function renderMixin(Vue: Class < Component > ) {
                 vnode = vm._vnode
             }
         } finally {
+
+            // 清空当前渲染的实例
             currentRenderingInstance = null
         }
+
         // if the returned array contains only a single node, allow it
+        // 如果返回的节点数组中只存在一个节点，则承认它，如果返回多个根节点，那么对不起报错
         if (Array.isArray(vnode) && vnode.length === 1) {
             vnode = vnode[0]
         }
+
         // return empty vnode in case the render function errored out
+        // 不允许有多个根节点，此时返回空的VNode节点以防渲染函数出错
         if (!(vnode instanceof VNode)) {
             if (process.env.NODE_ENV !== 'production' && Array.isArray(vnode)) {
                 warn(
@@ -168,8 +174,10 @@ export function renderMixin(Vue: Class < Component > ) {
             }
             vnode = createEmptyVNode()
         }
+
         // set parent
+        // 设置该节点的parent，为该vm实例的占位符。
         vnode.parent = _parentVnode
-        return vnode
+        return vnode;
     }
 }

@@ -76,5 +76,94 @@ updateComponent = () => {
 首先是调用`Vue.prototype.render()`函数，这个函数在我们最初`renderMixin()`时进行挂载的，我就直接把代码复制过来了：
 
 ```js
+Vue.prototype._render = function (): VNode {
+    const vm: Component = this;
 
+    // 获取渲染函数和其父节点
+    const {
+        render,
+
+        // 代表该组件父节点的占位符
+        _parentVnode
+    } = vm.$options
+
+    // 存在父节点时(根Vue实例不存在)
+    if (_parentVnode) {
+        vm.$scopedSlots = normalizeScopedSlots(
+            _parentVnode.data.scopedSlots,
+
+            // 当前vm实例的具名插槽(该对象只在2.5版本旧语法slot的情况下存在)
+            vm.$slots,
+
+            // 当前vm实例的作用域插槽
+            vm.$scopedSlots
+        )
+    }
+
+    // set parent vnode. this allows render functions to have access
+    // to the data on the placeholder node.
+    // 设置父节点，这允许渲染函数可以通过该节点来访问父节点上的data
+    vm.$vnode = _parentVnode;
+
+    // render self
+    let vnode;
+    try {
+        // There's no need to maintain a stack becaues all render fns are called
+        // separately from one another. Nested component's render fns are called
+        // when parent component is patched.
+        // 这里没有必要去维护一个栈，因为所有渲染函数会独立调用。
+        // 嵌套的组件渲染函数会在其父组件打补丁时进行渲染
+        currentRenderingInstance = vm;
+
+        // 调用渲染函数，生成我们根Vue实例的Vnode节点们
+        vnode = render.call(vm._renderProxy, vm.$createElement);
+    } catch (e) {
+        handleError(e, vm, `render`)
+        // return error render result,
+        // or previous vnode to prevent render error causing blank component
+        /* istanbul ignore else */
+        if (process.env.NODE_ENV !== 'production' &&vm.$options.renderError) {
+            try {
+                vnode = vm.$options.renderError.call(vm._renderProxy, vm.$createElement, e)
+            } catch (e) {
+                handleError(e, vm, `renderError`)
+                vnode = vm._vnode
+            }
+        } else {
+            vnode = vm._vnode
+        }
+    } finally {
+
+        // 清空当前渲染的实例
+        currentRenderingInstance = null
+    }
+
+    // if the returned array contains only a single node, allow it
+    // 如果返回的节点数组中只存在一个节点，则承认它，如果返回多个根节点，那么对起报错
+    if (Array.isArray(vnode) && vnode.length === 1) {
+        vnode = vnode[0]
+    }
+
+    // return empty vnode in case the render function errored out
+    // 不允许有多个根节点，此时返回空的VNode节点以防渲染函数出错
+    if (!(vnode instanceof VNode)) {
+        if (process.env.NODE_ENV !== 'production' && Array.isArray(vnode)) {
+                warn(
+                'Multiple root nodes returned from render function. Render function ' +
+                'should return a single root node.',
+                vm
+            )
+        }
+        vnode = createEmptyVNode()
+    }
+
+    // set parent
+    // 设置该节点的parent，为该vm实例的占位符。
+    vnode.parent = _parentVnode
+    return vnode;
+}
 ```
+
+由于是根Vue实例，所以我们暂时不对`normalizeScopedSlots()`进行学习，那么就下来，就是调用我们的渲染函数`render.call(vm._renderProxy, vm.$createElement);`，生成一个我们根`Vue`实例的模版`VNode`节点，这里正常情况下只有一个，之后对该`Vnode`节点`parent`节点进行了处理，这个过程就结束了，注意这个过程并没有对组件的模版进行解析和生成`VNode`。
+
+关于`render()`函数的执行，这里因为要根据模版变换，这里我以[几个例子](./渲染函数的调用的例子/README.md)展开来开展学习。
