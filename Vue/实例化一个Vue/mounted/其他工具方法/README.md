@@ -7,6 +7,7 @@
 - [proxy()——拦截访问与修改](#proxy%e6%8b%a6%e6%88%aa%e8%ae%bf%e9%97%ae%e4%b8%8e%e4%bf%ae%e6%94%b9)
 - [transformModel()——处理组件上v-model](#transformmodel%e5%a4%84%e7%90%86%e7%bb%84%e4%bb%b6%e4%b8%8av-model)
 - [extractPropsFromVNodeData()——提取组件的prop值](#extractpropsfromvnodedata%e6%8f%90%e5%8f%96%e7%bb%84%e4%bb%b6%e7%9a%84prop%e5%80%bc)
+- [setActiveInstance()——设置当前更新的vm实例](#setactiveinstance%e8%ae%be%e7%bd%ae%e5%bd%93%e5%89%8d%e6%9b%b4%e6%96%b0%e7%9a%84vm%e5%ae%9e%e4%be%8b)
 
 ## resolveAsset()——获取指定对象上的资源
 
@@ -246,5 +247,28 @@ function checkProp(
         }
     }
     return false;
+}
+```
+
+## setActiveInstance()——设置当前更新的vm实例
+
+该函数用于存储上一个更新的`vm`实例，并将设置当前更新的`vm`实例，并返回一个接口来切换为上一个更新的`vm`实例。
+
+```js
+let activeInstance: any = null;
+
+// 该函数用于将当前的更新的实例变更为传入的实例，并存储上一个更新的实例
+function setActiveInstance(vm: Component) {
+
+    // 储存上一个更新的vm实例
+    const prevActiveInstance = activeInstance;
+
+    // 设置更新的vm实例为当前实例;
+    activeInstance = vm;
+
+    // 返回一个接口，用于切换为上一个实例
+    return () => {
+        activeInstance = prevActiveInstance
+    }
 }
 ```

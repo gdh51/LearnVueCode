@@ -41,6 +41,7 @@ extend(Vue.options.directives, platformDirectives)
 extend(Vue.options.components, platformComponents)
 
 // install platform patch function
+// 初始化平台的补丁函数，用于更新dom
 Vue.prototype.__patch__ = inBrowser ? patch : noop
 
 // public mount method

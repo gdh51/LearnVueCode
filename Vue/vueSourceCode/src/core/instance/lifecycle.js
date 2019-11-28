@@ -32,12 +32,22 @@ import {
     invokeWithErrorHandling
 } from '../util/index'
 
+// 当前进行更新的vm实例
 export let activeInstance: any = null
+
+// 是否在更新子组件
 export let isUpdatingChildComponent: boolean = false
 
+// 该函数用于将当前的更新的实例变更为传入的实例，并存储上一个更新的实例
 export function setActiveInstance(vm: Component) {
-    const prevActiveInstance = activeInstance
-    activeInstance = vm
+
+    // 储存上一个更新的vm实例
+    const prevActiveInstance = activeInstance;
+
+    // 设置更新的vm实例为当前实例;
+    activeInstance = vm;
+
+    // 返回一个接口，用于切换为上一个实例
     return () => {
         activeInstance = prevActiveInstance
     }
@@ -74,21 +84,37 @@ export function initLifecycle(vm: Component) {
 
 export function lifecycleMixin(Vue: Class < Component > ) {
     Vue.prototype._update = function (vnode: VNode, hydrating ? : boolean) {
-        const vm: Component = this
-        const prevEl = vm.$el
-        const prevVnode = vm._vnode
-        const restoreActiveInstance = setActiveInstance(vm)
-        vm._vnode = vnode
+        const vm: Component = this;
+
+        // 上一个元素(如果为根实例，那么此时就为挂载的元素)
+        const prevEl = vm.$el;
+
+        // 上一个Vnode节点(如果为根实例那么此时就为空)
+        const prevVnode = vm._vnode;
+
+        // 设置当前更新的vm实例，并存储上一个vm实例，
+        // 返回一个用于切换为上一个实例的函数
+        const restoreActiveInstance = setActiveInstance(vm);
+
+        // 将当前VNode节点，挂载至_vnode
+        vm._vnode = vnode;
+
         // Vue.prototype.__patch__ is injected in entry points
         // based on the rendering backend used.
+        // __patch__基于是否为后端渲染，已在Vue初始化时已经注入原型上(此时为浏览器渲染)
+
+        // 存不在上一个VNode时
         if (!prevVnode) {
+
             // initial render
+            // 初始化渲染后
             vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */ )
         } else {
             // updates
             vm.$el = vm.__patch__(prevVnode, vnode)
         }
         restoreActiveInstance()
+
         // update __vue__ reference
         if (prevEl) {
             prevEl.__vue__ = null

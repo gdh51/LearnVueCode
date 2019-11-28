@@ -73,6 +73,8 @@ updateComponent = () => {
 }
 ```
 
+## _render()——生成根VNode节点
+
 首先是调用`Vue.prototype.render()`函数，这个函数在我们最初`renderMixin()`时进行挂载的，我就直接把代码复制过来了：
 
 ```js
@@ -164,6 +166,10 @@ Vue.prototype._render = function (): VNode {
 }
 ```
 
-由于是根Vue实例，所以我们暂时不对`normalizeScopedSlots()`进行学习，那么就下来，就是调用我们的渲染函数`render.call(vm._renderProxy, vm.$createElement);`，生成一个我们根`Vue`实例的模版`VNode`节点，这里正常情况下只有一个，之后对该`Vnode`节点`parent`节点进行了处理，这个过程就结束了，注意这个过程并没有对组件的模版进行解析和生成`VNode`。
+由于是根`Vue`实例，所以我们暂时不对`normalizeScopedSlots()`进行学习，那么就下来，就是调用我们的渲染函数`render.call(vm._renderProxy, vm.$createElement);`，生成一个我们根`Vue`实例的模版`VNode`节点，这里正常情况下只有一个，之后对该`Vnode`节点`parent`节点进行了处理，这个过程就结束了，注意这个过程并没有对组件的模版进行解析和生成`VNode`。
 
 关于`render()`函数的执行，这里因为要根据模版变换，这里我以[几个例子](./渲染函数的调用的例子/README.md)展开来开展学习。
+
+## _update()——渲染DOM模版
+
+该函数是在`lifecycleMixin()`期间添加到`Vue.prototype`

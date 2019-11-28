@@ -1,6 +1,6 @@
-## initGlobalAPI()
+# initGlobalAPI()
 
-在最初初始化Vue构造函数时，会调用该方法来对Vue构造函数添加一些属性、API
+在最初初始化`Vue`构造函数时，会调用该方法来对`Vue`构造函数添加一些属性、API
 
 以下是它的具体代码：
 
