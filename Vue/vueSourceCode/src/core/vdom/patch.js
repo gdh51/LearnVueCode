@@ -107,6 +107,8 @@ export function createPatchFunction(backend) {
     }
 
     function emptyNodeAt(elm) {
+
+        // 返回一个同挂载元素相同的VNode节点，但无children属性
         return new VNode(nodeOps.tagName(elm).toLowerCase(), {}, [], undefined, elm)
     }
 
@@ -148,33 +150,55 @@ export function createPatchFunction(backend) {
     let creatingElmInVPre = 0
 
     function createElm(
+
+        // 新的VNode节点
         vnode,
         insertedVnodeQueue,
+
+        // 旧节点的父元素(这里一定是元素节点)
         parentElm,
+
+        // 旧节点的下一个节点(这里可能是文本节点)
         refElm,
         nested,
         ownerArray,
         index
     ) {
+
+        // 如果新节点已有对应的dom元素，且存在于ownerArray中
+        // 则说明该VNode节点为复用节点
         if (isDef(vnode.elm) && isDef(ownerArray)) {
+
             // This vnode was used in a previous render!
             // now it's used as a new node, overwriting its elm would cause
             // potential patch errors down the road when it's used as an insertion
             // reference node. Instead, we clone the node on-demand before creating
             // associated DOM element for it.
+            // 现在它作为一个新的节点，当它作为一个插入的参考节点时，
+            // 重写该元素会导致潜在的patch错误，我们在创建其相关的DOM元素前先clone
+            // 它的VNode几点。
             vnode = ownerArray[index] = cloneVNode(vnode)
         }
 
-        vnode.isRootInsert = !nested // for transition enter check
+        // 作为transition的入口检查
+        // 是否为插入的根部
+        vnode.isRootInsert = !nested; // for transition enter check
+
+        // 是否为组件，是则创建组件实例
         if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
             return
         }
 
+        // 取出节点的属性，及其子节点数组和标签
         const data = vnode.data
         const children = vnode.children
         const tag = vnode.tag
+
+        // 已定义VNode的标签时
         if (isDef(tag)) {
             if (process.env.NODE_ENV !== 'production') {
+
+                // 如果该VNode节点为静态节点，则增加静态节点的计数
                 if (data && data.pre) {
                     creatingElmInVPre++
                 }
@@ -188,12 +212,15 @@ export function createPatchFunction(backend) {
                 }
             }
 
+            // 根据其是否具有命名空间，来创建对应的真实dom元素
             vnode.elm = vnode.ns ?
                 nodeOps.createElementNS(vnode.ns, tag) :
-                nodeOps.createElement(tag, vnode)
+                nodeOps.createElement(tag, vnode);
+
+            // 设置元素的CSS作用域属性
             setScope(vnode)
 
-            /* istanbul ignore if */
+            // weex平台，无视
             if (__WEEX__) {
                 // in Weex, the default insertion order is parent-first.
                 // List items can be optimized to use children-first insertion
@@ -212,8 +239,14 @@ export function createPatchFunction(backend) {
                     }
                     insert(parentElm, vnode.elm, refElm)
                 }
+
+            // Vue框架
             } else {
-                createChildren(vnode, children, insertedVnodeQueue)
+
+                // 遍历子节点数组，创建其元素
+                createChildren(vnode, children, insertedVnodeQueue);
+
+                // 是否存在元素属性
                 if (isDef(data)) {
                     invokeCreateHooks(vnode, insertedVnodeQueue)
                 }
@@ -233,16 +266,26 @@ export function createPatchFunction(backend) {
     }
 
     function createComponent(vnode, insertedVnodeQueue, parentElm, refElm) {
-        let i = vnode.data
+
+        // 获取节点的属性
+        let i = vnode.data;
         if (isDef(i)) {
+
+            // 是否为动态组件
             const isReactivated = isDef(vnode.componentInstance) && i.keepAlive
+
+            // 如果存在初始化钩子函数则调用(仅组件中存在)
             if (isDef(i = i.hook) && isDef(i = i.init)) {
                 i(vnode, false /* hydrating */ )
             }
+
             // after calling the init hook, if the vnode is a child component
             // it should've created a child instance and mounted it. the child
             // component also has set the placeholder vnode's elm.
             // in that case we can just return the element and be done.
+            // 调用初始化钩子函数后，如果该VNode是子组件。那么它已经创建了子实例并挂载。
+            // 子组件同样也已经设置了其占位符元素(挂载的元素)
+            // 这样我们可以直接返回这个元素
             if (isDef(vnode.componentInstance)) {
                 initComponent(vnode, insertedVnodeQueue)
                 insert(parentElm, vnode.elm, refElm)
@@ -307,13 +350,21 @@ export function createPatchFunction(backend) {
     }
 
     function createChildren(vnode, children, insertedVnodeQueue) {
+
+        // 多个子节点时
         if (Array.isArray(children)) {
+
+            // 检查它们的key值是否存在重复的情况(没有就不说了)
             if (process.env.NODE_ENV !== 'production') {
                 checkDuplicateKeys(children)
             }
+
+            // 遍历子节点数组来创建子节点的元素
             for (let i = 0; i < children.length; ++i) {
                 createElm(children[i], insertedVnodeQueue, vnode.elm, null, true, children, i)
             }
+
+        // 仅一个文本节点，直接将其添加到当前元素的子数组中
         } else if (isPrimitive(vnode.text)) {
             nodeOps.appendChild(vnode.elm, nodeOps.createTextNode(String(vnode.text)))
         }
@@ -340,20 +391,34 @@ export function createPatchFunction(backend) {
     // set scope id attribute for scoped CSS.
     // this is implemented as a special case to avoid the overhead
     // of going through the normal attribute patching process.
+    // 设置CSS属性的作用域
+    // 这是一个单独的实现，防止对元素的普通attribute进行patch时造成额外的开销
     function setScope(vnode) {
-        let i
+        let i;
+
+        // 该VNode节点是否存在属性作用域，有则设置
         if (isDef(i = vnode.fnScopeId)) {
-            nodeOps.setStyleScope(vnode.elm, i)
+            nodeOps.setStyleScope(vnode.elm, i);
+
+        // 没有则
         } else {
             let ancestor = vnode
+
+            // 遍历该vm实例中的祖先节点，继承它的作用域属性
             while (ancestor) {
+
+                // 是否存在vm实例并且该实例上是否存在_scopeId
                 if (isDef(i = ancestor.context) && isDef(i = i.$options._scopeId)) {
+
+                    // 有则设置同意的作用域属性
                     nodeOps.setStyleScope(vnode.elm, i)
                 }
                 ancestor = ancestor.parent
             }
         }
+
         // for slot content they should also get the scopeId from the host instance.
+        // 对于插槽中的内容，它们也需要添加当前vm实例的scoped属性
         if (isDef(i = activeInstance) &&
             i !== vnode.context &&
             i !== vnode.fnContext &&
@@ -552,11 +617,18 @@ export function createPatchFunction(backend) {
         }
     }
 
+    // 检查子节点数组中是否存在重复的key
     function checkDuplicateKeys(children) {
-        const seenKeys = {}
+
+        // 一个key值的map对象
+        const seenKeys = {};
+
+        // 遍历子节点数组，检查它们的key值是否重复
         for (let i = 0; i < children.length; i++) {
             const vnode = children[i]
-            const key = vnode.key
+            const key = vnode.key;
+
+            // 重复时报错
             if (isDef(key)) {
                 if (seenKeys[key]) {
                     warn(
@@ -564,6 +636,8 @@ export function createPatchFunction(backend) {
                         vnode.context
                     )
                 } else {
+
+                    // 没重复时存入map对象中
                     seenKeys[key] = true
                 }
             }
@@ -814,28 +888,33 @@ export function createPatchFunction(backend) {
             createElm(vnode, insertedVnodeQueue);
         } else {
 
-            // 但两种节点都存在时， 对其进行对比
+            // 是否为正的元素(VNode不具有nodeType属性)
             const isRealElement = isDef(oldVnode.nodeType);
 
-            // 当旧节点不是dom节点时，对比新旧节点其他信息是否相同符合同一节点类型
+            // 当旧节点不为元素时，对比新旧节点其他信息是否相同符合同一节点类型
             if (!isRealElement && sameVnode(oldVnode, vnode)) {
 
                 // patch existing root node
-                // 当新旧节点被判定为同一节点时，调用patchVnode更新DOM
+                // 当新旧节点被判定为同一VNode节点时，调用patchVnode更新DOM
                 patchVnode(oldVnode, vnode, insertedVnodeQueue, null, null, removeOnly);
             } else {
 
-                // 服务器端渲染，忽视(当旧节点为真实节点时)
+                // 当旧节点为真实的dom元素时
                 if (isRealElement) {
 
                     // mounting to a real element
                     // check if this is server-rendered content and if we can perform
                     // a successful hydration.
-                    // 服务器端渲染元素(忽视)
+                    // 挂载到一个真实的元素上。
+                    // 检查是否为服务器渲染，来决定我们是否能进行一个成功的hydration行为
                     if (oldVnode.nodeType === 1 && oldVnode.hasAttribute(SSR_ATTR)) {
                         oldVnode.removeAttribute(SSR_ATTR);
+
+                        // 确认执行hydration行为
                         hydrating = true;
                     }
+
+                    // 确认为服务器渲染，可以进行hydrate
                     if (isTrue(hydrating)) {
                         if (hydrate(oldVnode, vnode, insertedVnodeQueue)) {
                             invokeInsertHook(vnode, insertedVnodeQueue, true);
@@ -850,14 +929,19 @@ export function createPatchFunction(backend) {
                             )
                         }
                     }
+
                     // either not server-rendered, or hydration failed.
                     // create an empty node and replace it
+                    // 无论是否为服务器渲染或hydration失败，
+                    // 都创建一个代表该元素的空的VNode节点代替dom元素
                     oldVnode = emptyNodeAt(oldVnode);
                 }
 
                 // replacing existing element
-                // 获取旧节点的DOM元素与其父元素
+                // 获取旧节点的DOM元素
                 const oldElm = oldVnode.elm;
+
+                // 获取该元素的父节点
                 const parentElm = nodeOps.parentNode(oldElm);
 
                 // create new node
