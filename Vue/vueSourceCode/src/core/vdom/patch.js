@@ -158,7 +158,7 @@ export function createPatchFunction(backend) {
         // 旧节点的父元素(这里一定是元素节点)
         parentElm,
 
-        // 旧节点的下一个节点(这里可能是文本节点)
+        // 旧节点的下一个节点，用作插入节点时的位置标记
         refElm,
         nested,
         ownerArray,
@@ -194,7 +194,7 @@ export function createPatchFunction(backend) {
         const children = vnode.children
         const tag = vnode.tag
 
-        // 已定义VNode的标签时
+        // 为dom元素标签时
         if (isDef(tag)) {
             if (process.env.NODE_ENV !== 'production') {
 
@@ -246,21 +246,35 @@ export function createPatchFunction(backend) {
                 // 遍历子节点数组，创建其元素
                 createChildren(vnode, children, insertedVnodeQueue);
 
-                // 是否存在元素属性
+                // 是否存在元素属性，存在时调用其cretea周期钩子函数
                 if (isDef(data)) {
                     invokeCreateHooks(vnode, insertedVnodeQueue)
                 }
+
+                // 将元素插入refElm之前
                 insert(parentElm, vnode.elm, refElm)
             }
 
             if (process.env.NODE_ENV !== 'production' && data && data.pre) {
                 creatingElmInVPre--
             }
+
+        // 当为注释节点时
         } else if (isTrue(vnode.isComment)) {
-            vnode.elm = nodeOps.createComment(vnode.text)
+
+            // 创建一个注释节点
+            vnode.elm = nodeOps.createComment(vnode.text);
+
+            // 插入到refElm之前
             insert(parentElm, vnode.elm, refElm)
+
+        // 当为文本节点时
         } else {
-            vnode.elm = nodeOps.createTextNode(vnode.text)
+
+            // 创建一个文本节点
+            vnode.elm = nodeOps.createTextNode(vnode.text);
+
+            // 插入到refElm之前
             insert(parentElm, vnode.elm, refElm)
         }
     }
@@ -377,8 +391,13 @@ export function createPatchFunction(backend) {
         return isDef(vnode.tag)
     }
 
+    // 调用create周期的钩子函数
     function invokeCreateHooks(vnode, insertedVnodeQueue) {
+
+        // 调用所有create周期的对指令处理的钩子函数
         for (let i = 0; i < cbs.create.length; ++i) {
+
+            // 由于是新的节点，所以不存在旧节点，这里用一个空节点代替
             cbs.create[i](emptyNode, vnode)
         }
         i = vnode.data.hook // Reuse variable
