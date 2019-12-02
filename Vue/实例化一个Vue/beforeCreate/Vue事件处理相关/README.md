@@ -1,8 +1,8 @@
 # Vue 事件处理相关的方法
 
-在 Vue 最初初始化时(`eventsMixin()`)方法中，我们曾将 4 个事件相关的处理方法添加至 Vue 的原型对象上，现在来逐个看一下各个函数：
+在 `Vue` 最初初始化时(`eventsMixin()`)方法中，我们曾将 4 个事件相关的处理方法添加至 `Vue` 的原型对象上，现在来逐个看一下各个函数：
 
-> 注册后的自定义事件存放在 Vue 实例的\_events 属性中
+> 注册后的自定义事件存放在 `Vue` 实例的`_events` 属性中
 
 ```js
 // 用于判断是否为狗子函数
@@ -11,7 +11,12 @@ const hookRE = /^hook:/;
 
 下面按事件周期来介绍以下这 4 个函数：
 
-## \$on——注册一个或多个事件
+- [$on——注册一个或多个事件](#on%e6%b3%a8%e5%86%8c%e4%b8%80%e4%b8%aa%e6%88%96%e5%a4%9a%e4%b8%aa%e4%ba%8b%e4%bb%b6)
+- [$off——取消一个自定义事件](#off%e5%8f%96%e6%b6%88%e4%b8%80%e4%b8%aa%e8%87%aa%e5%ae%9a%e4%b9%89%e4%ba%8b%e4%bb%b6)
+- [$once——注册一次性事件](#once%e6%b3%a8%e5%86%8c%e4%b8%80%e6%ac%a1%e6%80%a7%e4%ba%8b%e4%bb%b6)
+- [$emit——触发自定义事件](#emit%e8%a7%a6%e5%8f%91%e8%87%aa%e5%ae%9a%e4%b9%89%e4%ba%8b%e4%bb%b6)
+
+## $on——注册一个或多个事件
 
 首先是向`Vue`实例注册自定义事件的方法，支持同时向多个自定义事件注册同一个函数；注册后每一个自定义事件都是挂载在该事件名的数组队列中的：
 
@@ -46,7 +51,7 @@ Vue.prototype.$on = function(
 
 在介绍`$once`之前必须知道如何取消一个自定义事件
 
-## \$off——取消一个自定义事件
+## $off——取消一个自定义事件
 
 该方法用于取消一个事件，可以指定具体该事件的函数，但要注意如果该函数不存在于该事件队列中，则不会做事:
 
@@ -97,7 +102,7 @@ Vue.prototype.$off = function(
 
 熟悉了这两个函数后，我们就可以来看一下`$once`方法了
 
-## \$once——注册一次性事件
+## $once——注册一次性事件
 
 我可以通过该方法来注册一个一次性的自定义事件，在其调用后，立刻自动注销，其实就是`$on`+`$off`方法的语法糖
 
@@ -118,7 +123,7 @@ Vue.prototype.$once = function(event: string, fn: Function): Component {
 
 最后呢就是触发这些自定义方法的函数`$emit`
 
-## \$emit——触发自定义事件
+## $emit——触发自定义事件
 
 这个方法用来触发我们的自定义事件，传入其事件名与想传入的参数，它会调用该事件数组中的所有自定义事件回调函数：
 
@@ -162,7 +167,8 @@ Vue.prototype.$emit = function(event: string): Component {
 在调用这些事件时，是通过下面这个函数来实现的：
 
 ### invokeWithErrorHandling()
-该函数就是对一个方法的调用额外进行了错误处理的封装，容易理解：
+
+该函数就是对一个回调函数的调用额外进行了错误处理的封装，容易理解：
 
 ```js
 function invokeWithErrorHandling(
@@ -174,7 +180,11 @@ function invokeWithErrorHandling(
 ) {
     let res;
     try {
+
+        // 根据是否存在参数调用不同的call/apply方法来执行回调函数
         res = args ? handler.apply(context, args) : handler.call(context);
+
+        // 如果返回结果为promise对象，则对其进行错误处理
         if (res && !res._isVue && isPromise(res) && !res._handled) {
             res.catch(e => handleError(e, vm, info + ` (Promise/async)`));
             // issue #9511

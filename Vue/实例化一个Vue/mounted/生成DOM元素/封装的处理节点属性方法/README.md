@@ -315,7 +315,7 @@ function renderClass(
 
 #### stringifyClass()——字符串化动态class对象
 
-该方法会根据最终的动态`clas`s的形式来进行处理，由之前的处理我们可以看出，如果没有进行两个节点的动态`class`的合并那么它是一个任意值；但合并后它就为一个数组。
+该方法会根据最终的动态`class`的形式来进行处理，由之前的处理我们可以看出，如果没有进行两个节点的动态`class`的合并那么它是一个任意值；但合并后它就为一个数组。
 
 ```js
 function stringifyClass(value: any): string {
@@ -370,4 +370,6 @@ function stringifyObject(value: Object): string {
 }
 ```
 
-`stringifyArray()`方法就是遍历所有对象形式的`class`，为每个对象在递归调用一次`stringifyClass()`来处理。
+`stringifyArray()`方法就是遍历所有对象形式的`class`，为每个对象在递归调用一次`stringifyClass()`来进行处理。
+
+

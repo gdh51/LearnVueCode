@@ -11,7 +11,7 @@ import {
     isPlainObject
 } from 'shared/util'
 
-// 标准化自定义事件的名称，这里是针对添加简写修饰符的情况
+// 标准化事件的名称，这里是针对事件添加简写的修饰符的情况
 const normalizeEvent = cached((name: string): {
     name: string,
     once: boolean,
@@ -33,7 +33,7 @@ const normalizeEvent = cached((name: string): {
         capture,
         passive
     };
-})
+});
 
 // 创建一个调度函数，并把该函数挂载其自身属性上。
 export function createFnInvoker(fns: Function | Array < Function > , vm: ? Component): Function {
@@ -61,31 +61,37 @@ export function updateListeners(
     createOnceHandler: Function,
     vm: Component
 ) {
-    let name, def, cur, old, event;
+    let name, // 事件的名称
+        def, // 最新该事件的回调函数
+        cur, // 当前处理中该事件的回调函数
+        old, // 之前该事件的回调函数
+        event;
     for (name in on) {
 
-        // 取出事件函数
+        // 取出事件的回调函数(可能为数组队列)
         def = cur = on[name];
         old = oldOn[name];
 
         // 标准化事件名(提取简写的修饰符)
         event = normalizeEvent(name);
 
-        // 事件为对象的形式处理
+        // 无视，weex平台，事件为对象的形式处理
         if (__WEEX__ && isPlainObject(def)) {
             cur = def.handler
             event.params = def.params
         }
 
+        // 最新的该事件，只注册了该事件，但未给出回调函数
         if (isUndef(cur)) {
             process.env.NODE_ENV !== 'production' && warn(
                 `Invalid handler for event "${event.name}": got ` + String(cur),
                 vm
             );
 
-        // 如果未定义过该名称的事件
+        // 如果直接未注册过该事件，则分为以下情况处理
         } else if (isUndef(old)) {
 
+            // 当前最新的事件的处理函数未再之前注册过(注册过会进行封装，防止重复封装)
             if (isUndef(cur.fns)) {
 
                 // 为该事件创建一个调度函数，帮将该事件挂载在函数的静态属性上

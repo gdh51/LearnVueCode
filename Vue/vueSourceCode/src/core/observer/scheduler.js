@@ -46,17 +46,23 @@ function resetSchedulerState() {
 // if the page has thousands of event listeners. Instead, we take a timestamp
 // every time the scheduler flushes and use that for all event listeners
 // attached during that flush.
+// 异步边缘情况。需要保存一个timestamp当事件监听器被添加时。但是调用performance.now()会有
+// 性能开销，尤其是当页面有很多事件监听器时。所以，我们在每一次更新队列时
+// 取一个时间戳来代表那次刷新中的所有的事件监听器的添加
 export let currentFlushTimestamp = 0
 
 // Async edge case fix requires storing an event listener's attach timestamp.
-let getNow: () => number = Date.now
+let getNow: () => number = Date.now();
 
 // Determine what event timestamp the browser is using. Annoyingly, the
 // timestamp can either be hi-res (relative to page load) or low-res
 // (relative to UNIX epoch), so in order to compare time we have to use the
 // same timestamp type when saving the flush timestamp.
+// 决定浏览器使用哪种时间戳，比较麻烦的是，时间戳可以是高精度的，也可能是低精度的。
+// 所以为便于比较，需要保持它们的精度一致
 // All IE versions use low-res event timestamps, and have problematic clock
 // implementations (#9632)
+// IE浏览器全部使用低精度的事件时间戳，并且其时间的实现存在问题
 if (inBrowser && !isIE) {
     const performance = window.performance
     if (
@@ -68,6 +74,8 @@ if (inBrowser && !isIE) {
         // smaller than it, it means the event is using a hi-res timestamp,
         // and we need to use the hi-res version for event listener timestamps as
         // well.
+        // 如果事件时间戳(虽然在Date.now()后开始计算)比它小，那就意味着事件在使用高分辨率的
+        // 时间戳，所以我们也必须要用高分辨率的时间戳。
         getNow = () => performance.now()
     }
 }

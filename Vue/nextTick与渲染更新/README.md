@@ -1,4 +1,7 @@
+# Vue的刷新队列
+
 ## queueWatch()
+
 在依赖项变更后具体到`watcher`的**更新前**`Vue`通过该函数来将这些**将要更新的`watcher`放置到一个`queue`队列中**并按其`id`进行从小到大的排序按其生成顺序来进行更新。
 
 >在该函数的一开始调用中，我们先不需要关注其`else`部分(`flushing = true`状态时)，等会会做解释。
@@ -140,6 +143,8 @@ function flushCallbacks() {
 
 3. 重置从`queueWatcher()`开始用到的一些状态变量。
 
+## flushSchedulerQueue()——更新watcher
+
 ```js
 // 检测同一个watcher在本轮中已更新多少次的hash表
 let circular = [];
@@ -147,7 +152,7 @@ let circular = [];
 const activatedChildren = [];
 function flushSchedulerQueue() {
 
-    // 计算当前刷新队列所用的时间
+    // 记录当前刷新队列的初始事件(用于记录事件处理器合适添加)
     currentFlushTimestamp = getNow();
 
     // 变更队列刷新的状态为刷新中
