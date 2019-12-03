@@ -291,7 +291,7 @@ function parseText(
 
 ## parseStyleText()——解析静态style字符串
 
-该函数将静态内联`style`字符串解析为对象键值对形式
+该函数将静态内联`style`字符串解析为对象键值对形式。首先它将用`;`分割为字符串的键值对，然后用`:`将其分隔为键和值，最后存入`res`对象。
 
 ```js
 const parseStyleText = cached(function (cssText) {
@@ -299,12 +299,17 @@ const parseStyleText = cached(function (cssText) {
 
     // 匹配;但后面最近的地方不能单独出现未闭合的)，举个例子;())匹配成功，但;)不行
     // 不匹配 ; xxx) ，但匹配; (xxxxxx)
+    // 总结就是匹配;号
     const listDelimiter = /;(?![^(]*\))/g;
 
     // 匹配属性值  即 : xxx ，$1 中存放匹配到的属性值
     const propertyDelimiter = /:(.+)/;
+
+    // 以;号分割为多个属性键值对
     cssText.split(listDelimiter).forEach(function (item) {
         if (item) {
+
+            // 以:分隔为键和值
             const tmp = item.split(propertyDelimiter)
 
             // 按键值方式存放至res对象中
