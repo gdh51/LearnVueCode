@@ -52,17 +52,18 @@ const autoCssTransition: (name: string) => Object = cached(name => {
     }
 });
 
-export const hasTransition = inBrowser && !isIE9
-const TRANSITION = 'transition'
-const ANIMATION = 'animation'
+export const hasTransition = inBrowser && !isIE9;
+const TRANSITION = 'transition';
+const ANIMATION = 'animation';
 
 // Transition property/event sniffing
+// 过渡属性和事件嗅探
 export let transitionProp = 'transition'
 export let transitionEndEvent = 'transitionend'
 export let animationProp = 'animation'
 export let animationEndEvent = 'animationend'
 if (hasTransition) {
-    /* istanbul ignore if */
+
     if (window.ontransitionend === undefined &&
         window.onwebkittransitionend !== undefined
     ) {
@@ -84,11 +85,11 @@ const raf = inBrowser ? (window.requestAnimationFrame ?
     window.requestAnimationFrame.bind(window) : setTimeout)
     :  fn => fn();
 
-// 动画刷新函数调用
+// 下一帧执行回调函数(下下次宏任务执行fn)
 export function nextFrame(fn: Function) {
     raf(() => {
-        raf(fn)
-    })
+        raf(fn);
+    });
 }
 
 export function addTransitionClass(el: any, cls: string) {
@@ -108,10 +109,14 @@ export function addTransitionClass(el: any, cls: string) {
 }
 
 export function removeTransitionClass(el: any, cls: string) {
+
+    // 移除_transition中的
     if (el._transitionClasses) {
-        remove(el._transitionClasses, cls)
+        remove(el._transitionClasses, cls);
     }
-    removeClass(el, cls)
+
+    // 移除元素上的
+    removeClass(el, cls);
 }
 
 export function whenTransitionEnds(
@@ -122,24 +127,26 @@ export function whenTransitionEnds(
     cb : Function
 ) {
 
-    // 获取元素的过渡类型，和时间
+    // 获取元素的过渡类型，和时间以及有几个需要过渡的属性
     const {
         type,
         timeout,
         propCount
     } = getTransitionInfo(el, expectedType);
 
-    // 不具有类型时，直接移除并不执行过渡
+    // 不具有类型时，直接执行回调函数(此时就不会执行过渡了)
     if (!type) return cb();
 
     // 确认过渡事件类型
-    const event: string = type === TRANSITION ? transitionEndEvent : animationEndEvent
+    const event: string = type === TRANSITION ? transitionEndEvent : animationEndEvent;
+
+    // 已完成过渡的属性个数
     let ended = 0;
 
     // 结束时回调——移除事件监听器并移除相关动画类
     const end = () => {
-        el.removeEventListener(event, onEnd)
-        cb()
+        el.removeEventListener(event, onEnd);
+        cb();
     };
     const onEnd = e => {
 
@@ -148,7 +155,7 @@ export function whenTransitionEnds(
 
             // 仅在所有属性的动画全都执行完成后调用回调函数
             if (++ended >= propCount) {
-                end()
+                end();
             }
         }
     };
@@ -159,10 +166,10 @@ export function whenTransitionEnds(
             end()
         }
     }, timeout + 1);
-    el.addEventListener(event, onEnd)
+    el.addEventListener(event, onEnd);
 }
 
-const transformRE = /\b(transform|all)(,|$)/
+const transformRE = /\b(transform|all)(,|$)/;
 
 export function getTransitionInfo(el: Element, expectedType ? : ? string) : {
     type: ? string;
@@ -225,27 +232,39 @@ export function getTransitionInfo(el: Element, expectedType ? : ? string) : {
     // 返回自动测试的结果
     return {
         type,
+
+        // 过渡的时间间隔
         timeout,
+
+        // 过渡的属性个数
         propCount,
+
+        // 过渡属性中是否含有transform
         hasTransform
-    }
+    };
 }
 
 function getTimeout(delays: Array < string > , durations: Array < string > ): number {
-    /* istanbul ignore next */
+
+    // 因为delays的数量肯定是小于等于durations的，所以将它们的数量至少与duration匹配
     while (delays.length < durations.length) {
-        delays = delays.concat(delays)
+        delays = delays.concat(delays);
     }
 
+    // 返回其中delay + duration最高的，作为超时时间
     return Math.max.apply(null, durations.map((d, i) => {
-        return toMs(d) + toMs(delays[i])
-    }))
+
+        // 转换为ms单位
+        return toMs(d) + toMs(delays[i]);
+    }));
 }
 
 // Old versions of Chromium (below 61.0.3163.100) formats floating pointer numbers
 // in a locale-dependent way, using a comma instead of a dot.
+// 旧版本的Chromium格式化浮点数字时，会使用，而不是.
 // If comma is not replaced with a dot, the input will be rounded down (i.e. acting
 // as a floor function) causing unexpected behaviors
+// 如果，没有被.取代那么输入值将会被四舍五入(表现得为Math.floor)达不到预期
 function toMs(s: string): number {
     return Number(s.slice(0, -1).replace(',', '.')) * 1000
 }

@@ -133,7 +133,7 @@ export function enter(vnode: VNodeWithData, toggleDisplay: ? () => void) {
     // 是否使用css动画(指定css为false或IE9时不使用)
     const expectsCSS = (css !== false) && !isIE9;
 
-    // 获取进入时动画的钩子函数的参数数量(大于1个，则表明用户想通过该参数操作)
+    // 获取进入时动画的钩子函数的参数数量(大于1个时返回true，即表示用户是否要操作第二个参数done)
     const userWantsControl = getHookArgumentsLength(enterHook);
 
     // 给元素添加一次性的进入时动画的函数
@@ -163,23 +163,27 @@ export function enter(vnode: VNodeWithData, toggleDisplay: ? () => void) {
         el._enterCb = null
     });
 
-    // 节点是否显示
+    // 节点是否显示(针对transition)
     if (!vnode.data.show) {
 
         // remove pending leave element on enter by injecting an insert hook
         // 注入一个insert钩子函数来移除准备要在进入动画时移除的元素
         // 想该VNode的hook对象中insert钩子函数中封装并添加一个函数
         mergeVNodeHook(vnode, 'insert', () => {
-            const parent = el.parentNode
-            const pendingNode = parent && parent._pending && parent._pending[vnode.key]
+            const parent = el.parentNode;
+            const pendingNode = parent && parent._pending && parent._pending[vnode.key];
+
+            // 优先调用离开的回调函数
             if (pendingNode &&
                 pendingNode.tag === vnode.tag &&
                 pendingNode.elm._leaveCb
             ) {
-                pendingNode.elm._leaveCb()
+                pendingNode.elm._leaveCb();
             }
-            enterHook && enterHook(el, cb)
-        })
+
+            // 再调用进入的enterHook
+            enterHook && enterHook(el, cb);
+        });
     }
 
     // start enter transition
@@ -197,7 +201,7 @@ export function enter(vnode: VNodeWithData, toggleDisplay: ? () => void) {
         nextFrame(() => {
             removeTransitionClass(el, startClass);
 
-            // 如果没有取消，则添加剩余的动画class
+            // 重复执行进入过渡时，取消执行下面的操作
             if (!cb.cancelled) {
 
                 // 添加enter-to的class
@@ -365,7 +369,7 @@ function checkDuration(val, name, vnode) {
 }
 
 function isValidDuration(val) {
-    return typeof val === 'number' && !isNaN(val)
+    return typeof val === 'number' && !isNaN(val);
 }
 
 /**

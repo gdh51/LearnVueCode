@@ -138,7 +138,7 @@ export const isReservedAttribute = makeMap('key,ref,slot,slot-scope,is')
  */
 export function remove(arr: Array < any > , item: any): Array < any > | void {
     if (arr.length) {
-        const index = arr.indexOf(item)
+        const index = arr.indexOf(item);
         if (index > -1) {
             return arr.splice(index, 1)
         }
@@ -347,7 +347,9 @@ export function looseIndexOf(arr: Array < mixed > , val: mixed): number {
  * Ensure a function is called only once.
  */
 export function once(fn: Function): Function {
-    let called = false
+
+    // 标记位，表示是否已经调用
+    let called = false;
     return function () {
         if (!called) {
             called = true

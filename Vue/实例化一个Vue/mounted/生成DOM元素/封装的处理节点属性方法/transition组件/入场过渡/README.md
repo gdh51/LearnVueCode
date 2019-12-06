@@ -131,7 +131,7 @@ function enter(vnode: VNodeWithData,  : ? () => void) {
     // 是否使用css动画(指定css为false或IE9时不使用)
     const expectsCSS = (css !== false) && !isIE9;
 
-    // 获取进入时动画的钩子函数的参数数量(大于1个，则表明用户想通过该参数操作)
+    // 获取进入时动画的钩子函数的参数数量(大于1个时返回true，即表示用户是否要操作第二个参数done)
     const userWantsControl = getHookArgumentsLength(enterHook);
 
     // 给元素添加一次性的进入时动画的函数
@@ -161,7 +161,7 @@ function enter(vnode: VNodeWithData,  : ? () => void) {
         el._enterCb = null
     });
 
-    // 节点是否显示
+    // 节点是否显示(针对transition)
     if (!vnode.data.show) {
 
         // remove pending leave element on enter by injecting an insert hook
@@ -191,7 +191,7 @@ function enter(vnode: VNodeWithData,  : ? () => void) {
         addTransitionClass(el, startClass);
         addTransitionClass(el, activeClass);
 
-        // 在下一次屏幕刷新时，移除enter的class
+        // 取消执行进入过渡时，取消执行下面的操作
         nextFrame(() => {
             removeTransitionClass(el, startClass);
 
@@ -367,6 +367,9 @@ if (process.env.NODE_ENV !== 'production' && explicitEnterDuration != null){
 const expectsCSS = (css !== false) && !isIE9;
 ```
 
+对应的类如图：
+![对应](./imgs/correspondingCode.jpg)
+
 >这里说个题外话，上面对于css-class的选择，使用的运算符为&&和三元运算符，当两者一起使用时，[&&的优先级大于三元运算符](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/Operator_Precedence)，靠下面这个小例子可以说明:
 
 ```js
@@ -376,3 +379,171 @@ let a = 'a',
     d = c && a ? a : b;
 // d为'b'，如果三元运算符优先级大于&&则d为undefined
 ```
+
+____
+之后便调用[`getHookArgumentsLength()`](../工具方法/README.md#gethookargumentslength%e8%8e%b7%e5%8f%96%e9%92%a9%e5%ad%90%e5%87%bd%e6%95%b0%e5%8f%82%e6%95%b0%e9%95%bf%e5%ba%a6)函数来确认用户使用的`enter`动画函数的参数，当参数为一个以上时，就会被定为用户要操作其第二个参数`done`，因为该参数为可选的，之后在调用时再来解释`done`的作用。
+
+### 过渡完成时的回调处理
+
+最后再给元素添加一个一次性的入场动画执行完毕的回调函数：
+
+```js
+// 给元素添加一次性的进入时动画的函数
+const cb = el._enterCb = once(() => {
+
+    // 执行css动画时，移除enter-to与enter-active的class
+    if (expectsCSS) {
+        removeTransitionClass(el, toClass);
+        removeTransitionClass(el, activeClass);
+    }
+
+    // 如果该回调被取消，则直接移除enter的class
+    if (cb.cancelled) {
+        if (expectsCSS) {
+            removeTransitionClass(el, startClass)
+        }
+
+        // 并执行取消的回调函数
+        enterCancelledHook && enterCancelledHook(el)
+    } else {
+
+        // 没被取消时，则直接调用after-enter的回调函数
+        afterEnterHook && afterEnterHook(el)
+    }
+
+    // 清空进入时的回调函数
+    el._enterCb = null
+});
+```
+
+首先该函数用[`once()`](../工具方法/README.md#once%e5%8f%aa%e6%89%a7%e8%a1%8c%e4%b8%80%e6%ac%a1%e7%9a%84%e5%87%bd%e6%95%b0)函数包装的，使其只能调用一次，之后重复调用不会产生副作用。
+
+如果使用`css-class`那么该函数首先移除`enter-to`与`enter-active`的`class`，它们的移除表示入场过渡动画的结束。之后再调用`after-enter-hook`函数；如果突然取消入场过渡则移除`enter-class`并调用`enter-cancell-hook`。
+
+最后清空元素的`._enterCb`
+____
+**目前还不需要了解该回调函数的作用**，如果该元素还未被插入`DOM`中显示，那么还会调用[`mergeVNodeHook()`](../工具方法/README.md#mergevnodehook%e5%90%88%e5%b9%b6vnode%e7%9a%84%e6%9f%90%e4%b8%aa%e9%92%a9%e5%ad%90%e5%87%bd%e6%95%b0)为其`hook.insert`中再添加一个生命周期函数：
+
+```js
+// 节点是否显示(针对transition)
+if (!vnode.data.show) {
+
+    // remove pending leave element on enter by injecting an insert hook
+    // 注入一个insert钩子函数来移除准备要在进入动画时移除的元素
+    // 想该VNode的hook对象中insert钩子函数中封装并添加一个函数
+    mergeVNodeHook(vnode, 'insert', () => {
+        const parent = el.parentNode
+        const pendingNode = parent && parent._pending && parent._pending[vnode.key];
+
+        // 优先调用离开的回调函数
+        if (pendingNode &&
+            pendingNode.tag === vnode.tag &&
+            pendingNode.elm._leaveCb
+        ) {
+            pendingNode.elm._leaveCb()
+        };
+
+        // 再调用进入的enterHook
+        enterHook && enterHook(el, cb);
+    })
+}
+```
+
+到此为止参数准备阶段就完毕了，开始进入入场过渡动画执行阶段。
+
+### 阶段2——执行过渡
+
+在执行入场过渡的阶段，首先调用`js`的钩子函数`before-enter`函数，此时元素还未挂载至`DOM`中。
+
+```js
+// start enter transition
+// 开始进入的动画，调用用户定义的beforeEnter函数
+beforeEnterHook && beforeEnterHook(el);
+```
+
+如果用户没有禁用`css`过渡，那么开始执行`css`的`class`的添加，首先向其元素添加`enter`与`enter-active`两个`class`。此时添加`class`调用的是[`addTransitionClass()`](../工具方法/README.md#addtransitionclass%e5%90%91%e6%8c%87%e5%ae%9a%e5%85%83%e7%b4%a0%e6%b7%bb%e5%8a%a0class)
+
+```js
+// 添加enter与enter-acitve的class
+addTransitionClass(el, startClass);
+addTransitionClass(el, activeClass);
+```
+
+那么添加以后就意味着该元素的出现会伴随着过渡效果了，下面继续看：
+
+```js
+// 在下一次屏幕刷新时，移除enter的class
+nextFrame(() => {
+    removeTransitionClass(el, startClass);
+
+    // 取消执行进入过渡时，取消执行下面的操作
+    if (!cb.cancelled) {
+
+        // 添加enter-to的class
+        addTransitionClass(el, toClass);
+
+        // 此时，如果用户不想操作动画，则在动画执行完的时间间隔后，执行刚才的cb
+        if (!userWantsControl) {
+
+            // 当进入动画指定间隔时间时，在间隔时间后移除enter系列的所有class
+            if (isValidDuration(explicitEnterDuration)) {
+                setTimeout(cb, explicitEnterDuration);
+
+            // 否则，自动侦测过渡类型并执行动画
+            } else {
+                whenTransitionEnds(el, type, cb)
+            }
+        }
+    }
+});
+
+function isValidDuration(val) {
+    return typeof val === 'number' && !isNaN(val);
+}
+```
+
+咋一看这函数怎么才添加`enter`的`class`就移除，而且此时`dom`元素还未挂载。其实不然，调用`nextFrame()`会再下下个宏任务阶段在执行这些函数。所以这个会待到所有`Vue`的工作都完成后，才会执行，但是不妨碍我们看它做了什么。
+
+此时通过[`removeTransitionClass()`](../工具方法/README.md#removetransitionclass%e5%90%91%e6%8c%87%e5%ae%9a%e5%85%83%e7%b4%a0%e7%a7%bb%e9%99%a4%e8%bf%87%e6%b8%a1class)移除了`enter`的`class`，那么意味着关于`enter-class`所涉及的属性的过渡就要开始执行了，理所当然这里就会涉及到一个过渡执行时间的问题，因为大家都知道`Vue`的过渡动画执行完后，元素自身是不会存在任何关于过渡动画的`class`的，那么这个何时去移除`enter-active`这个`class`其实就已经明确了，即过**渡执行时间**。
+
+如果不是取消进入入场过渡动画(且上一次动画还没执行完毕)，那么就要调用`addTransitionClass()`来添加`enter-to`的`class`了，即我们期待的最终的过渡效果。此时如果用户为给`enter()`或`appear()`函数指定第二个参数`done`，那么我们将设置一个定时器在过渡动画执行完毕时，清理那些相关`class`。
+
+再根据用户是否给出动画的执行时间，`Vue`会选择是否来自动判断时间，首先是指定了`duration`时，直接设置定时器在具体事件后执行之前的`cb`(通过`isValidDuration()`来判断时间的合法性)；未指定时，`Vue`会调用[`whenTransitionEnds()`](../工具方法/README.md#whentransitionends%e5%9c%a8%e8%bf%87%e6%b8%a1%e7%bb%93%e6%9d%9f%e6%97%b6%e6%89%a7%e8%a1%8c%e5%9b%9e%e8%b0%83)来查询该元素是否设置相关的`css`属性来提取其中的时间来作为执行回调函数`cb()`的时间。
+____
+之后，如果该节点已经显示了，那么会调用`enter()`的`js`函数，并传入一个结束的回调函数供用户结束动画。
+
+```js
+// 如果VNode节点已经在DOM中显示
+if (vnode.data.show) {
+    toggleDisplay && toggleDisplay();
+
+    // 执行enter的钩子函数，传入结束回调作为参数
+    enterHook && enterHook(el, cb)
+}
+```
+
+如果用户不使用css过渡效果且不手动执行结束回调`cb()`时，会自动帮用户调用。这里我们可以看出无论谁调用，它都是紧跟在`enter-hook`之后的。
+
+```js
+// 若不使用css，且用户对js动画函数不进行额外的控制，则直接调用回调，执行之后的回调函数
+if (!expectsCSS && !userWantsControl) {
+    cb()
+}
+```
+
+现在让我们回过头去看看[`cb()`](#%e8%bf%87%e6%b8%a1%e5%ae%8c%e6%88%90%e6%97%b6%e7%9a%84%e5%9b%9e%e8%b0%83%e5%a4%84%e7%90%86)
+
+## 流程总结
+
+### 纯css
+
+![pure css](./imgs/纯css过渡.svg)
+(这里对重复调用部分描述有点错误)
+
+### 纯js
+
+![pure js](./imgs/纯js过渡.svg)
+
+## 留坑
+
+部分变量含义我还未搞懂，如那个`.show`
