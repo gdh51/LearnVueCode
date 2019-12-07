@@ -506,6 +506,8 @@ export function mergeOptions(
 
         // 标签名称或id
         id: string,
+
+        // 未查找到时，是否进行报错
         warnMissing ? : boolean
     ): any {
 

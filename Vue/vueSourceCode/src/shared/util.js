@@ -295,39 +295,50 @@ export function genStaticKeys(modules: Array < ModuleOptions > ): string {
 /**
  * Check if two values are loosely equal - that is,
  * if they are plain objects, do they have the same shape?
+ * 检查两个值是否大致相等，意思是如果为两个对象，那么它们对应的键和值等吗
  */
 export function looseEqual(a: any, b: any): boolean {
-    if (a === b) return true
-    const isObjectA = isObject(a)
-    const isObjectB = isObject(b)
+
+    // 如果全等，则直接返回
+    if (a === b) return true;
+    const isObjectA = isObject(a);
+    const isObjectB = isObject(b);
+
+    // 如果两者都为对象
     if (isObjectA && isObjectB) {
         try {
             const isArrayA = Array.isArray(a)
             const isArrayB = Array.isArray(b)
+
+            // 两者都为数组时，递归检测其每一个值是否松散相等
             if (isArrayA && isArrayB) {
                 return a.length === b.length && a.every((e, i) => {
                     return looseEqual(e, b[i])
-                })
+                });
+
+            // 两个都为日期对象时，获取其时间是否相等
             } else if (a instanceof Date && b instanceof Date) {
-                return a.getTime() === b.getTime()
+                return a.getTime() === b.getTime();
+
+            // 两个都为普通对象时，在其键值对个数一样的情况，下递归其各个值看是否相等
             } else if (!isArrayA && !isArrayB) {
                 const keysA = Object.keys(a)
                 const keysB = Object.keys(b)
                 return keysA.length === keysB.length && keysA.every(key => {
                     return looseEqual(a[key], b[key])
-                })
+                });
             } else {
-                /* istanbul ignore next */
-                return false
+                return false;
             }
         } catch (e) {
-            /* istanbul ignore next */
-            return false
+            return false;
         }
+
+    // 两者都不为对象时，且不全等时，则有可能为symbol，查看其值是否一样
     } else if (!isObjectA && !isObjectB) {
-        return String(a) === String(b)
+        return String(a) === String(b);
     } else {
-        return false
+        return false;
     }
 }
 
@@ -337,6 +348,8 @@ export function looseEqual(a: any, b: any): boolean {
  * contain an object of the same shape), or -1 if it is not present.
  */
 export function looseIndexOf(arr: Array < mixed > , val: mixed): number {
+
+    // 找到第一个数组中与val值松散相等的值的下标
     for (let i = 0; i < arr.length; i++) {
         if (looseEqual(arr[i], val)) return i
     }
