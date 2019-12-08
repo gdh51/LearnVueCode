@@ -66,9 +66,11 @@ class VNode {
         this.fnScopeId = undefined;
 
         // 标签上的key值
-        this.key = data && data.key
-        this.componentOptions = componentOptions
-        this.componentInstance = undefined
+        this.key = data && data.key;
+        this.componentOptions = componentOptions;
+
+        // 当前组件标签所代表的组件实例
+        this.componentInstance = undefined;
         this.parent = undefined
         this.raw = false
         this.isStatic = false
@@ -113,7 +115,7 @@ function createTextVNode(val: string | number) {
 
 ## 克隆节点——cloneVNode()
 
-该方法用于克隆`VNode`节点，具体使用时机暂时未知。
+该方法用于克隆`VNode`节点，会在复用一个`VNode`节点时对其进行复制来代替之前的`VNode`节点。
 
 ```js
 // optimized shallow clone
@@ -149,6 +151,12 @@ export function cloneVNode(vnode: VNode): VNode {
     cloned.isCloned = true
     return cloned;
 }
+```
+
+那么有哪些属性并没有复制呢？
+
+```js
+componentInstance,parent,raw,isRootInsert,isOnce,isAsyncPlaceholder
 ```
 
 [#7975](https://github.com/vuejs/vue/issues/7975)

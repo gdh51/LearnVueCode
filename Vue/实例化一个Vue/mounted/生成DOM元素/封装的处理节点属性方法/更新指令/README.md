@@ -1,4 +1,4 @@
-# 更新指令——updateDirectives()
+# updateDirectives()——更新指令
 
 所有`VNode`上的指令都会在这里进行处理，无论是自定义指令还是原生指令。无论是在哪个声明周期更新指令，都是调用下面的函数：
 
@@ -463,7 +463,7 @@ function getValue(option) {
 
 #### 文本框的复合事件
 
-这里我们可以看到，针对文本框的`v-model`，Vue为其绑定了复合事件来处理输入法的输入，那么我们看看其具体是怎么来截断input的输入的：
+这里我们可以看到，针对文本框的`v-model`，`Vue`为其绑定了复合事件来处理输入法的输入，那么我们看看其具体是怎么来截断`input`的输入的：
 
 ```js
 el.addEventListener('compositionstart', onCompositionStart);
@@ -493,6 +493,8 @@ function onCompositionEnd(e) {
     trigger(e.target, 'input')
 }
 ```
+
+输入时这几个事件的触发顺序为`compositionstart -> compositionupdate -> input -> compositionend`
 
 ### v-model——componentUpdated()
 
@@ -600,4 +602,4 @@ function trigger(el, type) {
 }
 ```
 
-这个函数里面的东西，我还有点蒙逼，去查一下。
+这里涉及的知识就是模拟DOM事件了，即自定义事件对象，相关信息可以看我的这篇[总结](https://github.com/gdh51/JavascriptSummary/blob/master/%E4%BA%8B%E4%BB%B6/%E6%A8%A1%E6%8B%9F%E4%BA%8B%E4%BB%B6/README.md)

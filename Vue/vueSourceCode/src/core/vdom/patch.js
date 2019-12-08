@@ -132,8 +132,13 @@ export function createPatchFunction(backend) {
 
     function isUnknownElement(vnode, inVPre) {
         return (
+            // 不处于v-pre中
             !inVPre &&
+
+            // 不具有命名空间
             !vnode.ns &&
+
+            // 用户是否设置了要忽略的自定义元素
             !(
                 config.ignoredElements.length &&
                 config.ignoredElements.some(ignore => {
@@ -142,11 +147,13 @@ export function createPatchFunction(backend) {
                         ignore === vnode.tag
                 })
             ) &&
+
+            // 查询是否为未注册的自定义元素
             config.isUnknownElement(vnode.tag)
         )
     }
 
-    // 声明一个用于记录有多少处于v-pre中的节点
+    // 声明一个用于记录有多少正处于创建中的v-pre节点
     let creatingElmInVPre = 0
 
     function createElm(
@@ -174,14 +181,14 @@ export function createPatchFunction(backend) {
             // potential patch errors down the road when it's used as an insertion
             // reference node. Instead, we clone the node on-demand before creating
             // associated DOM element for it.
-            // 现在它作为一个新的节点，当它作为一个插入的参考节点时，
-            // 重写该元素会导致潜在的patch错误，我们在创建其相关的DOM元素前先clone
-            // 它的VNode几点。
+            // 能进入这里，说明该VNode节点被复用了
+            // 现在它作为一个新的节点使用，所以如果它作为一个插入的参考节点时，那么它的节点信息就可能存在错误
+            // 重写该元素会导致潜在的patch错误，所以我们在创建其相关的DOM元素前先clone它的VNode节点。
             vnode = ownerArray[index] = cloneVNode(vnode)
         }
 
         // 作为transition的入口检查
-        // 是否为插入的根部
+        // 该节点是否为当前组件的根VNode节点
         vnode.isRootInsert = !nested; // for transition enter check
 
         // 是否为组件，是则创建组件实例
@@ -202,6 +209,8 @@ export function createPatchFunction(backend) {
                 if (data && data.pre) {
                     creatingElmInVPre++
                 }
+
+                // 是否为未知的元素
                 if (isUnknownElement(vnode, creatingElmInVPre)) {
                     warn(
                         'Unknown custom element: <' + tag + '> - did you ' +
@@ -218,42 +227,18 @@ export function createPatchFunction(backend) {
                 nodeOps.createElement(tag, vnode);
 
             // 设置元素的CSS作用域属性
-            setScope(vnode)
+            setScope(vnode);
 
-            // weex平台，无视
-            if (__WEEX__) {
-                // in Weex, the default insertion order is parent-first.
-                // List items can be optimized to use children-first insertion
-                // with append="tree".
-                const appendAsTree = isDef(data) && isTrue(data.appendAsTree)
-                if (!appendAsTree) {
-                    if (isDef(data)) {
-                        invokeCreateHooks(vnode, insertedVnodeQueue)
-                    }
-                    insert(parentElm, vnode.elm, refElm)
-                }
-                createChildren(vnode, children, insertedVnodeQueue)
-                if (appendAsTree) {
-                    if (isDef(data)) {
-                        invokeCreateHooks(vnode, insertedVnodeQueue)
-                    }
-                    insert(parentElm, vnode.elm, refElm)
-                }
+            // 遍历子节点数组，创建其元素
+            createChildren(vnode, children, insertedVnodeQueue);
 
-            // Vue框架
-            } else {
-
-                // 遍历子节点数组，创建其元素
-                createChildren(vnode, children, insertedVnodeQueue);
-
-                // 是否存在元素属性，存在时调用其cretea周期钩子函数
-                if (isDef(data)) {
-                    invokeCreateHooks(vnode, insertedVnodeQueue)
-                }
-
-                // 将元素插入refElm之前
-                insert(parentElm, vnode.elm, refElm)
+            // 是否存在元素属性，存在时调用其cretea周期钩子函数，处理元素上的属性、事件等等
+            if (isDef(data)) {
+                invokeCreateHooks(vnode, insertedVnodeQueue)
             }
+
+            // 将元素插入refElm之前
+            insert(parentElm, vnode.elm, refElm)
 
             if (process.env.NODE_ENV !== 'production' && data && data.pre) {
                 creatingElmInVPre--
@@ -266,7 +251,7 @@ export function createPatchFunction(backend) {
             vnode.elm = nodeOps.createComment(vnode.text);
 
             // 插入到refElm之前
-            insert(parentElm, vnode.elm, refElm)
+            insert(parentElm, vnode.elm, refElm);
 
         // 当为文本节点时
         } else {
@@ -275,7 +260,7 @@ export function createPatchFunction(backend) {
             vnode.elm = nodeOps.createTextNode(vnode.text);
 
             // 插入到refElm之前
-            insert(parentElm, vnode.elm, refElm)
+            insert(parentElm, vnode.elm, refElm);
         }
     }
 
@@ -346,6 +331,7 @@ export function createPatchFunction(backend) {
                 break
             }
         }
+
         // unlike a newly created component,
         // a reactivated keep-alive component doesn't insert itself
         insert(parentElm, vnode.elm, refElm)
@@ -397,12 +383,17 @@ export function createPatchFunction(backend) {
         // 调用所有create周期的对指令处理的钩子函数
         for (let i = 0; i < cbs.create.length; ++i) {
 
-            // 由于是新的节点，所以不存在旧节点，这里用一个空节点代替
+            // 由于是新的节点，所以不存在旧节点，这里用一个空节点代替。
+            // 更新节点上的属性
             cbs.create[i](emptyNode, vnode)
         }
         i = vnode.data.hook // Reuse variable
         if (isDef(i)) {
-            if (isDef(i.create)) i.create(emptyNode, vnode)
+
+            // 处理后的钩子函数中，存在create周期的钩子函数则调用
+            if (isDef(i.create)) i.create(emptyNode, vnode);
+
+            // 如果存在insert阶段的钩子函数，那么将该节点加入inserted队列
             if (isDef(i.insert)) insertedVnodeQueue.push(vnode)
         }
     }

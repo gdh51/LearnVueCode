@@ -10,7 +10,7 @@
 ```js
 function _enter(_: any, vnode: VNodeWithData) {
 
-    // 仅当其未进行显示时才调用enter函数
+    // 是否通过v-show进行过渡动画，如果是这里就不进行过渡
     if (vnode.data.show !== true) {
 
         // 调用enter函数，对element进行过渡操作
@@ -19,7 +19,7 @@ function _enter(_: any, vnode: VNodeWithData) {
 }
 ```
 
-该函数在确保元素未显示(`.show !== true`)的情况下调用模块内部的`enter()`方法开始执行一系列的动画操作。
+该函数在确保元素不是通过`v-show`来进行显示的(`.show !== true`)的情况下调用模块内部的`enter()`方法开始执行一系列的过渡动画操作。因为之后在[更新指令](../../更新指令/README.md)中我们会看到，`v-show`如果是在`transition`组件上，那么是会自己手动调用`transition`过渡动画来过渡的。
 
 ## enter()——执行入场动画
 
@@ -161,7 +161,7 @@ function enter(vnode: VNodeWithData,  : ? () => void) {
         el._enterCb = null
     });
 
-    // 节点是否显示(针对transition)
+    // 节点是否是通过v-show显示，这里是v-show指令的标记(针对transition)
     if (!vnode.data.show) {
 
         // remove pending leave element on enter by injecting an insert hook
@@ -217,12 +217,12 @@ function enter(vnode: VNodeWithData,  : ? () => void) {
         })
     }
 
-    // 如果VNode节点已经显示
+    // 如果该VNode节点通过v-show显示，那么还要调用其传入的变更display的函数
     if (vnode.data.show) {
         toggleDisplay && toggleDisplay();
 
         // 执行进入的钩子函数
-        enterHook && enterHook(el, cb)
+        enterHook && enterHook(el, cb);
     }
 
     // 若不使用css，且用户对js动画函数不进行额外的控制，则直接调用回调，执行之后的回调函数
@@ -383,7 +383,7 @@ let a = 'a',
 ____
 之后便调用[`getHookArgumentsLength()`](../工具方法/README.md#gethookargumentslength%e8%8e%b7%e5%8f%96%e9%92%a9%e5%ad%90%e5%87%bd%e6%95%b0%e5%8f%82%e6%95%b0%e9%95%bf%e5%ba%a6)函数来确认用户使用的`enter`动画函数的参数，当参数为一个以上时，就会被定为用户要操作其第二个参数`done`，因为该参数为可选的，之后在调用时再来解释`done`的作用。
 
-### 过渡完成时的回调处理
+#### 过渡完成时的回调处理
 
 最后再给元素添加一个一次性的入场动画执行完毕的回调函数：
 
@@ -422,10 +422,10 @@ const cb = el._enterCb = once(() => {
 
 最后清空元素的`._enterCb`
 ____
-**目前还不需要了解该回调函数的作用**，如果该元素还未被插入`DOM`中显示，那么还会调用[`mergeVNodeHook()`](../工具方法/README.md#mergevnodehook%e5%90%88%e5%b9%b6vnode%e7%9a%84%e6%9f%90%e4%b8%aa%e9%92%a9%e5%ad%90%e5%87%bd%e6%95%b0)为其`hook.insert`中再添加一个生命周期函数：
+**目前还不需要了解该回调函数的作用**，如果该元素是不是通过`v-show`指令显示，那么还会调用[`mergeVNodeHook()`](../工具方法/README.md#mergevnodehook%e5%90%88%e5%b9%b6vnode%e7%9a%84%e6%9f%90%e4%b8%aa%e9%92%a9%e5%ad%90%e5%87%bd%e6%95%b0)为其`hook.insert`中再添加一个生命周期函数：
 
 ```js
-// 节点是否显示(针对transition)
+// 节点是否是通过v-show显示，这里是v-show指令的标记(针对transition)
 if (!vnode.data.show) {
 
     // remove pending leave element on enter by injecting an insert hook
@@ -510,10 +510,10 @@ function isValidDuration(val) {
 
 再根据用户是否给出动画的执行时间，`Vue`会选择是否来自动判断时间，首先是指定了`duration`时，直接设置定时器在具体事件后执行之前的`cb`(通过`isValidDuration()`来判断时间的合法性)；未指定时，`Vue`会调用[`whenTransitionEnds()`](../工具方法/README.md#whentransitionends%e5%9c%a8%e8%bf%87%e6%b8%a1%e7%bb%93%e6%9d%9f%e6%97%b6%e6%89%a7%e8%a1%8c%e5%9b%9e%e8%b0%83)来查询该元素是否设置相关的`css`属性来提取其中的时间来作为执行回调函数`cb()`的时间。
 ____
-之后，如果该节点已经显示了，那么会调用`enter()`的`js`函数，并传入一个结束的回调函数供用户结束动画。
+之后，如果该节点是通过`v-show`，那么会首先调用`toggleDisplay()`函数切换元素的`display`值，然后调用`enter()`的`js`函数，并传入一个结束的回调函数供用户结束动画。(因为如果不是通过`v-show`共度，那么上方`mergeVNodeHook()`在节点被插入后是会调用`enter-hook`的)
 
 ```js
-// 如果VNode节点已经在DOM中显示
+// 如果该VNode节点通过v-show显示，那么还要调用其传入的变更display的函数
 if (vnode.data.show) {
     toggleDisplay && toggleDisplay();
 
@@ -522,7 +522,7 @@ if (vnode.data.show) {
 }
 ```
 
-如果用户不使用css过渡效果且不手动执行结束回调`cb()`时，会自动帮用户调用。这里我们可以看出无论谁调用，它都是紧跟在`enter-hook`之后的。
+如果用户不使用`css`过渡效果且不手动执行结束回调`cb()`时，会自动帮用户调用。这里我们可以看出无论谁调用，它都是紧跟在`enter-hook`之后的。
 
 ```js
 // 若不使用css，且用户对js动画函数不进行额外的控制，则直接调用回调，执行之后的回调函数
@@ -543,7 +543,3 @@ if (!expectsCSS && !userWantsControl) {
 ### 纯js
 
 ![pure js](./imgs/纯js过渡.svg)
-
-## 留坑
-
-部分变量含义我还未搞懂，如那个`.show`
