@@ -133,9 +133,9 @@ function createElm(
 
 之后修改`vnode.isRootInsert`属性，判断其是否为从根节点开始插入的，它会在之后的过渡动画中作为是否使用初始渲染的判断条件。那么对`VNode`的节点的处理到此为止了，接下来便是产生分歧的地方，如果该`VNode`节点为组件节点，那么它将调用`createComponent()`创建一个组件；如果不是，那么好，说明其为一个真实节点，对它进行完最后的处理就可以将其添加到`DOM`结构中去了。
 
->这里我们只说明是元素的情况，组件的情况请看下面的函数[`createComponent()`]
+>这里我们只说明是元素的情况，组件的情况请看下面的函数[`createComponent()`]，由于组件并不为元素所以，此处会直接退出
 
-在不是组件的情况中，国际惯例，三种情况，[文本节点](#%e6%96%87%e6%9c%ac%e8%8a%82%e7%82%b9)，[元素节点]()，[注释节点](#%e6%b3%a8%e9%87%8a%e8%8a%82%e7%82%b9)，先拿好捏的痱子开始：
+在不是组件的情况中，国际惯例，三种情况，[文本节点](#%e6%96%87%e6%9c%ac%e8%8a%82%e7%82%b9)，[元素节点](#%e5%85%83%e7%b4%a0%e8%8a%82%e7%82%b9)，[注释节点](#%e6%b3%a8%e9%87%8a%e8%8a%82%e7%82%b9)，先拿好捏的痱子开始：
 
 ### 文本节点
 
@@ -185,7 +185,186 @@ vnode.elm = vnode.ns ?
 
 最后，调用[`insert()`](#insert%e5%90%91ref%e5%85%83%e7%b4%a0%e5%89%8d%e6%8f%92%e5%85%a5%e6%8c%87%e5%ae%9a%e5%85%83%e7%b4%a0)方法将该元素插入指定元素之前。
 
-## createComponent()
+## createComponent()——创建组件实例与其DOM片段
+
+该方法用于为组件`VNode`节点创建其对应的组件`vm`实例，并将其模版转换为`DOM`片段。
+
+```js
+function createComponent(vnode, insertedVnodeQueue, parentElm, refElm) {
+
+    // 获取节点的属性
+    let i = vnode.data;
+
+    // 如果存在属性则说明至少不为一个普通的元素
+    if (isDef(i)) {
+
+        // 是否为重新激活的动态组件(即使是组件VNode第一次进入时，是不存在.componentInstance属性的)
+        const isReactivated = isDef(vnode.componentInstance) && i.keepAlive;
+
+        // 如果存在初始化钩子函数则调用(仅组件中存在)
+        if (isDef(i = i.hook) && isDef(i = i.init)) {
+
+            // 调用初始化init()函数，创建组件实例与其dom片段(客户端渲染，不进行注水)
+            i(vnode, false /* hydrating */ );
+        }
+
+        // after calling the init hook, if the vnode is a child component
+        // it should've created a child instance and mounted it. the child
+        // component also has set the placeholder vnode's elm.
+        // in that case we can just return the element and be done.
+        // 调用初始化钩子函数后，如果该VNode是子组件。那么它已经创建了子实例并挂载。
+        // 子组件同样也已经设置了其占位符元素(挂载的元素)
+        // 这样我们可以直接返回这个元素
+        if (isDef(vnode.componentInstance)) {
+
+            // 初始化组件VNode的属性
+            initComponent(vnode, insertedVnodeQueue);
+
+            // 将组件的根节点插入指定元素之前
+            insert(parentElm, vnode.elm, refElm);
+
+            // 如果其为重新激活的动态组件，那么
+            if (isTrue(isReactivated)) {
+                reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm)
+            }
+            return true
+        }
+    }
+}
+```
+
+首先，该函数任何VNode节点都可以进入，所以它其实也是一个检测函数。我们的组件VNode节点首先都具有一个固定的`hook`对象，里面包含了其生命周期的函数，所以通过检测`VNode.data`就可以筛选出一些非组件`VNode`节点了。
+
+>这里我们先不谈keep-alive动态组件，等会再提
+
+那么我们如何筛选出剩下的节点呢？这里就是通过其`vnode.componentInstance`属性，这个属性一开始即使是组件标签也是不具有的，但它通过下面这一步，就会生成：
+
+```js
+// 如果存在初始化钩子函数则调用(仅组件中存在)
+if (isDef(i = i.hook) && isDef(i = i.init)) {
+
+    // 调用初始化init()函数，创建组件实例与其dom片段(客户端渲染，不进行注水)
+    i(vnode, false /* hydrating */ );
+}
+```
+
+那么这一步在干什么呢？其实就是调用组件生命周期[`componentVNodeHooks.init()`](../../渲染函数中的方法/创建组件VNode/组件VNode的Hook/README.md#init%e7%94%9f%e6%88%90%e7%bb%84%e4%bb%b6vm%e5%ae%9e%e4%be%8b%e5%88%9b%e5%bb%ba%e5%85%b6dom%e7%89%87%e6%ae%b5)，它会为其生成一个`vm`实例，然后编译其模版生成`DOM`片段。
+
+如果是组件，那么自然我们就会进入最后一个`if`语句中，虽然我们已经生成了组件实例和`DOM`模版，但是我们还并未让其插入现有的`DOM`片段中，且我们组件`VNode`上面的属性也并没有处理(普通的`VNode`处理属性用的函数[`invokeCreateHooks()`](../封装的处理节点属性方法/README.md))，所以我们需要在[`initComponent()`](#initcomponent%e5%a4%84%e7%90%86%e7%bb%84%e4%bb%b6vnode%e5%b1%9e%e6%80%a7)干这些事情。最后我们将其插入到顶层`DOM`结构的对应位置。
+
+### 复用动态组件
+
+首先我们可以看到，进入时，就会判断该`VNode`节点是否为组件节点，且具有`keepAlive`属性，当两者都具有时，说明这是一个**非第一次渲染**中被复用的动态组件。
+
+```js
+// 是否为重新激活的动态组件(即使是组件VNode第一次进入时，是不存在.componentInstance属性的)
+const isReactivated = isDef(vnode.componentInstance) && i.keepAlive;
+
+if (isTrue(isReactivated)) {
+    reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm)
+}
+```
+
+如果是复用的动态组件，那么我们在普通的处理之际会调用`reactivateComponent()`进行特殊的处理。
+
+## initComponent()——处理组件VNode属性
+
+该函数用于处理组件`VNode`上的各种属性，将其添加到其对应的`DOM`元素上。
+
+```js
+function initComponent(vnode, insertedVnodeQueue) {
+
+    // 是否存在等待插入的队列(组件根节点上的)，如果有则全部加入insertedVNodeQueue中
+    if (isDef(vnode.data.pendingInsert)) {
+        insertedVnodeQueue.push.apply(insertedVnodeQueue, vnode.data.pendingInsert)
+        vnode.data.pendingInsert = null;
+    }
+
+    // 将组件VNode的elm同步到组件实例的$el
+    vnode.elm = vnode.componentInstance.$el;
+
+    // 是否能进行patch操作(只要组件中存在任何真实元素VNode节点就行)
+    if (isPatchable(vnode)) {
+
+        // 调用该函数处理组件VNode上的属性
+        invokeCreateHooks(vnode, insertedVnodeQueue);
+
+        // 设置该VNode节点的组件作用域
+        setScope(vnode);
+    } else {
+
+        // empty component root.
+        // 空的组件根节点时
+        // skip all element-related modules except for ref (#3455)
+        // 除了更新ref外跳过所有的其他属性的更新
+        registerRef(vnode);
+
+        // make sure to invoke the insert hook
+        // 确保调用insert的钩子函数
+        insertedVnodeQueue.push(vnode)
+    }
+}
+```
+
+这里可以看到组件的`VNode.elm`是与根元素同样的；由于组件处理完后要插入`insertedVnodeQueue`队列的节点无法直接加入到我们当前最顶的`insertedVnodeQueue`队列中，所以只能在根`VNode.data`中来实现，所以这里将组件编译后要在`insert`阶段调用`hook`的`VNode`节点全部加入顶层的`insertedVnodeQueue`队列：
+
+```js
+// 是否存在等待插入的队列(组件根节点上的)，如果有则全部加入insertedVNodeQueue中
+if (isDef(vnode.data.pendingInsert)) {
+    insertedVnodeQueue.push.apply(insertedVnodeQueue, vnode.data.pendingInsert)
+    vnode.data.pendingInsert = null;
+}
+```
+
+接下来便是处理一种边界情况，假如有个如下的组件模版：
+
+```js
+<div v-if="a" ref="div"></div>
+```
+
+虽然它是一个组件，但是当其`a`为`false`时，该组件就为一个空组件，我们就不对其进行任何处理，但是保留其`ref`属性的处理。这里调用[`isPatchable()`](#ispatchablevnode%e6%98%af%e5%90%a6%e8%83%bd%e8%bf%9b%e8%a1%8cpatch)函数来判断其是否能进行`patch`操作。正常的组件(非空)，则直接调用[`invokeCreateHooks()`](../封装的处理节点属性方法/README.md)开始处理属性，然后调用[`setScope()`](#setscope%e8%ae%be%e7%bd%aecss%e4%bd%9c%e7%94%a8%e5%9f%9f%e5%b1%9e%e6%80%a7)设置`css`作用域；而空组件则只调用[`registerRef()`](../封装的处理节点属性方法/更新ref/README.md)注册一个`ref`属性。
+
+## reactivateComponent()——拒绝复用动态组件过渡动画问题
+
+该函数是专用于为复用的动态组件解决其过渡动画无法正常调用的问题
+
+但我目前还不知道具体原因，我会在了解所有流程后在看一次，**留坑**
+
+```js
+function reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm) {
+    let i
+    // hack for #4339: a reactivated component with inner transition
+    // does not trigger because the inner node's created hooks are not called
+    // again. It's not ideal to involve module-specific logic in here but
+    // there doesn't seem to be a better way to do it.
+    // 专为#4339问题的解决方案：当一个重新被激活的动态组件内含有transition组件时，
+    // 不会执行动画，因为其过渡动画created周期的钩子函数不会调用。目前除了以下方式没有
+    // 更好的解决方式
+    let innerNode = vnode;
+
+    // 找到执行过渡动画的根节点，为其执行动画
+    while (innerNode.componentInstance) {
+
+        // 找到内部节点的根VNode节点
+        innerNode = innerNode.componentInstance._vnode;
+
+        // 当前innerNode是否为transition中的根VNode节点,是则调用其activate函数
+        if (isDef(i = innerNode.data) && isDef(i = i.transition)) {
+            for (i = 0; i < cbs.activate.length; ++i) {
+                cbs.activate[i](emptyNode, innerNode)
+            }
+
+            // 将其加入inserted队列，等待调用其insert-hook更新过渡动画m,
+            insertedVnodeQueue.push(innerNode)
+            break
+        }
+    }
+
+    // unlike a newly created component,
+    // a reactivated keep-alive component doesn't insert itself
+    insert(parentElm, vnode.elm, refElm)
+}
+```
 
 ## setScope()——设置CSS作用域属性
 
@@ -510,3 +689,22 @@ function invokeCreateHooks(vnode, insertedVnodeQueue) {
 ```
 
 这里我们可以看到`insert`阶段的钩子函数，会存入该队列中，等待节点插入文档时调用。
+
+## isPatchable()——VNode是否能进行patch
+
+该函数由来判断一个组件是否能进行`patch()`操作，必须要保证一个组件中存在真实的`DOM`元素`VNode`才能进行`patch()`操作。
+
+```js
+function isPatchable(vnode) {
+
+    // 为组件标签时，
+    while (vnode.componentInstance) {
+
+        // 继续获取最顶层的真实DOM根元素VNode
+        vnode = vnode.componentInstance._vnode
+    }
+
+    // 是否定义有标签
+    return isDef(vnode.tag);
+}
+```

@@ -41,26 +41,42 @@ import {
 // inline hooks to be invoked on component VNodes during patch
 const componentVNodeHooks = {
     init(vnode: VNodeWithData, hydrating: boolean): ? boolean {
-        if (
+        if (// 是否该组件节点已存在vm实例
             vnode.componentInstance &&
+
+            // 该组件vm实例未注销
             !vnode.componentInstance._isDestroyed &&
+
+            // 该组件为动态组件
             vnode.data.keepAlive
         ) {
             // kept-alive components, treat as a patch
             const mountedNode: any = vnode // work around flow
             componentVNodeHooks.prepatch(mountedNode, mountedNode)
         } else {
+
+            // 为组件VNode创建其组件实例并挂载在其componentInstance上
             const child = vnode.componentInstance = createComponentInstanceForVnode(
                 vnode,
+
+                // 当前处理的vm实例，也即组件实例的父实例
                 activeInstance
-            )
+            );
+
+            // 调用$mount函数创建
             child.$mount(hydrating ? vnode.elm : undefined, hydrating)
         }
     },
 
     prepatch(oldVnode: MountedComponentVNode, vnode: MountedComponentVNode) {
-        const options = vnode.componentOptions
-        const child = vnode.componentInstance = oldVnode.componentInstance
+
+        // 新VNode节点的组件配置
+        const options = vnode.componentOptions;
+
+        // 新的VNode节点组件实例属性继承旧VNode节点的
+        const child = vnode.componentInstance = oldVnode.componentInstance;
+
+        // 更新子组件
         updateChildComponent(
             child,
             options.propsData, // updated props
@@ -257,21 +273,34 @@ export function createComponent(
 }
 
 export function createComponentInstanceForVnode(
+    // 组件VNode节点
     vnode: any, // we know it's MountedComponentVNode but flow doesn't
+
+    // 组件的父组件
     parent: any, // activeInstance in lifecycle state
 ): Component {
+
+    // 配置组件的option
     const options: InternalComponentOptions = {
         _isComponent: true,
+
+        // 这里可以看出_parentVNode即代表组件标签节点
         _parentVnode: vnode,
         parent
-    }
+    };
+
     // check inline-template render functions
-    const inlineTemplate = vnode.data.inlineTemplate
+    // 是否为内联模版
+    const inlineTemplate = vnode.data.inlineTemplate;
+
+    // 如果为内联模版组件，那么提前为其定义渲染函数
     if (isDef(inlineTemplate)) {
         options.render = inlineTemplate.render
         options.staticRenderFns = inlineTemplate.staticRenderFns
     }
-    return new vnode.componentOptions.Ctor(options)
+
+    // 调用之前创建的Vue组件构造函数创建组件实例，重复根Vue实例的过程
+    return new vnode.componentOptions.Ctor(options);
 }
 
 function installComponentHooks(data: VNodeData) {

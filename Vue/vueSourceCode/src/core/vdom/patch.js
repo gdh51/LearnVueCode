@@ -268,14 +268,18 @@ export function createPatchFunction(backend) {
 
         // 获取节点的属性
         let i = vnode.data;
+
+        // 如果存在属性则说明至少不为一个普通的元素
         if (isDef(i)) {
 
-            // 是否为动态组件
-            const isReactivated = isDef(vnode.componentInstance) && i.keepAlive
+            // 是否为重新激活的动态组件(即使是组件VNode第一次进入时，是不存在.componentInstance属性的)
+            const isReactivated = isDef(vnode.componentInstance) && i.keepAlive;
 
             // 如果存在初始化钩子函数则调用(仅组件中存在)
             if (isDef(i = i.hook) && isDef(i = i.init)) {
-                i(vnode, false /* hydrating */ )
+
+                // 调用初始化init()函数，创建组件实例与其dom片段(客户端渲染，不进行注水)
+                i(vnode, false /* hydrating */ );
             }
 
             // after calling the init hook, if the vnode is a child component
@@ -286,8 +290,14 @@ export function createPatchFunction(backend) {
             // 子组件同样也已经设置了其占位符元素(挂载的元素)
             // 这样我们可以直接返回这个元素
             if (isDef(vnode.componentInstance)) {
-                initComponent(vnode, insertedVnodeQueue)
-                insert(parentElm, vnode.elm, refElm)
+
+                // 初始化组件VNode的属性
+                initComponent(vnode, insertedVnodeQueue);
+
+                // 将组件的根节点插入指定元素之前
+                insert(parentElm, vnode.elm, refElm);
+
+                // 如果其为重新激活的动态组件，那么
                 if (isTrue(isReactivated)) {
                     reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm)
                 }
@@ -297,19 +307,34 @@ export function createPatchFunction(backend) {
     }
 
     function initComponent(vnode, insertedVnodeQueue) {
+
+        // 是否存在等待插入的队列(组件根节点上的)，如果有则全部加入insertedVNodeQueue中
         if (isDef(vnode.data.pendingInsert)) {
             insertedVnodeQueue.push.apply(insertedVnodeQueue, vnode.data.pendingInsert)
             vnode.data.pendingInsert = null
         }
-        vnode.elm = vnode.componentInstance.$el
+
+        // 将组件VNode的elm同步到组件实例的$el
+        vnode.elm = vnode.componentInstance.$el;
+
+        // 是否能进行patch操作(只要组件中存在任何真实元素VNode节点就行)
         if (isPatchable(vnode)) {
-            invokeCreateHooks(vnode, insertedVnodeQueue)
-            setScope(vnode)
+
+            // 调用该函数处理组件VNode上的属性
+            invokeCreateHooks(vnode, insertedVnodeQueue);
+
+            // 设置该VNode节点的组件作用域
+            setScope(vnode);
         } else {
+
             // empty component root.
+            // 空的组件根节点时
             // skip all element-related modules except for ref (#3455)
-            registerRef(vnode)
+            // 除了更新ref外跳过所有的其他属性的更新
+            registerRef(vnode);
+
             // make sure to invoke the insert hook
+            // 确保调用insert的钩子函数
             insertedVnodeQueue.push(vnode)
         }
     }
@@ -320,13 +345,24 @@ export function createPatchFunction(backend) {
         // does not trigger because the inner node's created hooks are not called
         // again. It's not ideal to involve module-specific logic in here but
         // there doesn't seem to be a better way to do it.
-        let innerNode = vnode
+        // 专为#4339问题的解决方案：当一个重新被激活的动态组件内含有transition组件时，
+        // 不会执行动画，因为其过渡动画created周期的钩子函数不会调用。目前除了以下方式没有
+        // 更好的解决方式
+        let innerNode = vnode;
+
+        // 找到执行过渡动画的根节点，为其执行动画
         while (innerNode.componentInstance) {
-            innerNode = innerNode.componentInstance._vnode
+
+            // 找到内部节点的根VNode节点
+            innerNode = innerNode.componentInstance._vnode;
+
+            // 当前innerNode是否为transition中的根VNode节点,是则调用其activate函数
             if (isDef(i = innerNode.data) && isDef(i = i.transition)) {
                 for (i = 0; i < cbs.activate.length; ++i) {
                     cbs.activate[i](emptyNode, innerNode)
                 }
+
+                // 将其加入inserted队列，等待调用其insert-hook更新过渡动画m,
                 insertedVnodeQueue.push(innerNode)
                 break
             }
@@ -371,10 +407,16 @@ export function createPatchFunction(backend) {
     }
 
     function isPatchable(vnode) {
+
+        // 为组件标签时，
         while (vnode.componentInstance) {
+
+            // 继续获取最顶层的真实DOM根元素VNode
             vnode = vnode.componentInstance._vnode
         }
-        return isDef(vnode.tag)
+
+        // 是否定义有标签
+        return isDef(vnode.tag);
     }
 
     // 调用create周期的钩子函数
