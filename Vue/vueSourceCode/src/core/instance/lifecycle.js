@@ -346,6 +346,8 @@ export function updateChildComponent(
 }
 
 function isInInactiveTree(vm) {
+
+    // 查找其祖先vm实例，如果有一个vm实例为不活跃的，则为true
     while (vm && (vm = vm.$parent)) {
         if (vm._inactive) return true
     }
@@ -353,19 +355,33 @@ function isInInactiveTree(vm) {
 }
 
 export function activateChildComponent(vm: Component, direct ? : boolean) {
+
+    // 直接激活子组件时，设置其不活跃状态为false
     if (direct) {
-        vm._directInactive = false
+        vm._directInactive = false;
+
+        // 该vm实例是否处于一个不活跃的dom树中，如果是则直接返回
         if (isInInactiveTree(vm)) {
             return
         }
+
+    // 是否为直接不活跃的mv实例，如果是则退出
     } else if (vm._directInactive) {
         return
     }
+
+    // 是否为不活跃状态
     if (vm._inactive || vm._inactive === null) {
-        vm._inactive = false
+
+        // 关闭不活跃状态
+        vm._inactive = false;
+
+        // 激活动态组件的子组件
         for (let i = 0; i < vm.$children.length; i++) {
             activateChildComponent(vm.$children[i])
         }
+
+        // 调用动态组件的activated周期函数
         callHook(vm, 'activated')
     }
 }

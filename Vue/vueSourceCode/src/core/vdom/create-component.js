@@ -87,22 +87,36 @@ const componentVNodeHooks = {
     },
 
     insert(vnode: MountedComponentVNode) {
+
+        // 取出组件VNode节点的组件vm实例，与其所在的父级上下文vm实例
         const {
             context,
             componentInstance
-        } = vnode
+        } = vnode;
+
+        // 标记组件为已挂载
         if (!componentInstance._isMounted) {
-            componentInstance._isMounted = true
+            componentInstance._isMounted = true;
+
+            // 调用组件mounted生命周期函数
             callHook(componentInstance, 'mounted')
         }
+
+        // 如果为动态组件
         if (vnode.data.keepAlive) {
+
+            // 如果父级上下文已挂载(换句话说就是切换动态组件时)
             if (context._isMounted) {
                 // vue-router#1212
                 // During updates, a kept-alive component's child components may
                 // change, so directly walking the tree here may call activated hooks
                 // on incorrect children. Instead we push them into a queue which will
                 // be processed after the whole patch process ended.
-                queueActivatedComponent(componentInstance)
+                // 在update期间，一个动态组件的子组件可能会改变，所以直接遍历其VNode树可能会再次调用
+                // 其activated-hook，所以我们将其加入到一个队列中，待patch结束在调用
+                queueActivatedComponent(componentInstance);
+
+            // 初始化渲染时，即为激活动态组件，触发其activate钩子函数
             } else {
                 activateChildComponent(componentInstance, true /* direct */ )
             }

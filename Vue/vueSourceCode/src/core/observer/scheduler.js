@@ -159,11 +159,14 @@ function callUpdatedHooks(queue) {
 /**
  * Queue a kept-alive component that was activated during patch.
  * The queue will be processed after the entire tree has been patched.
+ * 将已激活的动态组件装入队列中，这个队列会在整个VNode树被处理完后进行处理
  */
 export function queueActivatedComponent(vm: Component) {
+
     // setting _inactive to false here so that a render function can
     // rely on checking whether it's in an inactive tree (e.g. router-view)
-    vm._inactive = false
+    // 设置_inactive为false使渲染函数可以判断它是否为一个不活跃的VNode Tree
+    vm._inactive = false;
     activatedChildren.push(vm)
 }
 

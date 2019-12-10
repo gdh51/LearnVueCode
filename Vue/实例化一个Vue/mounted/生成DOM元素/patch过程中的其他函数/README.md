@@ -322,7 +322,7 @@ if (isDef(vnode.data.pendingInsert)) {
 <div v-if="a" ref="div"></div>
 ```
 
-虽然它是一个组件，但是当其`a`为`false`时，该组件就为一个空组件，我们就不对其进行任何处理，但是保留其`ref`属性的处理。这里调用[`isPatchable()`](#ispatchablevnode%e6%98%af%e5%90%a6%e8%83%bd%e8%bf%9b%e8%a1%8cpatch)函数来判断其是否能进行`patch`操作。正常的组件(非空)，则直接调用[`invokeCreateHooks()`](../封装的处理节点属性方法/README.md)开始处理属性，然后调用[`setScope()`](#setscope%e8%ae%be%e7%bd%aecss%e4%bd%9c%e7%94%a8%e5%9f%9f%e5%b1%9e%e6%80%a7)设置`css`作用域；而空组件则只调用[`registerRef()`](../封装的处理节点属性方法/更新ref/README.md)注册一个`ref`属性。
+虽然它是一个组件，但是当其`a`为`false`时，该组件就为一个空组件，我们就不对其进行任何处理，但是保留其`ref`属性的处理。这里调用[`isPatchable()`](#ispatchablevnode%e6%98%af%e5%90%a6%e8%83%bd%e8%bf%9b%e8%a1%8cpatch)函数来判断其是否能进行`patch`操作。正常的组件(非空)，则直接调用[`invokeCreateHooks()`](#invokecreatehooks%e8%b0%83%e7%94%a8create%e7%94%9f%e5%91%bd%e5%91%a8%e6%9c%9f%e7%9a%84%e9%92%a9%e5%ad%90%e5%87%bd%e6%95%b0)开始处理属性，然后调用[`setScope()`](#setscope%e8%ae%be%e7%bd%aecss%e4%bd%9c%e7%94%a8%e5%9f%9f%e5%b1%9e%e6%80%a7)设置`css`作用域；而空组件则只调用[`registerRef()`](../封装的处理节点属性方法/更新ref/README.md)注册一个`ref`属性。
 
 ## reactivateComponent()——拒绝复用动态组件过渡动画问题
 
@@ -708,3 +708,30 @@ function isPatchable(vnode) {
     return isDef(vnode.tag);
 }
 ```
+
+## invokeInsertHook()——调用VNode的insert周期的钩子函数
+
+该函数用于处理组件中的那些要调用`insert()`函数的`VNode`，如果为根节点，那么则为调用这些`insert()`函数
+
+```js
+function invokeInsertHook(vnode, queue, initial) {
+
+    // delay insert hooks for component root nodes, invoke them after the
+    // element is really inserted
+    // 延期调用组件根节点insert函数，待真正插入到文档中调用它们(即最顶层根节点插入文档时)
+    // 确认为初始化且该根VNode节点存在父节点，那么将insertVNode队列存入组件VNode的属性中
+    if (isTrue(initial) && isDef(vnode.parent)) {
+        vnode.parent.data.pendingInsert = queue
+    } else {
+
+        // 对于最顶层根节点，直接调用其insert-hook函数
+        for (let i = 0; i < queue.length; ++i) {
+            queue[i].data.hook.insert(queue[i])
+        }
+    }
+}
+```
+
+具体的`insert()`函数一般包括，普通组件、过渡组件、`v-model`。
+
+## removeVnodes()——移除

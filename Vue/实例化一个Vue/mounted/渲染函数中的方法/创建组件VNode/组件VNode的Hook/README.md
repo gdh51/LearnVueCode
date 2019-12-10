@@ -79,3 +79,123 @@ function prepatch(oldVnode: MountedComponentVNode, vnode: MountedComponentVNode)
 ```
 
 暂时不看这个函数
+
+## insert()——调用组件insert钩子函数
+
+该函数会在整个`DOM`被插入文档后调用，它主要是改变组件实例的`._isMounted`状态，然后调用组件的`mounted`钩子函数。
+
+```js
+function insert(vnode: MountedComponentVNode) {
+
+    // 取出组件VNode节点的组件vm实例，与其所在的父级上下文vm实例
+    const {
+        context,
+        componentInstance
+    } = vnode;
+
+    // 标记组件为已挂载
+    if (!componentInstance._isMounted) {
+        componentInstance._isMounted = true;
+
+        // 调用组件mounted生命周期函数
+        callHook(componentInstance, 'mounted')
+    }
+
+    // 如果为动态组件
+    if (vnode.data.keepAlive) {
+
+        // 如果父级上下文已挂载(换句话说就是切换动态组件时)
+        if (context._isMounted) {
+            // vue-router#1212
+            // During updates, a kept-alive component's child components may
+            // change, so directly walking the tree here may call activated hooks
+            // on incorrect children. Instead we push them into a queue which will
+            // be processed after the whole patch process ended.
+            // 在update期间，一个动态组件的子组件可能会改变，所以直接遍历其VNode树可能会再次调用
+            // 其activated-hook，所以我们将其加入到一个队列中，待patch结束在调用
+            queueActivatedComponent(componentInstance);
+
+        // 初始化渲染时，即为激活动态组件，触发其activate钩子函数
+        } else {
+            activateChildComponent(componentInstance, true /* direct */ )
+        }
+    }
+}
+```
+
+对于动态组件，它对于初始化渲染和复用组件时有两种处理方式。初始化渲染时，它会调用`activateChildComponent()`函数来处理动态组件的状态:
+
+### activateChildComponent()——激活动态组件及其子组件
+
+该方法用于直接激活动态组件，然后对其子组件进行激活，这个过程中调用其`vm`实例的`activated`生命周期函数。
+
+```js
+function activateChildComponent(vm: Component, direct ? : boolean) {
+
+    // 直接激活子组件时，设置其不活跃状态为false
+    if (direct) {
+        vm._directInactive = false;
+
+        // 该vm实例是否处于一个不活跃的dom树中，如果是则直接返回
+        if (isInInactiveTree(vm)) {
+            return
+        }
+
+    // 是否为直接不活跃的mv实例，如果是则退出
+    } else if (vm._directInactive) {
+        return
+    }
+
+    // 是否为不活跃状态
+    if (vm._inactive || vm._inactive === null) {
+
+        // 关闭不活跃状态
+        vm._inactive = false;
+
+        // 激活动态组件的子组件
+        for (let i = 0; i < vm.$children.length; i++) {
+            activateChildComponent(vm.$children[i])
+        }
+
+        // 调用动态组件的activated周期函数
+        callHook(vm, 'activated')
+    }
+}
+```
+
+该函数在入口时进行了一个判断是否为直接激活？如果是就将直接失活设置为false，但还是要通过`isInInactiveTree()`函数检测当前`vm`实例是否在一个失活的`DOM`树中，如果是则不会激活组件。
+
+```js
+function isInInactiveTree(vm) {
+
+    // 查找其祖先vm实例，如果有一个vm实例为不活跃的，则为true
+    while (vm && (vm = vm.$parent)) {
+        if (vm._inactive) return true
+    }
+    return false
+}
+```
+
+对于是否处于失活的DOM树中的检测比较简单，就是检查其组件vm实例中是否存在不活跃的vm实例，如果有则直接视为存在于不活跃的DOM树中；除了被`activateChildComponent()`方法直接激活的组件外，还有一些组件被`deactivateChildComponent()`方法失活(这里不学习)，所以这里我们不会对这些组件进行激活。
+____
+那么对于复用的组件是怎么处理的呢？这里出现的问题是动态组件变化时在更新组件的过程中，其子组件也可能在更新时发生变化，所以如果直接就遍历动态组件及其子组件时，有可能就会调用那些不被使用的子组件的`activate`生命周期的函数，所以此时我们调用`queueActivatedComponent()`将其占时存放在一个队列，待DOM更新完毕后，再来激活这些动态组件：
+
+### queueActivatedComponent()——将动态组件存入更新队列中
+
+该方法很简单，就是将组件存入一个队列中
+
+```js
+/**
+ * Queue a kept-alive component that was activated during patch.
+ * The queue will be processed after the entire tree has been patched.
+ * 将已激活的动态组件装入队列中，这个队列会在整个VNode树被处理完后进行处理
+ */
+function queueActivatedComponent(vm: Component) {
+
+    // setting _inactive to false here so that a render function can
+    // rely on checking whether it's in an inactive tree (e.g. router-view)
+    // 设置_inactive为false使渲染函数可以判断它是否为一个不活跃的VNode Tree
+    vm._inactive = false;
+    activatedChildren.push(vm)
+}
+```
