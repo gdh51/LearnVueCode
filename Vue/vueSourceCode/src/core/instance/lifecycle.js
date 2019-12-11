@@ -89,14 +89,14 @@ export function lifecycleMixin(Vue: Class < Component > ) {
         // 上一个元素(如果为根实例，那么此时就为挂载的元素)
         const prevEl = vm.$el;
 
-        // 上一个Vnode节点(如果为根实例那么此时就为空)
+        // 上一个Vnode节点(如果为根实例那么此时就为空)(其他时候为根VNode节点)
         const prevVnode = vm._vnode;
 
         // 设置当前更新的vm实例，并存储上一个vm实例，
         // 返回一个用于切换为上一个实例的函数
         const restoreActiveInstance = setActiveInstance(vm);
 
-        // 将当前VNode节点，挂载至_vnode
+        // 将当前VNode节点，挂载至_vnode(所以当前节点)
         vm._vnode = vnode;
 
         // Vue.prototype.__patch__ is injected in entry points
@@ -113,6 +113,8 @@ export function lifecycleMixin(Vue: Class < Component > ) {
             // updates
             vm.$el = vm.__patch__(prevVnode, vnode)
         }
+
+        // 释放当前vm实例
         restoreActiveInstance()
 
         // update __vue__ reference
@@ -123,9 +125,11 @@ export function lifecycleMixin(Vue: Class < Component > ) {
             vm.$el.__vue__ = vm
         }
         // if parent is an HOC, update its $el as well
+        // 如果父级为高阶组件，也更新它的$el
         if (vm.$vnode && vm.$parent && vm.$vnode === vm.$parent._vnode) {
             vm.$parent.$el = vm.$el
         }
+
         // updated hook is called by the scheduler to ensure that children are
         // updated in a parent's updated hook.
     }

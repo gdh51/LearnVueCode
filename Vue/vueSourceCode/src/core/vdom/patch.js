@@ -114,12 +114,18 @@ export function createPatchFunction(backend) {
 
     function createRmCb(childElm, listeners) {
         function remove() {
+
+            // 当remove函数数量为1时，立即移除childElm
             if (--remove.listeners === 0) {
                 removeNode(childElm)
             }
         }
-        remove.listeners = listeners
-        return remove
+
+        // 确定remove函数的数量
+        remove.listeners = listeners;
+
+        // 返回移除函数
+        return remove;
     }
 
     function removeNode(el) {
@@ -539,32 +545,47 @@ export function createPatchFunction(backend) {
 
     function removeAndInvokeRemoveHook(vnode, rm) {
 
-        // 确定VNode是否有Hook函数
+        // 确认是否为元素或组件节点(非文本节点或空节点)
         if (isDef(rm) || isDef(vnode.data)) {
             let i;
+
+            // remove函数的数量(这里虽然cbs中只有一个，但是下面会创建另一个)
             const listeners = cbs.remove.length + 1;
+
+            // 是否为递归调用
             if (isDef(rm)) {
+
                 // we have a recursively passed down rm callback
                 // increase the listeners count
+                // 递归调用时，增加remove函数的数量
                 rm.listeners += listeners
             } else {
 
                 // directly removing
-                // 直接移除
+                // 创建remove函数，当listeners为1时，调用最终的移除函数移除元素
                 rm = createRmCb(vnode.elm, listeners)
             }
 
             // recursively invoke hooks on child component root node
+            // 如果当VNode节点为组件节点，那么递归对该组件实例调用
             if (isDef(i = vnode.componentInstance) && isDef(i = i._vnode) && isDef(i.data)) {
                 removeAndInvokeRemoveHook(i, rm)
             }
+
+            // 调用全部remove函数
             for (i = 0; i < cbs.remove.length; ++i) {
                 cbs.remove[i](vnode, rm)
             }
+
+            // 如果VNode节点自带remove hook，那么调用它
             if (isDef(i = vnode.data.hook) && isDef(i = i.remove)) {
+
+                // 这里要传入rm函数，让其调用来计算remove数量
                 i(vnode, rm)
             } else {
-                rm()
+
+                // 或则调用rm()函数
+                rm();
             }
 
         // 没有Hook函数时，直接移除即可
@@ -960,7 +981,7 @@ export function createPatchFunction(backend) {
 
             // empty mount (likely as component), create new root element
             // 凭空挂载，比如创建组件时，直接创建一个根的DOM元素
-            // 改进状态为初始化补丁状态。
+            // 改变状态为初始化补丁状态。
             isInitialPatch = true;
 
             // 为VNode创建元素，并创建其所有子元素
@@ -1068,9 +1089,11 @@ export function createPatchFunction(backend) {
                 // destroy old node
                 // 直接销毁旧元素节点和vnode
                 if (isDef(parentElm)) {
+
+                    // 移除该元素，并调用其destroy钩子函数
                     removeVnodes(parentElm, [oldVnode], 0, 0);
 
-                //
+                // 如果未挂载元素，那么直接调用其destroy()钩子函数
                 } else if (isDef(oldVnode.tag)) {
                     invokeDestroyHook(oldVnode);
                 }

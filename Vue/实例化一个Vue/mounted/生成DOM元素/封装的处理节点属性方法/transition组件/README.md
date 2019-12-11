@@ -26,3 +26,21 @@ function insert () {
     enterHook && enterHook(el, cb);
 }
 ```
+
+## remove阶段
+
+该函数调用于组件销毁阶段，执行过渡动画的函数，并执行`rm()`回调
+
+```js
+remove(vnode: VNode, rm: Function) {
+
+    // 如果不是v-show = true，则执行离开动画
+    if (vnode.data.show !== true) {
+
+        // 传入rm在动画执行完毕时调用。
+        leave(vnode, rm)
+    } else {
+        rm()
+    }
+}
+```

@@ -415,8 +415,11 @@ export default inBrowser ? {
     create: _enter,
     activate: _enter,
     remove(vnode: VNode, rm: Function) {
-        /* istanbul ignore else */
+
+        // 如果不是v-show = true，则执行离开动画
         if (vnode.data.show !== true) {
+
+            // 传入rm在动画执行完毕时调用。
             leave(vnode, rm)
         } else {
             rm()

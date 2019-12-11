@@ -4,12 +4,15 @@
 
 目录：
 
+- [createEle()——创建一个元素，插入父节点](#createele%e5%88%9b%e5%bb%ba%e4%b8%80%e4%b8%aa%e5%85%83%e7%b4%a0%e6%8f%92%e5%85%a5%e7%88%b6%e8%8a%82%e7%82%b9)
 - [baseSetAttr()——设置元素attribute](#basesetattr%e8%ae%be%e7%bd%ae%e5%85%83%e7%b4%a0attribute)
 - [checkDuplicateKeys()——检查是否存在重复key值](#checkduplicatekeys%e6%a3%80%e6%9f%a5%e6%98%af%e5%90%a6%e5%ad%98%e5%9c%a8%e9%87%8d%e5%a4%8dkey%e5%80%bc)
 - [setScope()——设置CSS作用域属性](#setscope%e8%ae%be%e7%bd%aecss%e4%bd%9c%e7%94%a8%e5%9f%9f%e5%b1%9e%e6%80%a7)
 - [setAttr()——设置元素的属性](#setattr%e8%ae%be%e7%bd%ae%e5%85%83%e7%b4%a0%e7%9a%84%e5%b1%9e%e6%80%a7)
 - [baseSetAttr()——设置元素attribute](#basesetattr%e8%ae%be%e7%bd%ae%e5%85%83%e7%b4%a0attribute)
 - [insert()——向ref元素前插入指定元素](#insert%e5%90%91ref%e5%85%83%e7%b4%a0%e5%89%8d%e6%8f%92%e5%85%a5%e6%8c%87%e5%ae%9a%e5%85%83%e7%b4%a0)
+- [removeVnodes()——移除VNode元素](#removevnodes%e7%a7%bb%e9%99%a4vnode%e5%85%83%e7%b4%a0)
+- [invokeDestroyHook()——调用destroy()钩子函数](#invokedestroyhook%e8%b0%83%e7%94%a8destroy%e9%92%a9%e5%ad%90%e5%87%bd%e6%95%b0)
 
 ## createEle()——创建一个元素，插入父节点
 
@@ -734,4 +737,166 @@ function invokeInsertHook(vnode, queue, initial) {
 
 具体的`insert()`函数一般包括，普通组件、过渡组件、`v-model`。
 
-## removeVnodes()——移除
+## removeVnodes()——移除VNode元素
+
+该函数用于通过一个`VNode`节点，移除其所挂载的元素节点：
+
+```js
+// 移除startIdx~endIdx间的VNode
+function removeVnodes(parentElm, vnodes, startIdx, endIdx) {
+
+    // 从左到右移除
+    for (; startIdx <= endIdx; ++startIdx) {
+        const ch = vnodes[startIdx];
+        if (isDef(ch)) {
+
+            // 移除元素
+            if (isDef(ch.tag)) {
+                removeAndInvokeRemoveHook(ch);
+                invokeDestroyHook(ch);
+
+            // 移除文本节点
+            } else { // Text node
+                removeNode(ch.elm);
+            }
+        }
+    }
+}
+```
+
+移除的过程差不多就是遍历所有VNode节点，然后按序，如果为元素则分别调用[`removeAndInvokeRemoveHook()`](#removeandinvokeremovehook%e7%a7%bb%e9%99%a4%e5%85%83%e7%b4%a0%e8%8a%82%e7%82%b9)和 [`invokeDestroyHook()`](#invokedestroyhook%e8%b0%83%e7%94%a8destroy%e9%92%a9%e5%ad%90%e5%87%bd%e6%95%b0)移除其元素然后调用其`destroy()`钩子函数；如果为文本则直接移除
+
+### removeAndInvokeRemoveHook()——移除元素节点
+
+这里逐个说明下这个函数，因为比较乱，先说明该函数用于移除元素，然后递归调用其子组件的各个`remove()`钩子函数，但真正移除元素只移除根元素。
+
+```js
+function removeAndInvokeRemoveHook(vnode, rm) {
+
+    // 确认是否为元素或组件节点(非文本节点或空节点)
+    if (isDef(rm) || isDef(vnode.data)) {
+
+        // 一个通用变量，只在使用时赋予其含义
+        let i;
+
+        // remove函数的数量(这里虽然cbs中只有一个，但是下面会创建另一个)
+        const listeners = cbs.remove.length + 1;
+
+        // 是否为递归调用
+        if (isDef(rm)) {
+
+            // we have a recursively passed down rm callback
+            // increase the listeners count
+            // 递归调用时，增加remove函数的数量
+            rm.listeners += listeners
+        } else {
+
+            // directly removing
+            // 创建remove函数，当listeners为1时，调用最终的移除函数移除元素
+            rm = createRmCb(vnode.elm, listeners)
+        }
+
+        // recursively invoke hooks on child component root node
+        // 如果当VNode节点为组件节点，那么递归对该组件实例调用
+        if (isDef(i = vnode.componentInstance) && isDef(i = i._vnode) && isDef(i.data)) {
+            removeAndInvokeRemoveHook(i, rm)
+        }
+
+        // 调用全部remove函数
+        for (i = 0; i < cbs.remove.length; ++i) {
+            cbs.remove[i](vnode, rm)
+        }
+
+        // 如果VNode节点自带remove hook，那么调用它
+        if (isDef(i = vnode.data.hook) && isDef(i = i.remove)) {
+
+            // 这里要传入rm函数，让其调用来计算remove数量
+            i(vnode, rm)
+        } else {
+
+            // 或则调用rm()函数
+            rm();
+        }
+
+    // 没有Hook函数时，直接移除即可
+    } else {
+        removeNode(vnode.elm)
+    }
+}
+```
+
+首先`rm`函数在根节点调用时是不存在的，它只存在于递归调用中，所以根节点调用会生成一个函数用于移除根节点元素：
+
+```js
+const listeners = cbs.remove.length + 1;
+
+rm = createRmCb(vnode.elm, listeners);
+
+function createRmCb(childElm, listeners) {
+    function remove() {
+
+        // 当remove函数数量为1时，立即移除childElm
+        if (--remove.listeners === 0) {
+            removeNode(childElm)
+        }
+    }
+
+    // 确定remove函数的数量
+    remove.listeners = listeners;
+
+    // 返回移除函数
+    return remove;
+}
+```
+
+而`listeners`变量则表示，剩余应该调用的`remove()`函数数量，最后一个`remove()`函数即`createRmCb()`的返回值。无论是什么vm实例，它们都会调用一次`cbs.remove()`函数(这个必定调用的函数来源于`transition`组件)，调用的同时减少一个`listeners`数量，如果该`VNode`为组件节点，那么会调用其组件的`remove()`函数，并传入`createRmCb()`返回的函数进行计数，最后当`listeners`回归为`1`时，就移除该元素。
+
+### removeNode()——移除文本节点
+
+该函数用于移除文本节点，比较简单，直接调用[`removeChild()`](../封装的dom方法/README.md#removechild%e7%a7%bb%e9%99%a4%e6%8c%87%e5%ae%9a%e7%9a%84%e5%ad%90%e8%8a%82%e7%82%b9)方法移除指定的元素。
+
+```js
+function removeNode(el) {
+
+    // 其父节点
+    const parent = nodeOps.parentNode(el);
+
+    // element may have already been removed due to v-html / v-text
+    // 元素可能因为v-html/v-text的原因，已经被移除了
+    if (isDef(parent)) {
+
+        // 移除对应的元素
+        nodeOps.removeChild(parent, el)
+    }
+}
+```
+
+## invokeDestroyHook()——调用destroy()钩子函数
+
+该函数同其他调度函数一样，会从传入的`VNode`开始，为其所有子`VNode`节点调用其`destroy()`函数
+
+```js
+function invokeDestroyHook(vnode) {
+    let i, j;
+
+    // 取出节点的属性
+    const data = vnode.data;
+
+    // 如果存在
+    if (isDef(data)) {
+
+        // 调用其destroy()钩子函数
+        if (isDef(i = data.hook) && isDef(i = i.destroy)) i(vnode);
+
+        // 调用module中的destroy()钩子函数，移除属性
+        for (i = 0; i < cbs.destroy.length; ++i) cbs.destroy[i](vnode)
+    }
+
+    // 递归遍历子节点调用该函数。
+    if (isDef(i = vnode.children)) {
+        for (j = 0; j < vnode.children.length; ++j) {
+            invokeDestroyHook(vnode.children[j])
+        }
+    }
+}
+```
