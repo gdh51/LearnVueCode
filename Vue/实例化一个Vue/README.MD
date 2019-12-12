@@ -117,3 +117,9 @@ if (vm.$options.el) {
 ```
 
 查看[`beforeMount`](./beforeMount/README.md)阶段所作所为
+
+## mounted
+
+在这个阶段`Vue`要根据根实例模版生成的`render()`函数，为其生成一个渲染`Watcher`，然后开始根据`render()`函数生成的`VNode`树(此时仅包含根实例模版的)生成对应的结构，当解析到组件`VNode`时，递归为其创建组件`vm`实例，然后重复根实例的全部生命周期。。。最后将生成的元素根节点挂载到根实例的`$el`上，并返回根实例，到此为止整个初始化过程就结束了。
+
+[mounted阶段详情](./mounted/README.md)

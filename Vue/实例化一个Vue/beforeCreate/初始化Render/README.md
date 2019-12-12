@@ -10,11 +10,11 @@ function initRender(vm: Component) {
     vm._staticTrees = null; // v-once cached trees
     const options = vm.$options;
 
-    // the placeholder node in parent tree
-    // 代表父Vnode树的占位符
+    // the placeholder node in paresnt tree
+    // 代表父Vnode树的占位符// 占位符VNode节点，即我们使用的那个组件标签所代表的的VNode
     const parentVnode = vm.$vnode = options._parentVnode;
 
-    // 父级Vnode片段的上下文
+    // 组件Vnode所在的vm实例上下文
     const renderContext = parentVnode && parentVnode.context;
 
     // 将最新的插槽，和父级上下文作为参数

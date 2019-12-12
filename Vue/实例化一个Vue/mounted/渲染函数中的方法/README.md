@@ -2,6 +2,11 @@
 
 这里是介绍渲染函数中方法的目录：
 
+- [_c()——createElement()创建元素](#createelement%e5%88%9b%e5%bb%bavnode%e8%8a%82%e7%82%b9)
+- [_m()——renderStatic()渲染静态节点](#mrenderstatic%e6%b8%b2%e6%9f%93%e9%9d%99%e6%80%81%e8%8a%82%e7%82%b9)
+- [_l()——renderList()渲染v-for列表](#lrenderlist%e6%b8%b2%e6%9f%93v-for%e5%88%97%e8%a1%a8)
+- [_v()——createTextVNode()创建纯文本节点](#vcreatetextvnode%e5%88%9b%e5%bb%ba%e7%ba%af%e6%96%87%e6%9c%ac%e8%8a%82%e7%82%b9)
+
 ## _m()——renderStatic()渲染静态节点
 
 该方法用于渲染静态的节点dom片段，当然它自身不存在渲染函数，它调用静态渲染函数数组中对应的函数来进行渲染：
@@ -166,6 +171,7 @@ function _createElement(
     }
 
     // object syntax in v-bind
+    // 确认v-bind:is绑定的标签，优先取它
     if (isDef(data) && isDef(data.is)) {
         tag = data.is
     }
@@ -203,7 +209,8 @@ function _createElement(
         children.length = 0
     }
 
-    // 根据标准化等级进行标准化
+    // 根据标准化等级进行标准化，这里标准化的原因是因为，
+    // 有些内置组件可能包含多个根节点
     if (normalizationType === ALWAYS_NORMALIZE) {
         children = normalizeChildren(children)
     } else if (normalizationType === SIMPLE_NORMALIZE) {
@@ -217,6 +224,7 @@ function _createElement(
         let Ctor;
 
         // 获取该节点所处的命名空间
+        // 这里ctx.$vnode表示vm实例的组件VNode
         ns = (context.$vnode && context.$vnode.ns) || config.getTagNamespace(tag);
 
         // 如果为原生标签
@@ -228,7 +236,8 @@ function _createElement(
             )
 
         // 无属性或非静态节点的组件
-        } else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
+        } else if ((!data || !data.pre) &&
+        /* 这里在获取用户定义的组件是否存在 */isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
             // component
             vnode = createComponent(Ctor, data, context, children, tag)
         } else {
@@ -373,6 +382,8 @@ function renderList(
 
 **无论如何，在调用渲染函数时，都会传入所有的相关参数**，具体能使用哪些参数，根据用户定义情况。
 
-## _v()——createTextVNode()
+## _v()——createTextVNode()创建纯文本节点
+
+注意创建出的文本节点`data`属性为`undefined`;
 
 该函数就是直接创建个文本`VNode`节点，非常简单，无其他操作[详情](../VNode构造函数/README.md#%e5%85%b6%e4%bb%96%e8%8a%82%e7%82%b9%e7%9a%84%e5%88%9b%e5%bb%ba)

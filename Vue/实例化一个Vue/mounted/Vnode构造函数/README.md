@@ -59,7 +59,7 @@ class VNode {
         this.elm = elm;
         this.ns = undefined;
 
-        // 所在的vm实例
+        // 该VNode所在的vm实例
         this.context = context;
         this.fnContext = undefined
         this.fnOptions = undefined
@@ -67,12 +67,16 @@ class VNode {
 
         // 标签上的key值
         this.key = data && data.key;
+
+        // 当前组件标签所代表的组件对象(即我们写在代码的)
         this.componentOptions = componentOptions;
 
         // 当前组件标签所代表的组件实例
         this.componentInstance = undefined;
         this.parent = undefined
         this.raw = false
+
+        // 当前是否为静态节点
         this.isStatic = false
         this.isRootInsert = true
         this.isComment = false

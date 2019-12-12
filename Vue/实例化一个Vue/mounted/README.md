@@ -54,6 +54,7 @@ function mountComponent(
 
     // manually mounted instance, call mounted on self
     // mounted is called for render-created child components in its inserted hook
+    // 手动挂载实例时，会自己调用mounted函数
     if (vm.$vnode == null) {
         vm._isMounted = true
         callHook(vm, 'mounted');
@@ -123,7 +124,7 @@ Vue.prototype._render = function (): VNode {
         handleError(e, vm, `render`)
         // return error render result,
         // or previous vnode to prevent render error causing blank component
-        /* istanbul ignore else */
+
         if (process.env.NODE_ENV !== 'production' &&vm.$options.renderError) {
             try {
                 vnode = vm.$options.renderError.call(vm._renderProxy, vm.$createElement, e)
@@ -237,3 +238,6 @@ Vue.prototype._update = function (vnode: VNode, hydrating ? : boolean) {
 - 客户端渲染
 
 此处我们先只讲述客户端渲染，所以调用[`__patch__()`](./生成DOM元素/README.md)方法，它即我们所说的`vm`打补丁，通过它就正式开始了生成`DOM`模版，返回其`._vnode`代表的根节点的元素。之后调用[`restoreActiveInstance()`](./其他工具方法/README.md#setactiveinstance%e8%ae%be%e7%bd%ae%e5%bd%93%e5%89%8d%e6%9b%b4%e6%96%b0%e7%9a%84vm%e5%ae%9e%e4%be%8b)释放当前`vm`实例，将根`vm`实例同时挂载到根元素上。渲染就完成了。
+____
+
+正常渲染的`Watcher`结束后，如果是组件自己挂载的，会自动在其`insert-hook`钩子函数中调用`mounted()`函数，所以此处我们要手动去调用下根`Vue`实例的`mounted()`函数，至此我们的渲染全部结束，等待我们的是由更新带来的变化。

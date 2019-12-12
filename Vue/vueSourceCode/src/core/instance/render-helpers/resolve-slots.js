@@ -7,7 +7,11 @@ import type VNode from 'core/vdom/vnode'
  * 运行时助手，用于将子Vnode转换为插槽对象(处理2.5以下的废弃语法slot)
  */
 export function resolveSlots(
+
+    // 插槽中的VNode子节点
     children: ? Array < VNode > ,
+
+    // 插入插槽的内容所在的vm实例
     context : ? Component
 ): {
     [key: string]: Array < VNode >

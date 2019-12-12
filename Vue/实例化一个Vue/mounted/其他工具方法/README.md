@@ -150,7 +150,7 @@ function transformModel(options, data: any) {
 
 ## extractPropsFromVNodeData()——提取组件的prop值
 
-该函数用于来获取组件中的`props`的各个属性在某个`vm`上下文环境中具体真实值的。
+该函数用于来获取传递给组件中的`props`中的属性的真实值。
 
 ```js
 function extractPropsFromVNodeData(
@@ -170,7 +170,8 @@ function extractPropsFromVNodeData(
     }
     const res = {};
 
-    // 取出元素的attribute，这里的porps占时未知来自于哪里
+    // 取出元素的attribute和props，这里的props占时不知道是什么
+    // 注意props和普通的属性在这里都存在于attrs中，而元素的property在这里为domProps
     const {
         attrs,
         props
@@ -207,11 +208,11 @@ function extractPropsFromVNodeData(
 }
 ```
 
-对于某个键名具体的值的提取调用的`checkProp()`函数，目前还不知道`props`的来源，因为如果是`domProps`是不存在`vm.props`中的。
+对于某个键名具体的值的提取调用的`checkProp()`函数，目前还不知道`props`的来源，因为如果是`domProps`是不存在`data.props`中的；即使是传递给组件的`prop`，无论组件是否定义，它都存在与`attrs`中。
 
-### checkProp()——检测是否hash中是否存在key
+### checkProp()——检测属性对象中是否存在key
 
-该函数用于检查`hash`中是否存在`key`键名，如果存在，则将其键值存入`res`中
+该函数用于检查属性对象`hash`中是否存在`key`键名，如果存在，则将其键值存入`res`中
 
 ```js
 function checkProp(

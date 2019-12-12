@@ -32,7 +32,7 @@ function resolveConstructorOptions(Ctor: Class < Component > ) {
     // 获取构造函数上的options属性
     let options = Ctor.options;
 
-    // 如果该构造函数有父级(没有父级弹什么mixins)
+    // 如果该构造函数有父级
     if (Ctor.super) {
 
         // 获取父级组件构造函数的options

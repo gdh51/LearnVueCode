@@ -103,7 +103,7 @@ function createComponent(
     }
 
     // extract props
-    // 获取组件的`props`在该VM实例中的值
+    // 获取组件的`props/propsData`在该VM实例中的值
     const propsData = extractPropsFromVNodeData(data, Ctor, tag)
 
     // functional component
@@ -138,7 +138,7 @@ function createComponent(
     }
 
     // install component management hooks onto the placeholder node
-    // 初始化组件的管理钩子函数到data中
+    // 初始化组件的生命周期的各种钩子函数到data中(用于处理元素属性)
     installComponentHooks(data)
 
     // return a placeholder vnode
@@ -162,7 +162,7 @@ function createComponent(
 
 首先梳理一下创建组件`VNode`的流程：
 
-如果是普通的组件，那么基于根的`Vue`构造函数和当前的组件配置创建一个基于当前所处父级vm实例上下文的组件构造函数：
+如果是普通的组件，那么基于根的`Vue`构造函数和当前的组件配置创建一个基于当前所处父级`vm`实例上下文的组件构造函数：
 
 ```js
 // plain options object: turn it into a constructor
@@ -185,7 +185,7 @@ if (typeof Ctor !== 'function') {
 }
 ```
 
-创建是基于[`Vue.extend()`](../../../../实例化一个Vue/组件的构造函数/README.md)函数。每当它创建一个组件构造函数后，都会按父级构造函数的`cid`为标识符缓存在该组件对象中。
+创建是基于[`Vue.extend()`](../../../../实例化一个Vue/组件的构造函数/README.md)函数。每当它创建一个组件构造函数后，都会按父级构造函数的`cid`为标识符**缓存**在该组件对象(即我们定义的那个组件对象)中。
 
 接下来是对异步组件的处理，这里我们占时先留坑，应该没怎么用到，先不进行学习。
 ____
@@ -193,12 +193,12 @@ ____
 
 1. 调用[`resolveConstructorOptions(Ctor)`](../../../beforeCreate/合并Options/README.md#resolveconstructoroptions%e8%b0%83%e6%95%b4%e6%9e%84%e9%80%a0%e5%87%bd%e6%95%b0options)同步祖先构造函数中的`options`，
 2. 调用[`transformModel()`](../../其他工具方法/README.md#transformmodel%e5%a4%84%e7%90%86%e7%bb%84%e4%bb%b6%e4%b8%8av-model)处理组件上的`v-model`属性
-3. 调用[`extractPropsFromVNodeData()`](../../其他工具方法/README.md#extractpropsfromvnodedata%e6%8f%90%e5%8f%96%e7%bb%84%e4%bb%b6%e7%9a%84prop%e5%80%bc)获取组件中定义的`props`的值
+3. 调用[`extractPropsFromVNodeData()`](../../其他工具方法/README.md#extractpropsfromvnodedata%e6%8f%90%e5%8f%96%e7%bb%84%e4%bb%b6%e7%9a%84prop%e5%80%bc)获取组件中定义的`props/propsData`的值
 4. 处理组件上的自定义监听器
 
 之后根据是否为抽象组件(`transition`与`keep-alive`组件)，来决定保留哪些属性(抽象组件基本上要清空所有属性)。
 
-然后调用`installComponentHooks()`为该组件构造函数挂载一些钩子函数：
+然后调用`installComponentHooks()`为该组件构造函数挂载一些用于处理组件生成元素生命周期的钩子函数：
 
 ## installComponentHooks()——初始化组件的钩子函数
 

@@ -12,10 +12,12 @@ import {
 
 export function normalizeScopedSlots(
 
-    // 父节点使用的子节点的具名插槽
+    // 组件中的内容
     slots: {
         [key: string]: Function
     } | void,
+
+    //
     normalSlots: {
         [key: string]: Array < VNode >
     },
@@ -30,11 +32,13 @@ export function normalizeScopedSlots(
     // 是否存在slot语法(2.5语法具名插槽)
     const hasNormalSlots = Object.keys(normalSlots).length > 0;
 
-    // 是否稳定，父元素使用插槽时，$stable属性为true；未使用时，不具有插槽
+    // 是否稳定?组件中含有内容时，取slots.$stable值；未使用时，取hasNoralSlot反值
     const isStable = slots ? !!slots.$stable : !hasNormalSlots;
 
     // 取出插槽的key值
     const key = slots && slots.$key
+
+    // 组件标签中不存在内容时，初始化一个res
     if (!slots) {
         res = {};
 
@@ -63,17 +67,26 @@ export function normalizeScopedSlots(
             }
         }
     }
+
     // expose normal slots on scopedSlots
+    // 暴露scopedSlots中普通的插槽
     for (const key in normalSlots) {
+
+        // 在res中定义新的normalSlots的值
         if (!(key in res)) {
+
+            // 直接可以从res[key]中查询normalSlots[key]的值
             res[key] = proxyNormalSlot(normalSlots, key)
         }
     }
+
     // avoriaz seems to mock a non-extensible $scopedSlots object
     // and when that is passed down this would cause an error
     if (slots && Object.isExtensible(slots)) {
         (slots)._normalized = res
     }
+
+    // 定义三个属性
     def(res, '$stable', isStable)
     def(res, '$key', key)
     def(res, '$hasNormal', hasNormalSlots)
@@ -107,5 +120,7 @@ function normalizeScopedSlot(normalSlots, key, fn) {
 }
 
 function proxyNormalSlot(slots, key) {
-    return () => slots[key]
+
+    // 返回一个函数，函数返回值为slots[key]
+    return () => slots[key];
 }
