@@ -20,7 +20,52 @@ if (options && options._isComponent) {
 
 在该Vue实例为组件的情况下会调用以下方法进行配置项的初始化
 
-## initInternalComponent()
+## initInternalComponent()——初始化组件的options
+
+该函数用于处理组件的`options`对象，它不用动态合并的方式来处理，而是直接进行赋值的方式：
+
+```js
+function initInternalComponent(vm: Component, options: InternalComponentOptions) {
+
+    // 将定义的组件对象置于原型对象并为组件实例定义$options
+    const opts = vm.$options = Object.create(vm.constructor.options);
+
+    // doing this because it's faster than dynamic enumeration.
+    // 直接为其添加属性，因为它比动态枚举更快
+
+    // 取出该vm实例代表的组件VNode(即我们在父级上下文使用的组件标签代表的VNode)
+    const parentVnode = options._parentVnode;
+
+    // 父vm实例
+    opts.parent = options.parent;
+
+    // 为其添加该vm实例代表的组件VNode
+    opts._parentVnode = parentVnode;
+
+    // 取出定义在父vm实例上下文，该组件标签上的属性
+    const vnodeComponentOptions = parentVnode.componentOptions
+
+    // 组件上定义的attrs
+    opts.propsData = vnodeComponentOptions.propsData;
+
+    // 父级上下文中组件标签定义的事件监听器
+    opts._parentListeners = vnodeComponentOptions.listeners;
+
+    // 父级上下文中组件标签内的子VNode
+    opts._renderChildren = vnodeComponentOptions.children;
+
+    // 组件标签的名称
+    opts._componentTag = vnodeComponentOptions.tag
+
+    // 组件是否为渲染函数，如果是，挂载在vm.$options中
+    if (options.render) {
+        opts.render = options.render;
+        opts.staticRenderFns = options.staticRenderFns;
+    }
+}
+```
+
+这个函数是用来处理组件的，其中`vnodeComponentOptions`属性中的值来元素最初创建这个组件`VNode`时挂载的属性，它里面的属性就表示其在父级上下文中组件标签上定义的各种属性。
 
 ## resolveConstructorOptions()——调整构造函数options
 

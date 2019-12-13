@@ -51,13 +51,17 @@ export function initMixin(Vue: Class < Component > ) {
         // a flag to avoid this being observed
         vm._isVue = true
 
-        // 合并Options属性
+        // 组件vm实例
         if (options && options._isComponent) {
+
             // optimize internal component instantiation
             // since dynamic options merging is pretty slow, and none of the
             // internal component options needs special treatment.
-            // 暂存, 内部选项
-            initInternalComponent(vm, options)
+            // 优化组件内部的组件，因为动态options合并低效，而且没有内部组件的options
+            // 需要特殊的处理
+            initInternalComponent(vm, options);
+
+        // 根VM实例
         } else {
             vm.$options = mergeOptions(
                 resolveConstructorOptions(vm.constructor), // 构造函数上的默认配置
@@ -96,21 +100,41 @@ export function initMixin(Vue: Class < Component > ) {
 }
 
 export function initInternalComponent(vm: Component, options: InternalComponentOptions) {
-    const opts = vm.$options = Object.create(vm.constructor.options)
-    // doing this because it's faster than dynamic enumeration.
-    const parentVnode = options._parentVnode
-    opts.parent = options.parent
-    opts._parentVnode = parentVnode
 
+    // 将定义的组件对象置于原型对象并为组件实例定义$options
+    const opts = vm.$options = Object.create(vm.constructor.options);
+
+    // doing this because it's faster than dynamic enumeration.
+    // 直接为其添加属性，因为它比动态枚举更快
+
+    // 取出该vm实例代表的组件VNode(即我们在父级上下文使用的组件标签代表的VNode)
+    const parentVnode = options._parentVnode;
+
+    // 父vm实例
+    opts.parent = options.parent;
+
+    // 为其添加该vm实例代表的组件VNode
+    opts._parentVnode = parentVnode;
+
+    // 取出定义在父vm实例上下文，该组件标签上的属性
     const vnodeComponentOptions = parentVnode.componentOptions
-    opts.propsData = vnodeComponentOptions.propsData
-    opts._parentListeners = vnodeComponentOptions.listeners
-    opts._renderChildren = vnodeComponentOptions.children
+
+    // 组件上定义的attrs
+    opts.propsData = vnodeComponentOptions.propsData;
+
+    // 父级上下文中组件标签定义的事件监听器
+    opts._parentListeners = vnodeComponentOptions.listeners;
+
+    // 父级上下文中组件标签内的子VNode
+    opts._renderChildren = vnodeComponentOptions.children;
+
+    // 组件标签的名称
     opts._componentTag = vnodeComponentOptions.tag
 
+    // 组件是否为渲染函数，如果是，挂载在vm.$options中
     if (options.render) {
-        opts.render = options.render
-        opts.staticRenderFns = options.staticRenderFns
+        opts.render = options.render;
+        opts.staticRenderFns = options.staticRenderFns;
     }
 }
 

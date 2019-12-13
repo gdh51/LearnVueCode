@@ -38,15 +38,17 @@ export function initRender(vm: Component) {
     const options = vm.$options;
 
     // the placeholder node in parent tree
-    // 代表父Vnode树的占位符
+    // // 占位符VNode节点，即我们在父级上下文中使用的那个组件标签所代表的的VNode
     const parentVnode = vm.$vnode = options._parentVnode;
 
-    // 父级Vnode片段的上下文
+    // 组件Vnode所在的vm实例上下文
     const renderContext = parentVnode && parentVnode.context;
 
-    // 将最新的插槽，和父级上下文作为参数
-    // 该对象用于处理2.5以下的旧语法slot指令
+    // _renderChildren表示VNode在父级上下文中里面的子VNode节点数组(即插槽内容)
+    // 这里是在处理2.5语法，对于2.6语法，只处理简写的插槽语法(即无任何具名插槽)
     vm.$slots = resolveSlots(options._renderChildren, renderContext);
+
+    // 初始化作用域插槽对象
     vm.$scopedSlots = emptyObject;
 
     // bind the createElement fn to this instance
@@ -61,13 +63,19 @@ export function initRender(vm: Component) {
 
     // $attrs & $listeners are exposed for easier HOC creation.
     // they need to be reactive so that HOCs using them are always updated
-    // 定义响应式的$attr,$listeners以便更新
+    // 暴露出$attrs和$listeners两个属性以便创建高阶组件
+    // 它们需要变为响应式的，以便响应式更新
+    // 组件VNode节点上的属性
     const parentData = parentVnode && parentVnode.data
 
     if (process.env.NODE_ENV !== 'production') {
+
+        // 在当前组件实例上定义$attrs属性(即我们定义在组件标签上的属性)
         defineReactive(vm, '$attrs', parentData && parentData.attrs || emptyObject, () => {
             !isUpdatingChildComponent && warn(`$attrs is readonly.`, vm)
-        }, true)
+        }, true);
+
+        // 在当前组件实例上定义$listeners属性(即我们定义在组件标签上的事件监听器)
         defineReactive(vm, '$listeners', options._parentListeners || emptyObject, () => {
             !isUpdatingChildComponent && warn(`$listeners is readonly.`, vm)
         }, true)
@@ -101,19 +109,23 @@ export function renderMixin(Vue: Class < Component > ) {
         const {
             render,
 
-            // 代表该组件父节点的占位符
+            // 当前组件vm实例所在父级上下文中的组件标签VNode
             _parentVnode
         } = vm.$options
 
         // 存在父节点时(根Vue实例不存在)
         if (_parentVnode) {
+
+            // 为组件实例.$scopedSlots定义一个可以访问$slots的对象
             vm.$scopedSlots = normalizeScopedSlots(
+
+                // 当前组件vm实例所代表的VNode上的作用域插槽对象
                 _parentVnode.data.scopedSlots,
 
-                // 当前vm实例的具名插槽(该对象只在2.5版本旧语法slot的情况下存在)
+                // 当前组件vm的总体的插槽对象(该对象只在2.5版本旧语法slot的情况下存在)
                 vm.$slots,
 
-                // 当前vm实例的作用域插槽
+                // 当前组件vm实例的作用域插槽对象
                 vm.$scopedSlots
             )
         }
