@@ -14,9 +14,13 @@ export function renderSlot(
     // 插槽名称
     name: string,
 
-    // 组件
+    // 插槽元素中的默认子节点数组
     fallback: ? Array < VNode > ,
+
+    // 插槽绑定的属性
     props : ? Object,
+
+    // 插槽绑定的对象
     bindObject : ? Object
 ): ? Array < VNode > {
 

@@ -316,7 +316,7 @@ start(tag, attrs, unary, start, end) {
         // 为一元元素时，直接闭合
         closeElement(element);
     }
-},
+}
 ```
 
 首先我们可以看到该函数处理下标签命名空间兼容性问题后，便通过`createASTElement()`方法生成了代表元素的AST对象，传入的参数`attrs`是我们在[`handleStartTag()`](#handlestarttag%e5%a4%84%e7%90%86%e6%a0%87%e7%ad%bedom%e4%bd%8d%e7%bd%ae%e4%bf%a1%e6%81%af%e5%b1%9e%e6%80%a7%e4%bf%a1%e6%81%af)时，生成的新的属性数组。
@@ -369,7 +369,7 @@ function makeAttrsMap(attrs: Array < Object > ): Object {
 }
 ```
 
-之后便是对AST元素对象的位置信息进行补充，然后又对AST对象上的`rawAttrsMap`属性进行更新，这个属性其实就是`attrs`数组转换为对象的形式：属性名做键名，之前的数组元素做值，还是放张图：
+之后便是对`AST`元素对象的位置信息进行补充，然后又对AST对象上的`rawAttrsMap`属性进行更新，这个属性其实就是`attrs`数组转换为对象的形式：属性名做键名，之前的数组元素做值，还是放张图：
 ![rawAttrsMap](./imgs/rawAttrsMap.png)
 
 之后便是调用`preTransforms`数组中的方法，对ast元素对象上一些属性进行预处理；`preTransforms`数组中仅存在一个方法即`preTransformNode()`，该方法只是针对`<input>`元素来做单独的处理的。

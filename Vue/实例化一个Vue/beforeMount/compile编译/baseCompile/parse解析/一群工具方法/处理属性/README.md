@@ -318,9 +318,14 @@ function processSlotContent(el) {
                 slotContainer.slotTarget = name;
                 slotContainer.slotTargetDynamic = dynamic;
 
-                // 因为中间新增了一层template元素，所以要重写它们的父子关系（必须要未绑定插槽作用域的）
+                // 因为中间新增了一层template元素，所以要将组件的子元素转移到template元素旗下
                 slotContainer.children = el.children.filter((c: any) => {
+
+                    // 这里要排除重复的v-slot使用，即子元素出现这种情况，这样就作用域混淆了
+                    // <template v-slot="prop">
                     if (!c.slotScope) {
+
+                        // 重新定义其父ast对象
                         c.parent = slotContainer;
                         return true;
                     }
@@ -330,7 +335,8 @@ function processSlotContent(el) {
                 slotContainer.slotScope = slotBinding.value || emptySlotScopeToken;
 
                 // remove children as they are returned from scopedSlots now
-                // 移除组件的子数组，将插槽ast对象转移到scopedSlots对象上
+                // 移除组件ast对象上的子节点数组，因为它们已经转义到作用域插槽对象中了
+                // (这里也同时说明了，如果你混写了<template v-slot="prop">这种写法，那么这种写法会被直接移除)
                 el.children = [];
 
                 // mark el non-plain so data gets generated
@@ -345,9 +351,9 @@ function processSlotContent(el) {
 首先，`Vue`按`v-slot`属性定义的位置来对该属性进行处理：
 
 1. 定义在`<template>`模版上：如果是定义在模版上，则`<template>`的位置必须位于组件内部，之后便对`slot`绑定的插槽名和`prop`属性进行字符串表达式提取
-2. 直接定义在组件中：不能与1中语法混用，然后会创建一个`<template>`元素作为默认插槽使用
+2. 直接定义在组件上时：不能与1中语法混用，然后会创建一个`<template>`元素来接替原组件的子节点数组，然后将该`<template>`元素挂载到该组件的`scopedSlots`中，然后重复1中的步骤。注意：如果你混用了1中语法，那么1中语法定义的所有子节点将被抛弃。
 
-无论定义在哪，都不能和旧语法混用
+**无论定义在哪，都不能和旧语法混用**.
 
 ### 为什么组件后解析
 

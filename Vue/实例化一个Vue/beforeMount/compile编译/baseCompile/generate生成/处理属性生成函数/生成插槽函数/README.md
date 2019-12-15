@@ -1,10 +1,12 @@
 # 生成插槽函数表达式
 
-Vue通过`genScopedSlots()`函数来迭代一个插槽作用域中的插槽来生成一个插槽表达式函数。
+`Vue`通过`genScopedSlots()`函数来迭代一个插槽作用域中的插槽来生成一个插槽表达式函数。
 
 ```js
 function genScopedSlots(
     el: ASTElement,
+
+    // 组件的插槽对象，里面包含如此形式的值    插槽名：插槽中的子元素(template元素)
     slots: {
         [key: string]: ASTElement
     },
@@ -13,14 +15,19 @@ function genScopedSlots(
 
     // by default scoped slots are considered "stable", this allows child
     // components with only scoped slots to skip forced updates from parent.
+    // 默认情况下，作用域插槽被认为是"稳定的"，这使得只有唯一作用域插槽的子组件可以跳过
+    // 由父元素带来的强制更新
     // but in some cases we have to bail-out of this optimization
+    // 但在一些情况下，我们不能这样做这些优化
     // for example if the slot contains dynamic names, has v-if or v-for on them...
-    // 确认是否需要强制更新
+    // 比如，一个插槽包含一个动态的具名，或有v-if，v-for
     let needsForceUpdate = el.for || Object.keys(slots).some(key => {
+
+        // 取出当前具有v-slot的标签ast对象
         const slot = slots[key];
 
-        // 只要有一个插槽具有v-for或v-if或具有动态插槽名称
-        // 或子元素中还存在slot元素都需要强制更新
+        // 该标签对象上是否具有v-for或v-if或具有动态插槽名称
+        // 或子元素中还嵌套存在slot元素都需要强制更新
         return (
             slot.slotTargetDynamic ||
             slot.if ||
@@ -33,21 +40,25 @@ function genScopedSlots(
     // it's possible for the same component to be reused but with different
     // compiled slot content. To avoid that, we generate a unique key based on
     // the generated code of all the slot contents.
-    // 如果一个带有插槽作用域的组件存在if条件语句中，那么它有时编译时，即使是同一个组件也
-    // 会编译出不同的插槽内容。因此，为了解决这个问题，我们为它生成了一个基于全部插槽内容的唯一的key
+    // 如果一个带有作用域插槽的组件存在一组if条件语句中，那么在if条件变换时，
+    // 如果另一个if条件的组件也为同一个组件，那么它会复用组件，但编译的插槽内容不一样
+    // 为了避免这种情况，我们生成一个以插槽中内容为基础生成的key值定义在组件上
     let needsKey = !!el.if;
 
     // OR when it is inside another scoped slot or v-for (the reactivity may be
     // disconnected due to the intermediate scope variable)
+    // 或则，当一个具有插槽的组件在另一个组件的插槽中，或具有v-for
     // #9438, #9506
     // TODO: this can be further optimized by properly analyzing in-scope bindings
+    // 这里可以进一步优化，通过适当的分析作用域绑定，当作用域变量不再使用时跳过强制更新
     // and skip force updating ones that do not actually use scope variables.
-    // 或当其处于另一个作用域插槽或v-for中
+
+    // 同样以下情况也需要强制更新
     if (!needsForceUpdate) {
         let parent = el.parent;
         while (parent) {
 
-            // 父级拥有具名插槽或存在v-for属性，也需要强制更新
+            // 处于嵌套插槽中或拥有具名插槽或存在v-for属性，也需要强制更新
             if (
                 (parent.slotScope && parent.slotScope !== emptySlotScopeToken) ||
                 parent.for
@@ -170,7 +181,7 @@ const generatedSlots = Object.keys(slots)
 
 ## genScopedSlot()——生成插槽表达式
 
-通过该函数生成了一个表示插槽的对象，它大约是这样的`{key: slotName, fn: slotRenderFn}`，具有两个键，一个为该插槽的名称一个为该插槽的渲染函数，具体过程如下：
+通过该函数会生成了一个具名插槽对象，其中包含该**插槽名**和其内部**子节点的渲染函数**，它大约是这样的`{key: slotName, fn: slotRenderFn}`，具体过程如下：
 
 ```js
 function genScopedSlot(
@@ -194,18 +205,20 @@ function genScopedSlot(
     // 获取插槽的作用域(其实就是指定的值，给插槽赋的值)
     const slotScope = el.slotScope === emptySlotScopeToken ? `` : String(el.slotScope);
 
-    // 两种情况：非模版元素，调用genElement生成渲染函数
-    // 模版元素：不具有v-if且非废弃语法，则调用genChildren对子元素生成渲染函数
+    // 两种情况：
+    // 非模版元素，调用genElement生成渲染函数(2.5)
+    // 模版元素：不具有v-if或非废弃语法，则调用genChildren对子元素生成渲染函数(2.6)
+    // 在2.6语法中，el一定为template元素
     const fn = `function(${slotScope}){` +
         `return ${el.tag === 'template'
-      ? el.if && (isLegacySyntax ? `(${el.if})?${genChildren(el, state) || 'undefined'}:undefined`
+      ? (el.if && isLegacySyntax ? `(${el.if})?${genChildren(el, state) || 'undefined'}:undefined`
                                  : genChildren(el, state))
               || 'undefined'
       : genElement(el, state)}
     }`
 
     // reverse proxy v-slot without scope on this.$slots
-    // 为没有指定作用域的插槽，保留代理
+    // 为没有指定作用域的插槽反向代理
     const reverseProxy = slotScope ? `` : `,proxy:true`;
 
     // 返回该插槽的对象字符串

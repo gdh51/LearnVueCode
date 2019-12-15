@@ -387,3 +387,69 @@ function renderList(
 注意创建出的文本节点`data`属性为`undefined`;
 
 该函数就是直接创建个文本`VNode`节点，非常简单，无其他操作[详情](../VNode构造函数/README.md#%e5%85%b6%e4%bb%96%e8%8a%82%e7%82%b9%e7%9a%84%e5%88%9b%e5%bb%ba)
+
+## _u()——resolveScopedSlots()初步处理具名插槽
+
+该函数用于初步处理具名插槽对象，为其定义是否需要强制更新的属性`$stable`与一些反向代理属性。
+
+```js
+function resolveScopedSlots(
+
+    // 具名插槽对象数组
+    fns: ScopedSlotsData, // see flow/vnode
+
+    // 处理结果
+    res ? : Object,
+
+    // the following are added in 2.6
+    // 是否具有动态的插槽名称，即是否需要强制更新
+    hasDynamicKeys ? : boolean,
+
+    // 是否由插槽内容生成hash key值
+    contentHashKey ? : number
+): {
+    [key: string]: Function,
+    $stable: boolean
+} {
+
+    // 取之前结果对象，或初始化
+    res = res || {
+
+        // 定义是否稳定，即是否需要强制更新
+        $stable: !hasDynamicKeys
+    };
+
+    // 遍历具名插槽对象
+    for (let i = 0; i < fns.length; i++) {
+
+        // 取某个具名插槽对象
+        const slot = fns[i];
+
+        // 如果一个具名插槽的内容中仍有多个具名插槽则递归处理。
+        if (Array.isArray(slot)) {
+            resolveScopedSlots(slot, res, hasDynamicKeys)
+
+        // 单个插槽则直接处理
+        } else if (slot) {
+
+            // marker for reverse proxying v-slot without scope on this.$slots
+            // 给没有定义作用域的反向代理插槽提供标记
+            if (slot.proxy) {
+                slot.fn.proxy = true
+            }
+
+            // 将对应 插槽名：渲染函数 添加至最终结果
+            res[slot.key] = slot.fn
+        }
+    }
+
+    // 是否具有内容hash值
+    if (contentHashKey) {
+        (res: any).$key = contentHashKey
+    }
+
+    return res;
+}
+```
+
+## _t()——renderSlot()处理插槽元素
