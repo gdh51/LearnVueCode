@@ -17,22 +17,24 @@ export function renderSlot(
     // 插槽元素中的默认子节点数组
     fallback: ? Array < VNode > ,
 
-    // 插槽绑定的属性
+    // 插槽上的其他属性
     props : ? Object,
 
-    // 插槽绑定的对象
+    // 插槽绑定的组件vm实例中的值
     bindObject : ? Object
 ): ? Array < VNode > {
 
-    // 取出对应名称的作用域插槽
+    // 获取对应名称的插槽渲染函数
     const scopedSlotFn = this.$scopedSlots[name];
     let nodes;
 
-    // 如果有作用域插槽
+    // 如果有该名称插槽
     if (scopedSlotFn) { // scoped slot
 
-        // 初始化或取之前的插槽对象
-        props = props || {}
+        // 初始化或直接使用插槽的属性对象
+        props = props || {};
+
+        // 这里我们绑定的值要为一个接口对象，而非单个值
         if (bindObject) {
             if (process.env.NODE_ENV !== 'production' && !isObject(bindObject)) {
                 warn(
@@ -40,16 +42,20 @@ export function renderSlot(
                     this
                 )
             }
+
+            // 将作用域值直接合并到插槽元素的属性对象上
             props = extend(extend({}, bindObject), props)
         }
+
+        // 获取插槽内容的VNode节点，并传入定义的值，若都没有则默认内容
         nodes = scopedSlotFn(props) || fallback
 
-    // 不存在作用域插槽时，节点取原本插槽的或自带的VNode
+    // 在标准化插槽对象中不存在该对象时，在反向代理的$slots中查找，若都没有则默认内容
     } else {
         nodes = this.$slots[name] || fallback
     }
 
-    // 为插槽元素创建一个template元素代替
+    // 为插槽元素创建一个template元素代替(2.5 slot语法)
     const target = props && props.slot
     if (target) {
 
@@ -59,7 +65,7 @@ export function renderSlot(
         }, nodes)
     } else {
 
-        // 没有插槽时直接返回默认定义的插槽内容的VNode
+        // 2.6情况直接返回nodes
         return nodes;
     }
 }

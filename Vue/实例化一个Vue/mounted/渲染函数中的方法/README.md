@@ -6,6 +6,8 @@
 - [_m()——renderStatic()渲染静态节点](#mrenderstatic%e6%b8%b2%e6%9f%93%e9%9d%99%e6%80%81%e8%8a%82%e7%82%b9)
 - [_l()——renderList()渲染v-for列表](#lrenderlist%e6%b8%b2%e6%9f%93v-for%e5%88%97%e8%a1%a8)
 - [_v()——createTextVNode()创建纯文本节点](#vcreatetextvnode%e5%88%9b%e5%bb%ba%e7%ba%af%e6%96%87%e6%9c%ac%e8%8a%82%e7%82%b9)
+- [_u()——resolveScopedSlots()初步处理具名插槽](#uresolvescopedslots%e5%88%9d%e6%ad%a5%e5%a4%84%e7%90%86%e5%85%b7%e5%90%8d%e6%8f%92%e6%a7%bd)
+- [_t()——renderSlot()为插槽内容生成VNode节点](#trenderslot%e4%b8%ba%e6%8f%92%e6%a7%bd%e5%86%85%e5%ae%b9%e7%94%9f%e6%88%90vnode%e8%8a%82%e7%82%b9)
 
 ## _m()——renderStatic()渲染静态节点
 
@@ -452,4 +454,71 @@ function resolveScopedSlots(
 }
 ```
 
-## _t()——renderSlot()处理插槽元素
+## _t()——renderSlot()为插槽内容生成VNode节点
+
+该函数用于为指定的具名插槽中的内容生成其`VNode`节点数组，并在没有内容时，使用定义在组件中的默认内容。
+
+```js
+function renderSlot(
+
+    // 插槽名称
+    name: string,
+
+    // 插槽元素中的默认子节点数组
+    fallback: ? Array < VNode > ,
+
+    // 插槽上的其他属性
+    props : ? Object,
+
+    // 插槽绑定的组件vm实例中的值
+    bindObject : ? Object
+): ? Array < VNode > {
+
+    // 获取对应名称的插槽渲染函数
+    const scopedSlotFn = this.$scopedSlots[name];
+    let nodes;
+
+    // 如果有该名称插槽
+    if (scopedSlotFn) { // scoped slot
+
+        // 初始化或直接使用插槽的属性对象
+        props = props || {};
+
+        // 这里我们绑定的值要为一个接口对象，而非单个值
+        if (bindObject) {
+            if (process.env.NODE_ENV !== 'production' && !isObject(bindObject)) {
+                warn(
+                    'slot v-bind without argument expects an Object',
+                    this
+                )
+            }
+
+            // 将作用域值直接合并到插槽元素的属性对象上
+            props = extend(extend({}, bindObject), props)
+        }
+
+        // 获取插槽内容的VNode节点，并传入定义的值，若都没有则默认内容
+        nodes = scopedSlotFn(props) || fallback
+
+    // 在标准化插槽对象中不存在该对象时，在反向代理的$slots中查找，若都没有则默认内容
+    } else {
+        nodes = this.$slots[name] || fallback
+    }
+
+    // 为插槽元素创建一个template元素代替(2.5 slot语法)
+    const target = props && props.slot
+    if (target) {
+
+        // 调用总是优化的API创建一个template VNode
+        return this.$createElement('template', {
+            slot: target
+        }, nodes)
+    } else {
+
+        // 2.6情况直接返回nodes
+        return nodes;
+    }
+}
+```
+
+从上面的函数我们就可以知道我们为插槽绑定的值必须要为一个对象(接口，这是规范)
