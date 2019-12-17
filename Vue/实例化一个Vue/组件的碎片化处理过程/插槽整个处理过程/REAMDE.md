@@ -35,7 +35,26 @@
 </component>
 ```
 
-第一种情况出现的情况只有一种，即**不使用任何插槽语法**。(`v-slot`)，这种情况下虽然调用了[`processSlotContent()`](../../beforeMount/compile编译/baseCompile/parse解析/一群工具方法/处理属性/README.md#processslotcontent%e5%a4%84%e7%90%86%e4%bd%9c%e4%b8%ba%e6%8f%92%e6%a7%bd%e5%86%85%e5%ae%b9%e6%8f%92%e5%85%a5%e7%9a%84%e5%85%83%e7%b4%a0)方法，但其实没有做任何处理。
+第一种情况出现的情况只有一种，即**不使用任何插槽语法**。(`v-slot`)，这种情况下虽然调用了[`processSlotContent()`](../../beforeMount/compile编译/baseCompile/parse解析/一群工具方法/处理属性/README.md#processslotcontent%e5%a4%84%e7%90%86%e4%bd%9c%e4%b8%ba%e6%8f%92%e6%a7%bd%e5%86%85%e5%ae%b9%e6%8f%92%e5%85%a5%e7%9a%84%e5%85%83%e7%b4%a0)方法，但其实没有做任何处理。所以对于这种情况生成的`AST`结果为：
+
+```js
+// 最终的AST结构
+AST = [
+    {
+        name: 'component',
+        children: [
+            {
+                name: 'template',
+                children: [
+                    { name: 'div' ....}
+                ]
+            }
+        ]
+    }
+];
+```
+
+这个语法下的模版，之后就不会在继续处理(它的`AST`结构)了，我们标记这种情况为**简写语法**
 
 - 第二种：使用`v-slot`语法
 
@@ -286,3 +305,36 @@ vm.$scopedSlots = res;
 接下来就是正式调用渲染函数时，调用`_t()`函数([`renderSlot()`](../../mounted/渲染函数中的方法/README.md#trenderslot%e4%b8%ba%e6%8f%92%e6%a7%bd%e5%86%85%e5%ae%b9%e7%94%9f%e6%88%90vnode%e8%8a%82%e7%82%b9))处理我们实际用到的插槽，该函数就会优先从`vm.$scopedSlots`中取出渲染函数来生成插槽内容的`VNode`节点，若没有则从`vm.$slots`中取，若没有插槽内容则用`slot`元素中默认内容代替，最后返回组件插槽内容生成的子节点。
 
 到此为止，一个插槽的相关处理就结束了。
+
+### 简写语法的处理
+
+上面讲述的都是`v-slot`语法的处理情况，但我们在上面也提到了这种情况：
+
+```html
+// 没有任何v-slot语法
+<component>
+    <template>
+        <div></div>
+    <template>
+</component>
+```
+
+之前我们只提到了在生成`AST`阶段的处理，现在我们来看下之后对它的处理。
+
+由于它没有任何插槽属性，所以在`AST`生成`Render()`函数的阶段，它也不会进行任何关于插槽属性的处理，然后开始根据`Render()`函数生成`VNode`节点及其元素时，此时解析到组件标签，要为组件生成一个`VNode`节点时，此时重点来了，它会在组件`VNode`的`.componentOptions`属性上将其子节点数组挂载上去：
+
+```js
+new VNode(
+    ("vue-component-" + (Ctor.cid) + (name ? ("-" + name) : '')),
+    data, undefined, undefined, undefined, context, {
+    Ctor: Ctor,
+    propsData: propsData,
+    listeners: listeners,
+    tag: tag,
+
+    // 注意下面这行
+    children: children
+});
+```
+
+上述代码中，我进行了注释的那行即表示之前我们模版中组件的子元素数组们。之后在初始组件实例时，会调用`initInternalComponent`将这些子节点转移到组件实例的`.$options._renderChildren`中。紧接着就会对组件实例调用各种`init()`类函数，其中在调用`initRender()`时，会在其中调用`resolveSlots()`函数，顺利将这些子节点又复制到组件实例的`.$slots.default`中。到此为止情况就和我们之前处理`v-slot`语法时的情况一样了，这里也就不再多描述了。
