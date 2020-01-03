@@ -747,8 +747,14 @@ export function createPatchFunction(backend) {
     function patchVnode(
         oldVnode,
         vnode,
+
+        // insert队列，用于触发insert钩子函数
         insertedVnodeQueue,
+
+        // 所在的子节点数组
         ownerArray,
+
+        // 所在子节点数组的位置
         index,
         removeOnly
     ) {
@@ -758,14 +764,17 @@ export function createPatchFunction(backend) {
             return
         }
 
+        // TransitionGroup组件专属，用于重写节点
         if (isDef(vnode.elm) && isDef(ownerArray)) {
+
             // clone reused vnode
             vnode = ownerArray[index] = cloneVNode(vnode)
         }
 
-        // 获取旧节点元素，并赋值给新节点
+        // 获取旧节点元素，并赋值给新节点，相当于该VNode节点复用DOM节点了
         const elm = vnode.elm = oldVnode.elm
 
+        // 处理异步节点，无视
         if (isTrue(oldVnode.isAsyncPlaceholder)) {
             if (isDef(vnode.asyncFactory.resolved)) {
                 hydrate(oldVnode.elm, vnode, insertedVnodeQueue)
@@ -779,27 +788,41 @@ export function createPatchFunction(backend) {
         // note we only do this if the vnode is cloned -
         // if the new node is not cloned it means the render functions have been
         // reset by the hot-reload-api and we need to do a proper re-render.
+        // 复用静态VNode Tree的DOM节点
+        // 仅在该Vnode节点是cloned的情况下——如果新的节点不是克隆的，那么就意味着渲染函数
+        // 已经通过热重置API重置，此时我们就需要重新渲染。
         if (isTrue(vnode.isStatic) &&
             isTrue(oldVnode.isStatic) &&
             vnode.key === oldVnode.key &&
             (isTrue(vnode.isCloned) || isTrue(vnode.isOnce))
         ) {
+            // 静态节点树直接复制组件实例，不做处理返回
             vnode.componentInstance = oldVnode.componentInstance
             return
         }
 
-        let i
-        const data = vnode.data
+        let i;
+        const data = vnode.data;
+
+        // 为组件Vnode调用prepatch函数，做预处理，更新组件上的数据和插槽等等
         if (isDef(data) && isDef(i = data.hook) && isDef(i = i.prepatch)) {
-            i(oldVnode, vnode)
+            i(oldVnode, vnode);
         }
 
-        const oldCh = oldVnode.children
-        const ch = vnode.children
+        const oldCh = oldVnode.children;
+        const ch = vnode.children;
+
+        // 仅当其具有真实DOM结构时，进行属性更新
         if (isDef(data) && isPatchable(vnode)) {
+
+            // 调用之前初始化属性时的函数，更新属性
             for (i = 0; i < cbs.update.length; ++i) cbs.update[i](oldVnode, vnode)
+
+            // 调用组件的update函数(普通组件无)
             if (isDef(i = data.hook) && isDef(i = i.update)) i(oldVnode, vnode)
         }
+
+        // 如果当前节点为元素节点
         if (isUndef(vnode.text)) {
             if (isDef(oldCh) && isDef(ch)) {
                 if (oldCh !== ch) updateChildren(elm, oldCh, ch, insertedVnodeQueue, removeOnly)
@@ -814,9 +837,13 @@ export function createPatchFunction(backend) {
             } else if (isDef(oldVnode.text)) {
                 nodeOps.setTextContent(elm, '')
             }
+
+        // 如果当前节点为文本节点且文本改变，那么直接改变其文本即可
         } else if (oldVnode.text !== vnode.text) {
             nodeOps.setTextContent(elm, vnode.text)
         }
+
+        // 调用组件的postpatch函数(普通组件无)
         if (isDef(data)) {
             if (isDef(i = data.hook) && isDef(i = i.postpatch)) i(oldVnode, vnode)
         }

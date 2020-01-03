@@ -214,11 +214,17 @@ Vue.prototype._update = function (vnode: VNode, hydrating ? : boolean) {
 
     // update __vue__ reference
     if (prevEl) {
+
+        // 清空根元素对vm实例的引用
         prevEl.__vue__ = null
     }
+
     if (vm.$el) {
+
+        // 更新元素对vm实例的引用
         vm.$el.__vue__ = vm
     }
+
     // if parent is an HOC, update its $el as well
     // 如果父级为高阶组件，也更新它的$el
     if (vm.$vnode && vm.$parent && vm.$vnode === vm.$parent._vnode) {

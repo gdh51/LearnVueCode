@@ -70,13 +70,13 @@ const componentVNodeHooks = {
 
     prepatch(oldVnode: MountedComponentVNode, vnode: MountedComponentVNode) {
 
-        // 新VNode节点的组件配置
+        // 新Vnode节点的组件属性
         const options = vnode.componentOptions;
 
         // 新的VNode节点组件实例属性继承旧VNode节点的
         const child = vnode.componentInstance = oldVnode.componentInstance;
 
-        // 更新子组件
+        // 更新组件中的各种属性和事件和插槽
         updateChildComponent(
             child,
             options.propsData, // updated props

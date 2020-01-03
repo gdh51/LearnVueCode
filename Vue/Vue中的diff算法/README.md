@@ -1,14 +1,18 @@
 # VNode更新策略——diff算法
+
 之前在笔记本上已经写过一遍了，但是笔记本丢了，没办法只有重新在写一次。
 咳咳好了，言归正传，首先我们介绍下当数据发生变换时，vue怎么更新结点的。
 
 ## 数据发生变换时Vue如何更新节点
+
 众所周知，Vue在生成的真实DOM是根据虚拟DOM Vnode的结构生成的，当某个虚拟DOM节点发生变化时，就会生成一个新的虚拟DOM节点，然后在更具前后两个虚拟节点进行对比，在发现不一样时就会用新的虚拟节点替换旧的节点，然后直接在真实DOM上进行修改。
 
 而在这期间对比两个虚拟节点的函数就叫做`patch()`，在diff的过程中，其会一边比较两个虚拟节点一边给真实DOM打补丁
 
 ### diff比较时注意点
+
 在用diff算法比较新旧节点时，只会在同层级比较，不会跨级比较，如：
+
 ```html
 <!-- template 1 -->
 <div>
@@ -20,21 +24,25 @@
     <span>模版2</span>
 </div>
 ```
+
 在上面的代码中，DOM结构由模版1变为了模版2，在此变化期间，diff算法只会将`<div>`与`<div>`、`<p>`与`<span>`元素进行比较，而不会用`<div>`与`<span>`元素进行比较。
 
 ## diff的流程
+
 当数据发生变换时，我们知道改变一个vue中数据时，会触发其数据中定义的`setter`，在`setter`中会通过`dep.notify()`来通知订阅者Watcher更新所有的依赖项，然后Watcher就会调用`patch()`函数来给真实的DOM打补丁, 更新对应的视图
 
 首先我们来看以下patch()函数
 
 ## patch()
+
 以下为精简后的patch()函数，保留了其核心功能
+
 ```js
 function patch (oldVnode, vnode) {
 
     // 截取部分代码
     if (sameVnode(oldVnode, vnode)) {
-    	patchVnode(oldVnode, vnode)
+        patchVnode(oldVnode, vnode)
     } else {
 
         // 当前oldVnode对应的真实元素节点
@@ -46,7 +54,7 @@ function patch (oldVnode, vnode) {
         // 根据Vnode生成新元素
         createEle(vnode)
 
-    	if (parentEle !== null) {
+        if (parentEle !== null) {
 
             // 将新元素添加进父元素
             api.insertBefore(parentEle, vnode.el, api.nextSibling(oEl))
@@ -54,36 +62,40 @@ function patch (oldVnode, vnode) {
             // 移除以前的旧元素节点
             api.removeChild(parentEle, oldVnode.el)
             oldVnode = null
-    	}
+        }
     }
     // some code
     return vnode
 }
 ```
+
 在`patch()`过程中，根据新旧虚拟节点是否大致为同一节点，来进行进一步的判断，当大致相同时才有比较的价值，不同时则直接创建新元素进行替换即可，具体对比如下
 
 ### sameVnode()——两个节点是否在大致上相同
+
 通过该函数来判断两个虚拟节点是否在大致上相同，如果连这个条件都不满足则直接可视为不同的节点
+
 ```js
 function sameVnode (a, b) {
 
-  // 当两个节点的key、tag、是否为注释、data是否定义、input类型是否相同
-  return (
-    a.key === b.key && (
-      (
-        a.tag === b.tag &&
-        a.isComment === b.isComment &&
-        isDef(a.data) === isDef(b.data) &&
-        sameInputType(a, b)
-      )
+    // 当两个节点的key、tag、是否为注释、都具有节点属性、input类型是否相同
+    return (
+        a.key === b.key && (
+            (
+            a.tag === b.tag &&
+                a.isComment === b.isComment &&
+                isDef(a.data) === isDef(b.data) &&
+                sameInputType(a, b)
+            )
+        )
     )
-  )
 }
 ```
 
 如果新旧虚拟节点相同，那么就会对其进行进一步的比较，检查它们的子节点，调用`patchVnode()`函数
 
 ### patchVnode()
+
 当新旧节点大致相同时，便会调用该方法对两个节点进行进一步的比较，然后对DOM进行对应的更新，具体过程如下(精简后)
 
 ```js
@@ -103,17 +115,17 @@ patchVnode (oldVnode, vnode) {
         updateEle(el, vnode, oldVnode)
 
         // 当两者的子节点不同时，进行对比后更新
-    	if (oldCh && ch && oldCh !== ch) {
+        if (oldCh && ch && oldCh !== ch) {
             updateChildren(el, oldCh, ch)
-    	}else if (ch){
+        }else if (ch){
 
             // 之前没有子节点，现在有时，创建子节点DOM元素
             createEle(vnode) //create el's children dom
-    	}else if (oldCh){
+        }else if (oldCh){
 
             // 之前有子节点，现在没有时，直接删除子节点
             api.removeChildren(el)
-    	}
+        }
     }
 }
 ```

@@ -271,9 +271,13 @@ export function mountComponent(
 
 export function updateChildComponent(
     vm: Component,
+
+    // props的值
     propsData: ? Object,
     listeners : ? Object,
     parentVnode : MountedComponentVNode,
+
+    // 组件的占位节点
     renderChildren: ? Array < VNode >
 ) {
     if (process.env.NODE_ENV !== 'production') {
@@ -282,12 +286,16 @@ export function updateChildComponent(
 
     // determine whether component has slot children
     // we need to do this before overwriting $options._renderChildren.
+    // 判断组件是否有插槽节点，在重写$options._rrenderChildren前必须要确认
 
     // check if there are dynamic scopedSlots (hand-written or compiled but with
     // dynamic slot names). Static scoped slots compiled from template has the
     // "$stable" marker.
+    // 检查是否有动态作用域插槽。通过模版编译的静态作用域插槽具有$stable标记
     const newScopedSlots = parentVnode.data.scopedSlots
     const oldScopedSlots = vm.$scopedSlots
+
+    // 是否具有动态插槽
     const hasDynamicScopedSlot = !!(
         (newScopedSlots && !newScopedSlots.$stable) ||
         (oldScopedSlots !== emptyObject && !oldScopedSlots.$stable) ||
@@ -297,27 +305,36 @@ export function updateChildComponent(
     // Any static slot children from the parent may have changed during parent's
     // update. Dynamic scoped slots may also have changed. In such cases, a forced
     // update is necessary to ensure correctness.
+    // 任何静态插槽的子节点数组在其父节点的更新中都可以会改变。动态作用域插槽也是。这种情况下
+    // 必须通过强制更新来保证它们的正确
     const needsForceUpdate = !!(
         renderChildren || // has new static slots
         vm.$options._renderChildren || // has old static slots
         hasDynamicScopedSlot
     )
 
+    // 更新占位符VNode
     vm.$options._parentVnode = parentVnode
     vm.$vnode = parentVnode // update vm's placeholder node without re-render
 
+    // 更新组件根节点的父节点
     if (vm._vnode) { // update child tree's parent
         vm._vnode.parent = parentVnode
     }
+
+    // 重写子节点数组
     vm.$options._renderChildren = renderChildren
 
     // update $attrs and $listeners hash
     // these are also reactive so they may trigger child update if the child
     // used them during render
+    // 更新节点属性和监听器
+    // 它们都是响应式的，所以更新它们时可能会触发其他渲染更新
     vm.$attrs = parentVnode.data.attrs || emptyObject
     vm.$listeners = listeners || emptyObject
 
     // update props
+    // 更新props属性的值
     if (propsData && vm.$options.props) {
         toggleObserving(false)
         const props = vm._props
@@ -339,6 +356,7 @@ export function updateChildComponent(
     updateComponentListeners(vm, listeners, oldListeners)
 
     // resolve slots + force update if has children
+    // 更新插槽，并强制更新
     if (needsForceUpdate) {
         vm.$slots = resolveSlots(renderChildren, parentVnode.context)
         vm.$forceUpdate()
@@ -369,7 +387,7 @@ export function activateChildComponent(vm: Component, direct ? : boolean) {
             return
         }
 
-    // 是否为直接不活跃的mv实例，如果是则退出
+        // 是否为直接不活跃的mv实例，如果是则退出
     } else if (vm._directInactive) {
         return
     }

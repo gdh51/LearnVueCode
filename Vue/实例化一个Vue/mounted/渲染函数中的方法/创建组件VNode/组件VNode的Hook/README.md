@@ -4,7 +4,7 @@
 
 - [init()——生成组件vm实例，创建其DOM片段](#init%e7%94%9f%e6%88%90%e7%bb%84%e4%bb%b6vm%e5%ae%9e%e4%be%8b%e5%88%9b%e5%bb%ba%e5%85%b6dom%e7%89%87%e6%ae%b5)
 - prepatch
-- insert
+- [insert()——调用组件insert钩子函数](#insert%e8%b0%83%e7%94%a8%e7%bb%84%e4%bb%b6insert%e9%92%a9%e5%ad%90%e5%87%bd%e6%95%b0)
 - destroy
 
 ```js
@@ -146,7 +146,7 @@ function activateChildComponent(vm: Component, direct ? : boolean) {
         return
     }
 
-    // 是否为不活跃状态
+    // 是否为不活跃状态(从未激活的组件该属性就为null)
     if (vm._inactive || vm._inactive === null) {
 
         // 关闭不活跃状态
@@ -154,7 +154,7 @@ function activateChildComponent(vm: Component, direct ? : boolean) {
 
         // 激活动态组件的子组件
         for (let i = 0; i < vm.$children.length; i++) {
-            activateChildComponent(vm.$children[i])
+            activateChildComponent(vm.$children[i]);
         }
 
         // 调用动态组件的activated周期函数

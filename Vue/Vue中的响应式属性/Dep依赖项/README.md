@@ -248,10 +248,10 @@ Watcher.prototype.update() {
 ```
 
 >当我调用`update()`方法时，就会根据不同的`watcher`来进行更新，大多数情况是通过`queueWatcher()`来更新，这里不单独说明`lazy watcher`如何进行更新了。
+
 [computed更新过程-lazy watcher]()
 
 我们可以看到，但凡有一个`dep`依赖项更新时，就会将调用`queueWatcher()`并传入该`watcher`，[下一部分](../../nextTick与渲染更新)
-
 
 回头可以来看看图
 ![依赖项更新](../img/依赖项更新.svg)

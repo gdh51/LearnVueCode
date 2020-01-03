@@ -9,6 +9,8 @@ import {
 
 export function getFirstComponentChild(children: ? Array < VNode > ): ? VNode {
     if (Array.isArray(children)) {
+
+        // 遍历子节点数组，获取其中第一个数组节点
         for (let i = 0; i < children.length; i++) {
             const c = children[i];
 

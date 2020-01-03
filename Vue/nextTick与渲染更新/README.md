@@ -230,14 +230,17 @@ function flushSchedulerQueue() {
     }
 }
 ```
+
 首先呢，对`queue`排序，然后依次更新`watcher`：
 
 在更新`watcher`前，如果是渲染`watcher`则会触发其`beforeUpdate`钩子函数：
 ![渲染watcher的before函数](./imgs/渲染watcher的before().png)
 
 之后通过`watcher.run()`来对各个各种`watcher`进行更新处理，对其进行以下操作：
+
 1. 进行求值和依赖项重新收集
 2. 如果是`hwatch`属性的`watcher`则触发其回调
+
 ```js
 Watcher.prototype.run() {
 
@@ -277,6 +280,7 @@ Watcher.prototype.run() {
 ```
 
 最后通过`resetSchedulerState()`来重置更新调度程序队列的状态, 具体状态的含义在上面有描述，这里就不标记注释了。
+
 ```js
 function resetSchedulerState() {
     index = queue.length = activatedChildren.length = 0;
@@ -289,6 +293,7 @@ function resetSchedulerState() {
 ```
 
 然后触发涉及数据更新的`watcher`所在的`Vue`实例的`update`钩子函数:
+
 ```js
 function callUpdatedHooks(queue) {
     let i = queue.length
@@ -303,7 +308,9 @@ function callUpdatedHooks(queue) {
 ```
 
 ### 在watcher更新时，又有依赖项发生变换的处理
+
 在上述更新过程中`watcher.run()`运行时，可能会出现以下这种情况, 我们在监听一个变量的时候，改变了自己或其他变量：
+
 ```js
 watch: {
     a () {
@@ -311,7 +318,9 @@ watch: {
     }
 }
 ```
+
 但此时事件循环并未结束，所以按之前的流程：依赖项变动... ——> 触发`queueWatcher()`，向`queue`队列中加入新的`watcher`, 此时的`queueWatcher()`的流程就发生了变化：由于此时处于刷新队列中的状态，所以此时`flushing = true`、`waiting = false`，那么它只能进入以下逻辑部分：
+
 ```js
 // 截取部分queueWatcher()代码
 let i = queue.length - 1;
@@ -320,7 +329,9 @@ while (i > index && queue[i].id > watcher.id) {
 }
 queue.splice(i + 1, 0, watcher);
 ```
+
 从上面的代码段可以看出，如果有新的`watcher`加入，那么它会被添加到**还未更新的`watcher`中的对应的有序位置**，如我们此时有这样一个`watcher`队列(id表示):
+
 ```js
 // 总队列为
 const queue = [1, 3, 5, 6, 8, 9];
@@ -336,6 +347,7 @@ index = 2;
 ```
 
 那么如果在更新5时，添加了一个`id`为2的`watcher`进来，那么此时：
+
 ```js
 // 已更新的队列为
 [1, 3];
@@ -348,23 +360,28 @@ index = 2;
 ```
 
 在`flushSchedulerQueue()`函数中，我们可以看见在调用`queue`队列的`watcher`时，是以这种形式：
+
 ```js
 for (index = 0; index < queue.length; index++)
 ```
+
 所以在新加入`watcher`时，循环的次数也会增加，就保证了全部`watcher`的更新。
 
 ### beforeUpdate与update构造函数调用的顺序
+
 由上面的代码我们可以总结出：
+
 + `beforeUpdate`函数在组件中的调用顺序是由**父->子** 并是在渲染`watcher`更新前调用。
 + `update`函数在组件中的调用顺序是由**子->父**的顺序调用，并是在所有的`watcher`更新完后调用。
-  ```js
-  // 原因
-  let i = queue.length;
-  while (i--) {
-      callHook('update');
-  }
 
-  for (index = 0; index < queue.length; index++) {
-      callHook('beforeUpdate');
-  }
-  ```
+```js
+// 原因
+let i = queue.length;
+while (i--) {
+    callHook('update');
+}
+
+for (index = 0; index < queue.length; index++) {
+    callHook('beforeUpdate');
+}
+```
