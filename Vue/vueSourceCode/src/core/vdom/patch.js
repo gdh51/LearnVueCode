@@ -608,6 +608,8 @@ export function createPatchFunction(backend) {
         // removeOnly is a special flag used only by <transition-group>
         // to ensure removed elements stay in correct relative positions
         // during leaving transitions
+        // removeOnly是一个特殊的标记，专用于
+        // <transition-group>组件移除在离开过渡动画中正确位置的元素
         const canMove = !removeOnly
 
         if (process.env.NODE_ENV !== 'production') {
@@ -624,27 +626,35 @@ export function createPatchFunction(backend) {
 
                 // 当旧节点的尾指针指向的节点不存在时，指针左移
                 oldEndVnode = oldCh[--oldEndIdx]
+
+            // 当新旧两个头指针相等时
             } else if (sameVnode(oldStartVnode, newStartVnode)) {
 
                 // 当新旧节点头指针指向的节点大致相同时，对其进行打补丁更新，然后双方指针右移
                 patchVnode(oldStartVnode, newStartVnode, insertedVnodeQueue, newCh, newStartIdx)
                 oldStartVnode = oldCh[++oldStartIdx]
                 newStartVnode = newCh[++newStartIdx]
+
+            // 当新旧节点两个尾指针指向节点相同时
             } else if (sameVnode(oldEndVnode, newEndVnode)) {
 
                 // 当新旧节点尾指针指向的节点大致相同时，对其进行打补丁更新，然后双方指针左移
                 patchVnode(oldEndVnode, newEndVnode, insertedVnodeQueue, newCh, newEndIdx)
                 oldEndVnode = oldCh[--oldEndIdx]
                 newEndVnode = newCh[--newEndIdx]
+
+            // 当旧的头指针节点与新的尾指针节点相同时
             } else if (sameVnode(oldStartVnode, newEndVnode)) {
 
                 // 当新节点头指针，与旧节点尾指针指向的节点大致相同时，对其进行打补丁更新，然后双方指针向内部移动
                 patchVnode(oldStartVnode, newEndVnode, insertedVnodeQueue, newCh, newEndIdx)
 
-                // 将旧节点尾指针指向的元素插入到当前旧节点尾指针指向的元素之前
+                // 将旧节点尾指针指向的元素插入到当前旧节点尾指针指向的元素的下一个元素之前
                 canMove && nodeOps.insertBefore(parentElm, oldStartVnode.elm, nodeOps.nextSibling(oldEndVnode.elm))
                 oldStartVnode = oldCh[++oldStartIdx]
                 newEndVnode = newCh[--newEndIdx]
+
+            // 当旧的尾指针节点与新的头指针节点相同时
             } else if (sameVnode(oldEndVnode, newStartVnode)) {
 
                 // 当新节点尾指针，与旧节点头指针指向的节点大致相同时，对其进行打补丁更新，然后双方指针向内部移动
@@ -653,7 +663,9 @@ export function createPatchFunction(backend) {
                 // 将旧节点尾指针指向的元素插入到当前旧节点头指针指向的元素之前
                 canMove && nodeOps.insertBefore(parentElm, oldEndVnode.elm, oldStartVnode.elm)
                 oldEndVnode = oldCh[--oldEndIdx]
-                newStartVnode = newCh[++newStartIdx]
+                newStartVnode = newCh[++newStartIdx];
+
+            // 其他情况，优先查找是否有相同节点
             } else {
                 // 当4个指针都没有对应大致相等的节点时，通过其子节点的key值生成指针之间hash表，来看是否有相同的key
 
@@ -681,7 +693,7 @@ export function createPatchFunction(backend) {
                     // 找到相同key或是同一个vnode节点的节点时
                     vnodeToMove = oldCh[idxInOld]
 
-                    // 先对比其是否大致相同，相同时对其打补丁更新，情况hash表中对应的节点
+                    // 先对比其是否大致相同，相同时对该节点进行打补丁更新，同时清空hash表中对应的节点
                     if (sameVnode(vnodeToMove, newStartVnode)) {
                         patchVnode(vnodeToMove, newStartVnode, insertedVnodeQueue, newCh, newStartIdx)
                         oldCh[idxInOld] = undefined
@@ -702,9 +714,13 @@ export function createPatchFunction(backend) {
         }
 
         // 当新旧节点的任意一对指针相遇时，说明已经遍历过一次了，就结束比较了
+        // 此时根据是哪对指针率先相遇来决定之后的节点。
+        // 如果是旧指针相遇，那么说明新节点中有一部分节点是新增的，那么直接为其添加
         if (oldStartIdx > oldEndIdx) {
             refElm = isUndef(newCh[newEndIdx + 1]) ? null : newCh[newEndIdx + 1].elm
             addVnodes(parentElm, refElm, newCh, newStartIdx, newEndIdx, insertedVnodeQueue)
+
+        // 如果是新指针相遇，那么说明旧节点中有一部分节点是多余的，那么就直接删除
         } else if (newStartIdx > newEndIdx) {
             removeVnodes(parentElm, oldCh, oldStartIdx, oldEndIdx)
         }
@@ -822,18 +838,28 @@ export function createPatchFunction(backend) {
             if (isDef(i = data.hook) && isDef(i = i.update)) i(oldVnode, vnode)
         }
 
-        // 如果当前节点为元素节点
+        // 如果当前节点为元素节点，则查看其子节点数组是否存在，来判断下一步
         if (isUndef(vnode.text)) {
+
+            // 新旧VNoed节点都同时存在子节点数组
             if (isDef(oldCh) && isDef(ch)) {
                 if (oldCh !== ch) updateChildren(elm, oldCh, ch, insertedVnodeQueue, removeOnly)
+
+            // 之前没有子节点数组，现在有
             } else if (isDef(ch)) {
+
+                // 检查子数组中是否定义有重复的key值
                 if (process.env.NODE_ENV !== 'production') {
                     checkDuplicateKeys(ch)
                 }
                 if (isDef(oldVnode.text)) nodeOps.setTextContent(elm, '')
                 addVnodes(elm, null, ch, 0, ch.length - 1, insertedVnodeQueue)
+
+            // 之前有现在没有子节点数组，则直接移除
             } else if (isDef(oldCh)) {
                 removeVnodes(elm, oldCh, 0, oldCh.length - 1)
+
+            // 子节点为文本节点则直接更新
             } else if (isDef(oldVnode.text)) {
                 nodeOps.setTextContent(elm, '')
             }
