@@ -383,14 +383,22 @@ export function stateMixin(Vue: Class < Component > ) {
     // flow somehow has problems with directly declared definition object
     // when using Object.defineProperty, so we have to procedurally build up
     // the object here.
+    // flow在使用Object.defineProperty声明对象时会遇到一些问题，所以我们必须将其类型
+    // 声明通过程序的方式展示出来
+
+    // data属性的查询器
     const dataDef = {}
     dataDef.get = function () {
         return this._data
     }
-    const propsDef = {}
+
+    // props属性的查询器
+    const propsDef = {};
     propsDef.get = function () {
         return this._props
     }
+
+    // 为$data与$props添加setter，不允许用户修改这两个属性
     if (process.env.NODE_ENV !== 'production') {
         dataDef.set = function () {
             warn(
@@ -403,8 +411,10 @@ export function stateMixin(Vue: Class < Component > ) {
             warn(`$props is readonly.`, this)
         }
     }
-    Object.defineProperty(Vue.prototype, '$data', dataDef)
-    Object.defineProperty(Vue.prototype, '$props', propsDef)
+
+    // 定义两个查询vm实例data与props的属性
+    Object.defineProperty(Vue.prototype, '$data', dataDef);
+    Object.defineProperty(Vue.prototype, '$props', propsDef);
 
     Vue.prototype.$set = set
     Vue.prototype.$delete = del

@@ -30,6 +30,7 @@ import platformDirectives from './directives/index'
 import platformComponents from './components/index'
 
 // install platform specific utils
+// 安装浏览器平台特殊的工具方法
 Vue.config.mustUseProp = mustUseProp
 Vue.config.isReservedTag = isReservedTag
 Vue.config.isReservedAttr = isReservedAttr
@@ -37,8 +38,9 @@ Vue.config.getTagNamespace = getTagNamespace
 Vue.config.isUnknownElement = isUnknownElement
 
 // install platform runtime directives & components
-extend(Vue.options.directives, platformDirectives)
-extend(Vue.options.components, platformComponents)
+// 安装浏览器平台运行时的指令和内部组件(transition/transition-group)
+extend(Vue.options.directives, platformDirectives);
+extend(Vue.options.components, platformComponents);
 
 // install platform patch function
 // 初始化平台的补丁函数，用于更新dom
@@ -85,7 +87,7 @@ if (inBrowser) {
                 `See more tips at https://vuejs.org/guide/deployment.html`
             )
         }
-    }, 0)
+    }, 0);
 }
 
 export default Vue
