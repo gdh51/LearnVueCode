@@ -1,35 +1,39 @@
 # 属性合并策略
 
-Vue 针对不同的属性的合并的方式是不同的，一共分为以下 6 种：
+`Vue`针对不同的属性字段的合并的方式是不同的，一共分为以下`6`种：
 ![属性合并策略中的属性展示](../imgs/属性合并策略.png)
 
-这些策略在 Vue 构造函数初始化之前就开始初始化，它的位置处于 Vue 的`config.optionMergeStrategies`之中
+这些策略在`Vue`构造函数初始化之前就已经被添加到全局配置值中，它的位置处于`Vue`的`config.optionMergeStrategies`之中
 
 ```js
-// 重写策略是用来合并父与子options来变为一个最终的配置, 初始为空对象
+// 策略是用来合并父与子options来变为一个最终的配置,
+// 它被初始为一个空对象
 const strats = config.optionMergeStrategies;
 ```
 
-目录：
-  - [data & provide](./data策略)
-  - [el & propsData](#el--propsdata)
-  - [hook——生命周期钩子](#hook%e7%94%9f%e5%91%bd%e5%91%a8%e6%9c%9f%e9%92%a9%e5%ad%90)
-  - [assets——资产类型策略](#assets%e8%b5%84%e4%ba%a7%e7%b1%bb%e5%9e%8b%e7%ad%96%e7%95%a5)
-  - [watch——监听函数策略](#watch%e7%9b%91%e5%90%ac%e5%87%bd%e6%95%b0%e7%ad%96%e7%95%a5)
-  - [props/methods/inject/computed——共同的策略](#propsmethodsinjectcomputed%e5%85%b1%e5%90%8c%e7%9a%84%e7%ad%96%e7%95%a5)
+那么按同类型的合并策略，其目录就分为以下，按需查看：
 
-在没有策略时，会调用默认策略：
+- [data & provide](./data策略/README.MD)
+- [el & propsData](#el--propsdata)
+- [hook——生命周期钩子](#hook%e7%94%9f%e5%91%bd%e5%91%a8%e6%9c%9f%e9%92%a9%e5%ad%90)
+- [assets——资产类型策略](#assets%e8%b5%84%e4%ba%a7%e7%b1%bb%e5%9e%8b%e7%ad%96%e7%95%a5)
+- [watch——监听函数策略](#watch%e7%9b%91%e5%90%ac%e5%87%bd%e6%95%b0%e7%ad%96%e7%95%a5)
+- [props/methods/inject/computed——共同的策略](#propsmethodsinjectcomputed%e5%85%b1%e5%90%8c%e7%9a%84%e7%ad%96%e7%95%a5)
+
+**在没有策略时，会调用默认策略**，默认策略为：
 
 ```js
-// 默认策略, 返回两者中存在的一方，优先返回childVal
+// 默认策略，优先返回childVal
 const defaultStrat = function (parentVal: any, childVal: any): any {
-    return (childVal === undefined ?)
-        parentVal :
-        childVal;
+    return childVal === undefined ? parentVal : childVal;
 }
 ```
 
+默认策略可以理解为重写策略，后来的会重写之前的值。
+
 ## el & propsData
+
+使用默认的策略，即新值重写旧值。另外，这两个值设置了告警，仅能在根`vm`实例中使用，不能在组件中使用(因为之后我们会知道，组件中调用该方法时，不会传入`vm`实例)
 
 ```js
 /**
@@ -50,6 +54,8 @@ if (process.env.NODE_ENV !== 'production') {
 ```
 
 ## hook——生命周期钩子
+
+钩子函数的合并策略，简述为一句话就是返回一个共同的数组，父级的`hook`优先存储在前面。
 
 ```js
 const LIFECYCLE_HOOKS = [
@@ -78,21 +84,23 @@ function mergeHook(
      * 三种情况：
      * 1. 不存在childVal时， 直接返回parentVal
      * 2. 两者都存在时，返回两者数组合并的结果
-     * 3. 不存在parentVal时，将childVal处理后作为数组返回
+     * 3. 不存在parentVal时，将childVal处理为数组返回
      */
     const res = childVal
         ? parentVal
             ? parentVal.concat(childVal)
             : Array.isArray(childVal)
-            ? childVal
-            : [childVal]
+                ? childVal
+                : [childVal]
         : parentVal;
 
-    // res数组去重
+    // hook数组去重
     return res ? dedupeHooks(res) : res;
 }
 
+// 消除重复的hook
 function dedupeHooks(hooks) {
+
     // 将hooks添加至res，不添加重复的
     const res = [];
     for (let i = 0; i < hooks.length; i++) {
@@ -105,6 +113,8 @@ function dedupeHooks(hooks) {
 ```
 
 ## assets——资产类型策略
+
+对与资产类型的字段，Vue将其存储在一个对象的原型中，其他拓展的字段存储在自有属性之中。
 
 ```js
 const ASSET_TYPES = ['component', 'directive', 'filter'];
@@ -121,8 +131,7 @@ function mergeAssets(
     // 将parentVal作为原型对象，childVal作为实例属性返回
     const res = Object.create(parentVal || null);
     if (childVal) {
-        process.env.NODE_ENV !== 'production' &&
-            assertObjectType(key, childVal, vm);
+        process.env.NODE_ENV !== 'production' && assertObjectType(key, childVal, vm);
         return extend(res, childVal);
     } else {
         return res;
@@ -131,6 +140,8 @@ function mergeAssets(
 ```
 
 ## watch——监听函数策略
+
+对于监听函数，将其合并为一个数组。对于同名的函数不进行重写，按序添加。
 
 ```js
 // Firefox has a "watch" function on Object.prototype...
@@ -141,7 +152,7 @@ const nativeWatch = {}.watch;
  *
  * Watchers hashes should not overwrite one
  * another, so we merge them as arrays.
- * 两者不应该重写对方，所以将两者添加进数组
+ * Watchers们不应该重写对方，所以将两者添加进数组
  */
 strats.watch = function(
     parentVal: ?Object,
@@ -180,7 +191,7 @@ strats.watch = function(
 
 ## props/methods/inject/computed——共同的策略
 
-这个策略其实和`assets`的策略类似，两者都存在时都是`parentVal`作为原型对象属性，`childVal`作为子属性。
+这个策略其实和`assets`的策略类似，但不将`parentVal`作为原型对象属性，而是直接与`childVal`合并，此时`childVal`会重写`parentVal`中的相同字段。
 
 ```js
 /**

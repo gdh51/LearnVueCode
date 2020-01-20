@@ -27,7 +27,7 @@ function Vue(options) {
 }
 ```
 
-其具体的代码为：
+其`_init()`函数具体的代码为(这里为了阅读流畅，直接将组件实例化相关的代码删除了)：
 
 ```js
 Vue.prototype._init = function (options ? : Object) {
@@ -45,16 +45,21 @@ Vue.prototype._init = function (options ? : Object) {
     }
 
     // a flag to avoid this being observed
+    // 一个避免vm实例对象作为被观察的对象的标记
     vm._isVue = true;
 
     // 对实例构造函数上的默认配置和用户的配置进行合并
     vm.$options = mergeOptions(
+
+        // 返回Vue.options，即全局组件配置
         resolveConstructorOptions(vm.constructor),
+
+        // 我们定义的根vm实例的options
         options || {},
         vm
-    )
+    );
 
-    // 对实例自身进行代理
+    // 对vm实例进行代理，以便在调用渲染函数时直接访问vm实例上属性
     if (process.env.NODE_ENV !== 'production') {
         initProxy(vm)
     } else {
@@ -62,11 +67,14 @@ Vue.prototype._init = function (options ? : Object) {
     }
 
     vm._self = vm;
+
+    // beforeCreate周期阶段，初始化各种函数
     initLifecycle(vm);
     initEvents(vm);
     initRender(vm);
     callHook(vm, 'beforeCreate');
 
+    // created阶段，初始化state
     initInjections(vm) // resolve injections before data/props
     initState(vm)
     initProvide(vm) // resolve provide after data/props
@@ -86,9 +94,13 @@ Vue.prototype._init = function (options ? : Object) {
 }
 ```
 
+按照注释和方法名称，你应该对这些阶段做的事情有个大致的了解了，那么现在来具体看下它们！
+
+接下来我们会按照每个实例的生命周期顺序来阅读源码。
+
 ## beforeCreate
 
-当我们实例化一个`Vue`时，首先其会合并一些用户设置的`Options`配置[详情](./合并Options/README.md)，之后便调用各种模块的初始化函数：
+在`beforeCreate`阶段，Vue会合并一些用户设置的`Options`配置[详情](./合并Options/README.md)，之后便调用各种的初始化函数：
 
 1. [initProxy——初始化Vue实例对自身的代理](./beforeCreate/初始化Proxy)
 2. [initLifeCycle——初始化实例自身的一些属性](./beforeCreate/初始化生命周期)

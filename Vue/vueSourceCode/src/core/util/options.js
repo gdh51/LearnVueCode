@@ -457,7 +457,8 @@ export function mergeOptions(
     // but only if it is a raw options object that isn't
     // the result of another mergeOptions call.
     // Only merged options has the _base property.
-    // 在子options上应用extends/mixins属性仅当它们构造函数非Vue时
+    // 为子组件合并传入的extends/mixins，仅合并未合并过的，
+    // 且不对基础组件(具有_base)配置进行合并
     if (!child._base) {
         if (child.extends) {
             parent = mergeOptions(parent, child.extends, vm)

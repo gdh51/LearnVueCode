@@ -1,5 +1,7 @@
 # data属性的合并策略
-data属性的更新策略较为复杂，
+
+`data`属性的更新策略较为复杂，
+
 ```js
 strats.data = function (
     parentVal: any,
@@ -26,7 +28,8 @@ strats.data = function (
 }
 ```
 
-之后调用`mergeDataOrFn()`根据vm是否存在来返回一个用于合并的函数：
+从上面的入口函数我们可以看到，两种都是调用的`mergeDataOrFn()`，唯一的区别是组件vm实例会对配置的`data`进行检验。返回的函数直接是调用后的结果，那么我们来看看这个函数是什么：
+
 ```js
 function mergeDataOrFn(
     parentVal: any,
@@ -34,7 +37,7 @@ function mergeDataOrFn(
     vm ? : Component
 ): ? Function {
 
-    // vm为组件实例的情况
+    // 组件实例的情况
     if (!vm) {
 
         // 返回其中存在的一个
@@ -57,7 +60,7 @@ function mergeDataOrFn(
             );
         }
 
-    // 合并Vue实例的data属性
+    // 根Vue实例的data属性
     } else {
         return function mergedInstanceDataFn() {
             const instanceData = typeof childVal === 'function' ?
@@ -78,6 +81,7 @@ function mergeDataOrFn(
 ```
 
 最后是简单的类似`Object.assign`的函数`mergeData`，用于正式合并属性，通过递归的方式
+
 ```js
 function mergeData(to: Object, from: ? Object): Object {
     if (!from) return to;
@@ -108,6 +112,7 @@ function mergeData(to: Object, from: ? Object): Object {
 ```
 
 具体合并`options`的函数为，可以理解为递归调用`Object.assign()`
+
 ```js
 function mergeData(to: Object, from: ? Object): Object {
     if (!from) return to;
@@ -141,7 +146,9 @@ function mergeData(to: Object, from: ? Object): Object {
 ```
 
 ## provide的策略
+
 同data的策略
+
 ```js
 strats.provide = mergeDataOrFn;
 ```

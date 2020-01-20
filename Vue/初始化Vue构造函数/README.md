@@ -233,3 +233,12 @@ function extend(to: Object, _from: ? Object): Object {
 ### Vue.use()——插件的安装
 
 [查看](./Vue.use/README.md)
+___
+
+那么最终的Vue构造函数上为什么样呢？这里截一张图：
+![RootVueConstructor](./imgs/RootVueConstructor.png)
+
+其中`options`中包含
+![Vue Options](./imgs/Vue.options.png)
+
+如果你写过`Vue`的组件，那么你就会觉得，这不就是组件配置对象吗！没错，你可以假设它为一个全局的组件配置对象，所以我们才能在任何地方使用其中的组件和指令。
