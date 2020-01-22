@@ -63,6 +63,7 @@ function mergeDataOrFn(
     // 根Vue实例的data属性
     } else {
         return function mergedInstanceDataFn() {
+
             const instanceData = typeof childVal === 'function' ?
                 childVal.call(vm, vm) :
                 childVal;
@@ -80,25 +81,36 @@ function mergeDataOrFn(
 }
 ```
 
-最后是简单的类似`Object.assign`的函数`mergeData`，用于正式合并属性，通过递归的方式
+乍一看其实`mergedDataFn()`与`mergedInstanceDataFn()`似乎是一样的，唯一的区别就是对于`childVal`有特殊的处理。最后都是用简单的类似`Object.assign()`的函数`mergeData`处理结果，用于合并`data`属性，该方法只向目标对象中添加自身没有的字段，对于对象类型字段，其通过递归调用该方法来添加其中的属性。
+
+具体的`mergeData()`函数代码如下：
 
 ```js
 function mergeData(to: Object, from: ? Object): Object {
     if (!from) return to;
     let key, toVal, fromVal;
 
+    // 检查from对象中所有的key值，支持symbol
     const keys = hasSymbol ?
         Reflect.ownKeys(from) :
         Object.keys(from);
 
     for (let i = 0; i < keys.length; i++) {
         key = keys[i];
+
         // in case the object is already observed...
+        // 防止该data对象已被观察
         if (key === '__ob__') continue
         toVal = to[key];
         fromVal = from[key];
+
+        // 从from对象中添加to对象没有的key值
         if (!hasOwn(to, key)) {
-            set(to, key, fromVal)
+
+            // 直接为其定义响应式属性
+            set(to, key, fromVal);
+
+        // 如果该值为对象，则递归添加
         } else if (
             toVal !== fromVal &&
             isPlainObject(toVal) &&
@@ -111,43 +123,33 @@ function mergeData(to: Object, from: ? Object): Object {
 }
 ```
 
-具体合并`options`的函数为，可以理解为递归调用`Object.assign()`
+上述代码中涉及一个`set()`方法，这里暂时不用关心，它用于将一个属性设置为响应式。其他的地方应该好理解。
+
+## 为什么组件vm实例要使用函数而不是对象
+
+当作为组件来实例化一个`vm`实例时，调用`data`的策略时，不会传入第三个参数(即当前`vm`实例)，所以在`data`的合并策略函数中，会进入第一个分支：
 
 ```js
-function mergeData(to: Object, from: ? Object): Object {
-    if (!from) return to;
-    let key, toVal, fromVal;
+if (!vm) {
+    // 进入当前分支
+    if (childVal && typeof childVal !== 'function') {
+        process.env.NODE_ENV !== 'production' && warn(
+            'The "data" option should be a function ' +
+            'that returns a per-instance value in component ' +
+            'definitions.',
+            vm
+        );
 
-    // 防止有Symbol为键名的属性
-    const keys = hasSymbol ?
-        Reflect.ownKeys(from) :
-        Object.keys(from);
-
-    // 向to对象上添加from对象上自己不存在的属性
-    for (let i = 0; i < keys.length; i++) {
-        key = keys[i];
-        // in case the object is already observed...
-        if (key === '__ob__') continue
-        toVal = to[key];
-        fromVal = from[key];
-        if (!hasOwn(to, key)) {
-            set(to, key, fromVal);
-        } else if (
-            toVal !== fromVal &&
-            isPlainObject(toVal) &&
-            isPlainObject(fromVal)
-        ) {
-            // 对象情况递归调用合并
-            mergeData(toVal, fromVal);
-        }
+        return parentVal;
     }
-    return to;
 }
 ```
 
+在这里就会对`childVal`的类型进行检测，如果不是函数，那么就会导致直接返回`parentVal`，这就是为什么如果我们在组件中定义一个对象时，必须要声明一个函数，而不是一个对象。当声明一个对象时，所有的组件都会不能使用这个`data`对象。
+
 ## provide的策略
 
-同data的策略
+同`data`的策略的合并方式相同。
 
 ```js
 strats.provide = mergeDataOrFn;

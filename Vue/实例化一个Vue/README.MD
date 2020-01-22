@@ -100,12 +100,12 @@ Vue.prototype._init = function (options ? : Object) {
 
 ## beforeCreate
 
-在`beforeCreate`阶段，Vue会合并一些用户设置的`Options`配置[详情](./合并Options/README.md)，之后便调用各种的初始化函数：
+在`beforeCreate`阶段，`Vue`会合并一些用户设置的`Options`配置[详情](./beforeCreate/合并Options/README.md)，之后便调用各种的初始化函数：
 
-1. [initProxy——初始化Vue实例对自身的代理](./beforeCreate/初始化Proxy)
-2. [initLifeCycle——初始化实例自身的一些属性](./beforeCreate/初始化生命周期)
-3. [initEvents——初始化组件的自定义事件](./beforeCreate/初始化Events)
-4. [initRender——初始化模版](./beforeCreate/初始化Render)
+1. [initProxy——初始化Vue实例对自身的代理](./beforeCreate/初始化Proxy/README.md)
+2. [initLifeCycle——初始化实例自身的一些属性](./beforeCreate/初始化生命周期/README.md)
+3. [initEvents——初始化组件的自定义事件](./beforeCreate/初始化Events/README.md)
+4. [initRender——初始化模版](./beforeCreate/初始化Render/README.md)
 
 这时便开始调用第一个生命周期函数`beforeCreate`，我们可以知道，此时什么还未进行各种属性的初始化和`dom`的挂载
 
