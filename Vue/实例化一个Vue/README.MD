@@ -107,17 +107,19 @@ Vue.prototype._init = function (options ? : Object) {
 3. [initEvents——初始化组件的自定义事件](./beforeCreate/初始化Events/README.md)
 4. [initRender——初始化模版](./beforeCreate/初始化Render/README.md)
 
-这时便开始调用第一个生命周期函数`beforeCreate`，我们可以知道，此时什么还未进行各种属性的初始化和`dom`的挂载
+以上的全部操作呢，总结起来就是初始化各种所需的配置属性，还有vm实例上的各种属性，当然此时还未对数据进行响应式的处理，只能说是轻微的预备处理。之后便调用了第一个生命周期函数`beforeCreate`。
+
+>个人感觉这个生命周期钩子函数存在的意义不大。
 
 ## created
 
-之后便在这个阶段进行数据的初始化：
+之后便在`created`这个阶段进行`state`数据的初始化，初始化的数据包括：
 
 1. [initInject——初始化inject属性](./create/初始化Inject)
 2. [initState——初始化各种属性(重要)](./create/初始化State)
 3. [initProvide](./create/初始化Provide)
 
-最后触发一下`create`钩子函数，在这个阶段，可以看出，所有的数据都已经准备就绪了。
+这些数据也就是我们在组件配置中自定义的各种变量数据。最后触发一下`create`钩子函数，在这个阶段，可以看出，所有的数据都已经准备就绪了，做好了响应式处理。
 
 ## beforeMount
 

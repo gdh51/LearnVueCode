@@ -23,9 +23,10 @@ export function initProvide(vm: Component) {
 
 export function initInjections(vm: Component) {
 
-    // 找到inject中所有的key的值
+    // 找到inject中所有的key值在祖先vm实例中的函数，返回一个键值对象
     const result = resolveInject(vm.$options.inject, vm);
     if (result) {
+        // 关闭响应项收集
         toggleObserving(false);
 
         // 遍历定义响应式属性，如果在是开发模式，还要添加一个自定义setter来禁止用户修改
@@ -69,7 +70,8 @@ export function resolveInject(inject: any, vm: Component): ? Object {
                 source = source.$parent;
             }
 
-            // 找到根组件都没有，查看是否配置有默认属性，否则报错
+            // 找到根组件都没有，查看是否配置有默认属性，
+            // 如果有配置默认属性，则使用默认属性中的函数，否则报错
             if (!source) {
                 if ('default' in inject[key]) {
                     const provideDefault = inject[key].default;

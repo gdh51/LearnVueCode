@@ -30,24 +30,39 @@ export function validateProp(
     propsData: Object,
     vm ? : Component
 ): any {
-    const prop = propOptions[key]
-    const absent = !hasOwn(propsData, key)
-    let value = propsData[key]
+
+    // 获取当前prop的配置对象
+    const prop = propOptions[key];
+
+    // 是否未传入该prop值
+    const absent = !hasOwn(propsData, key);
+
+    // 获取传入组件的prop值
+    let value = propsData[key];
 
     // 检查type是否为Boolean类型
-    const booleanIndex = getTypeIndex(Boolean, prop.type)
+    const booleanIndex = getTypeIndex(Boolean, prop.type);
+
+    // 如果是Boolean类型，则对其值进行检查
     if (booleanIndex > -1) {
+
+        // 如果未传入该值且未定义默认值时，则赋值为false
         if (absent && !hasOwn(prop, 'default')) {
-            value = false
+            value = false;
+
+        // 如果传入空字符串或同键名的字符串值，也认为是有值
         } else if (value === '' || value === hyphenate(key)) {
             // only cast empty string / same name to boolean if
             // boolean has higher priority
+            // 两个单独的例子，在空字符串或同名的键值时
+            // 如果Boolean类型具有更高的权重，则将其转化为布尔值
             const stringIndex = getTypeIndex(String, prop.type)
             if (stringIndex < 0 || booleanIndex < stringIndex) {
                 value = true
             }
         }
     }
+
     // 检查是否有default默认值, 在该props没有值时获取它
     if (value === undefined) {
         value = getPropDefaultValue(vm, prop, key)
@@ -60,6 +75,7 @@ export function validateProp(
         observe(value)
         toggleObserving(prevShouldObserve)
     }
+
     if (
         process.env.NODE_ENV !== 'production' &&
         // skip validation for weex recycle-list child component props
@@ -194,9 +210,11 @@ function assertType(value: any, type: Function): {
  * Use function string name to check built-in types,
  * because a simple equality check will fail when running
  * across different vms / iframes.
+ * 使用函数的字符串名称是检查内置的类型，因为在不同vms或iframes中直接的
+ * 比较会失败
  */
 function getType(fn) {
-    const match = fn && fn.toString().match(/^\s*function (\w+)/)
+    const match = fn && fn.toString().match(/^\s*function (\w+)/);
     return match ? match[1] : ''
 }
 
@@ -204,6 +222,7 @@ function isSameType(a, b) {
     return getType(a) === getType(b)
 }
 
+// 检查expectedTypes
 function getTypeIndex(type, expectedTypes): number {
 
     // 验证非数组情况
@@ -211,10 +230,12 @@ function getTypeIndex(type, expectedTypes): number {
         return isSameType(expectedTypes, type) ? 0 : -1
     }
 
-    // 验证type为数组的情况
+    // 验证expectedTypes为数组的情况
     for (let i = 0, len = expectedTypes.length; i < len; i++) {
+
+        // 返回符合条件的下标
         if (isSameType(expectedTypes[i], type)) {
-            return i
+            return i;
         }
     }
     return -1

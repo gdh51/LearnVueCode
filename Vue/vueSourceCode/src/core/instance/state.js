@@ -54,22 +54,30 @@ export function proxy(target: Object, sourceKey: string, key: string) {
 }
 
 export function initState(vm: Component) {
-    // 初始化一个观察者对象, 用于存放watcher定义的监听器
-    vm._watchers = []
+
+    // 初始化一个观察者对象数组, 用于存放watcher监听器们
+    vm._watchers = [];
     const opts = vm.$options
 
+    // 初始化props
     if (opts.props) initProps(vm, opts.props)
 
+    // 初始化methods
     if (opts.methods) initMethods(vm, opts.methods)
 
+    // 初始化data
     if (opts.data) {
         initData(vm)
+
+    // 未定义data时，初始化一个空data并转化为响应式
     } else {
         observe(vm._data = {}, true /* asRootData */ )
     }
 
+    // 初始化computed属性
     if (opts.computed) initComputed(vm, opts.computed)
 
+    // 初始化watch监听器
     if (opts.watch && opts.watch !== nativeWatch) {
         initWatch(vm, opts.watch)
     }
@@ -77,27 +85,31 @@ export function initState(vm: Component) {
 
 function initProps(vm: Component, propsOptions: Object) {
 
-    // options中定义的原始的props
+    // 父组件或用户传入的propsData值
     const propsData = vm.$options.propsData || {}
 
     // 在vm实例上定义_props的代理
-    const props = vm._props = {}
+    const props = vm._props = {};
+
     // cache prop keys so that future props updates can iterate using Array
     // instead of dynamic object key enumeration.
     // 缓存prop的键名, 之后更新props时不用在次遍历对象来获取键名
-    const keys = vm.$options._propKeys = []
-    const isRoot = !vm.$parent
+    const keys = vm.$options._propKeys = [];
+
+    // 确定其不为根vm实例
+    const isRoot = !vm.$parent;
+
     // root instance props should be converted
     if (!isRoot) {
         toggleObserving(false)
     }
 
+    // 遍历用户定义的propsOptions配置
     for (const key in propsOptions) {
-        keys.push(key)
+        keys.push(key);
 
         // 效验props中对属性的配置
         const value = validateProp(key, propsOptions, propsData, vm)
-        /* istanbul ignore else */
 
         // 生产环境中, 限制props名与修改props中属性
         if (process.env.NODE_ENV !== 'production') {
@@ -115,7 +127,8 @@ function initProps(vm: Component, propsOptions: Object) {
                 if (!isRoot && !isUpdatingChildComponent) {
                     warn(
                         `Avoid mutating a prop directly since the value will be ` +
-                        `overwritten whenever the parent component re-renders. ` +
+                        `overwritten
+                        whenever the parent component re-renders. ` +
                         `Instead, use a data or computed property based on the prop's ` +
                         `value. Prop being mutated: "${key}"`,
                         vm
