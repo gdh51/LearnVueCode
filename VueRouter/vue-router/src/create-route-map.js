@@ -31,7 +31,10 @@ export function createRouteMap(
     })
 
     // ensure wildcard routes are always at the end
+    // 确保通配符路径永远在路由表数组的最后
     for (let i = 0, l = pathList.length; i < l; i++) {
+
+        // 找到通配符路径将其添加到路径表数组
         if (pathList[i] === '*') {
             pathList.push(pathList.splice(i, 1)[0])
             l--
@@ -40,17 +43,21 @@ export function createRouteMap(
     }
 
     if (process.env.NODE_ENV === 'development') {
+
         // warn if routes do not include leading slashes
+        // 每个路由地址都必须在首部以/开头
         const found = pathList
             // check for missing leading slash
             .filter(path => path && path.charAt(0) !== '*' && path.charAt(0) !== '/')
 
+        // 否则警告
         if (found.length > 0) {
             const pathNames = found.map(path => `- ${path}`).join('\n')
             warn(false, `Non-nested routes must include a leading slash character. Fix the following routes: \n${pathNames}`)
         }
     }
 
+    // 返回三个记录路由情况的对象
     return {
         pathList,
         pathMap,
@@ -136,14 +143,21 @@ function addRouteRecord(
             }
     }
 
+    // 是否设置子路由路径
     if (route.children) {
         // Warn if route is named, does not redirect and has a default child route.
         // If users navigate to this route by name, the default child will
         // not be rendered (GH Issue #629)
+        // 警告：如果该路由为命名路由，则不要重定向或有一个默认的子路由
+        // 如果用户通过路由名称跳转到该路由时，该默认子组件不会被重新渲染
         if (process.env.NODE_ENV !== 'production') {
+
+            // 命名路由，不具有重定向但具有具体的子路由路径
             if (
                 route.name &&
                 !route.redirect &&
+
+                // 路径是否为单独的/或为空字符串
                 route.children.some(child => /^\/?$/.test(child.path))
             ) {
                 warn(
@@ -158,23 +172,33 @@ function addRouteRecord(
                 )
             }
         }
+
+        // 遍历子路由数组，将其添加到记录中
         route.children.forEach(child => {
             const childMatchAs = matchAs ?
                 cleanPath(`${matchAs}/${child.path}`) :
-                undefined
+                undefined;
+
+            // 递归调用该方法添加子路由
             addRouteRecord(pathList, pathMap, nameMap, child, record, childMatchAs)
         })
     }
 
+    // 如果Map中不存在该地址，则分别存入pathList与pathMap
     if (!pathMap[record.path]) {
         pathList.push(record.path)
         pathMap[record.path] = record
     }
 
+    // 如果路由存在任何形式的别名
     if (route.alias !== undefined) {
+
+        // 格式化别名为数组
         const aliases = Array.isArray(route.alias) ? route.alias : [route.alias]
         for (let i = 0; i < aliases.length; ++i) {
-            const alias = aliases[i]
+            const alias = aliases[i];
+
+            // 禁止别名与路径值重复
             if (process.env.NODE_ENV !== 'production' && alias === path) {
                 warn(
                     false,
@@ -184,6 +208,7 @@ function addRouteRecord(
                 continue
             }
 
+            // 将别名作为一个新的路由也添加到路由表中
             const aliasRoute = {
                 path: alias,
                 children: route.children
@@ -199,6 +224,7 @@ function addRouteRecord(
         }
     }
 
+    // 如果具有路由名称，将其同时添加到路由名表中
     if (name) {
         if (!nameMap[name]) {
             nameMap[name] = record
