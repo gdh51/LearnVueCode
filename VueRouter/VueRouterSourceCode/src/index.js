@@ -66,7 +66,7 @@ export default class VueRouter {
         this.resolveHooks = [];
         this.afterHooks = [];
 
-        // 根据路由配置创建适配表
+        // 根据路由配置创建3个路由表-
         this.matcher = createMatcher(options.routes || [], this)
 
         // 默认为hash模式
