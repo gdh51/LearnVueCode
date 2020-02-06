@@ -73,8 +73,11 @@ export default class VueRouter {
         let mode = options.mode || 'hash';
 
         // 是否在不兼容时自动降级
+        // 判断变量为如果history模式，但不支持该API则且不主动关闭fallback模式
         this.fallback = mode === 'history' && !supportsPushState && options.fallback !== false
         if (this.fallback) {
+
+            // 兼容模式下使用hash路由
             mode = 'hash'
         }
 

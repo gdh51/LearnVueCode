@@ -29,7 +29,9 @@ export class HashHistory extends History {
         if (fallback && checkFallback(this.base)) {
             return
         }
-        ensureSlash()
+
+        // 更新当前hash值，确保以根路径为起始
+        ensureSlash();
     }
 
     // this is delayed until the app mounts
@@ -121,11 +123,18 @@ function checkFallback(base) {
     }
 }
 
+// 确保hash模式的URL正确
 function ensureSlash(): boolean {
+
+    // 获取hash值
     const path = getHash();
+
+    // 确保当前为/起始
     if (path.charAt(0) === '/') {
         return true
     }
+
+    // 否则替换为/起始
     replaceHash('/' + path)
     return false
 }
@@ -156,6 +165,7 @@ export function getHash(): string {
     return href
 }
 
+// 根据当前的hash路径，生成URL
 function getUrl(path) {
     const href = window.location.href
     const i = href.indexOf('#')
@@ -165,15 +175,21 @@ function getUrl(path) {
 
 function pushHash(path) {
     if (supportsPushState) {
-        pushState(getUrl(path))
+        pushState(getUrl(path));
     } else {
-        window.location.hash = path
+        window.location.hash = path;
     }
 }
 
 function replaceHash(path) {
+
+    // 是否支持history API的pushState方法
     if (supportsPushState) {
-        replaceState(getUrl(path))
+
+        // 支持时则使用该方法替换URL
+        replaceState(getUrl(path));
+
+    // 否则降级使用location.replace替换
     } else {
         window.location.replace(getUrl(path))
     }
