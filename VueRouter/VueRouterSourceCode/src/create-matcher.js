@@ -41,14 +41,18 @@ export function createMatcher(
     }
 
     function match(
+
+        // 当前的URL地址
         raw: RawLocation,
+
+        // 当前的路由地址的信息对象
         currentRoute ? : Route,
         redirectedFrom ? : Location
     ): Route {
-        const location = normalizeLocation(raw, currentRoute, false, router)
+        const location = normalizeLocation(raw, currentRoute, false, router);
         const {
             name
-        } = location
+        } = location;
 
         if (name) {
             const record = nameMap[name]

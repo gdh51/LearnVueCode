@@ -36,8 +36,8 @@ export class History {
     cb: (r: Route) => void
     ready: boolean
     readyCbs: Array < Function >
-    readyErrorCbs: Array < Function >
-    errorCbs: Array < Function >
+        readyErrorCbs: Array < Function >
+        errorCbs: Array < Function >
 
         // implemented by sub-classes
         +go: (n: number) => void +
@@ -84,11 +84,17 @@ export class History {
     }
 
     transitionTo(
+
+        // 当前完整的URL地址
         location: RawLocation,
+
+        // 路由切换完成时调用的函数
         onComplete ? : Function,
+
+        // 路由切换中断时调用的函数
         onAbort ? : Function
     ) {
-        const route = this.router.match(location, this.current)
+        const route = this.router.match(location, this.current);
         this.confirmTransition(
             route,
             () => {
@@ -250,7 +256,7 @@ function normalizeBase(base: ? string): string {
             // 去除协议地址
             base = base.replace(/^https?:\/\/[^\/]+/, '')
 
-        // 在服务器渲染时，初始化为/
+            // 在服务器渲染时，初始化为/
         } else {
             base = '/'
         }

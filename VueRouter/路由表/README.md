@@ -348,3 +348,12 @@ if (process.env.NODE_ENV === 'development') {
 ```
 
 到此为止，三个路由表就全部生成了！
+
+最后，值得注意的是这三个对象并未直接返回暴露给外界，相反，提供了两个接口来提供用户操作：
+
+```js
+return {
+    match,
+    addRoutes
+};
+```

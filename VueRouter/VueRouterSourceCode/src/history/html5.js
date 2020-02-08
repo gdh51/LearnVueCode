@@ -22,31 +22,41 @@ import {
 
 export class HTML5History extends History {
     constructor(router: Router, base: ? string) {
-        super(router, base)
 
-        const expectScroll = router.options.scrollBehavior
-        const supportsScroll = supportsPushState && expectScroll
+        // 继承基础路由信息
+        super(router, base);
 
+        // 是否提供一个控制滚动条行为的方法
+        const expectScroll = router.options.scrollBehavior;
+        const supportsScroll = supportsPushState && expectScroll;
+
+        // 如果支持控制滚动条，且用户想控制，
         if (supportsScroll) {
             setupScroll()
         }
 
-        const initLocation = getLocation(this.base)
+        // 获取完整的URL信息
+        const initLocation = getLocation(this.base);
         window.addEventListener('popstate', e => {
+
+            // 获取当前路径信息对象
             const current = this.current
 
             // Avoiding first `popstate` event dispatched in some browsers but first
             // history route not updated since async guard at the same time.
-            const location = getLocation(this.base)
+            const location = getLocation(this.base);
+
+            // 初始化路由时直接退出
             if (this.current === START && location === initLocation) {
                 return
             }
 
+            // 其余时执行路由跳转时页面高度发生变化时的滚动
             this.transitionTo(location, route => {
                 if (supportsScroll) {
                     handleScroll(router, route, current, true)
                 }
-            })
+            });
         })
     }
 

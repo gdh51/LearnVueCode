@@ -17,15 +17,26 @@ export function setupScroll() {
     // Fix for #2774 Support for apps loaded from Windows file shares not mapped to network drives: replaced location.origin with
     // window.location.protocol + '//' + window.location.host
     // location.host contains the port and location.hostname doesn't
-    const protocolAndPath = window.location.protocol + '//' + window.location.host
-    const absolutePath = window.location.href.replace(protocolAndPath, '')
+    // 修复winodw下不支持通过文件协议直接打开的网站
+    const protocolAndPath = window.location.protocol + '//' + window.location.host;
+
+    // 获取当前路径
+    const absolutePath = window.location.href.replace(protocolAndPath, '');
+
+    // 将当前地址替换到网页，并保存当前页面的位置
     window.history.replaceState({
         key: getStateKey()
-    }, '', absolutePath)
+    }, '', absolutePath);
+
+    // 注册一个浏览器地址事件发生变化时触发的事件
     window.addEventListener('popstate', e => {
-        saveScrollPosition()
+
+        // 每次变化时先保存
+        saveScrollPosition();
+
+        // 更新全局的key
         if (e.state && e.state.key) {
-            setStateKey(e.state.key)
+            setStateKey(e.state.key);
         }
     })
 }
