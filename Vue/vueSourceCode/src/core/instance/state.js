@@ -85,10 +85,10 @@ export function initState(vm: Component) {
 
 function initProps(vm: Component, propsOptions: Object) {
 
-    // 父组件或用户传入的propsData值
+    // 父组件或自定义传入的propsData值
     const propsData = vm.$options.propsData || {}
 
-    // 在vm实例上定义_props的代理
+    // 在vm实例上定义_props的代理访问点
     const props = vm._props = {};
 
     // cache prop keys so that future props updates can iterate using Array
@@ -100,18 +100,20 @@ function initProps(vm: Component, propsOptions: Object) {
     const isRoot = !vm.$parent;
 
     // root instance props should be converted
+    // 非根实例则要关闭Vue实例化时的依赖项收集
     if (!isRoot) {
         toggleObserving(false)
     }
 
-    // 遍历用户定义的propsOptions配置
+    // 遍历组件原始定义的propsOptions配置
     for (const key in propsOptions) {
         keys.push(key);
 
-        // 效验props中对属性的配置
-        const value = validateProp(key, propsOptions, propsData, vm)
+        // 效验props中的各种属性，包括validate、required、type
+        const value = validateProp(key, propsOptions, propsData, vm);
 
         // 生产环境中, 限制props名与修改props中属性
+        // 为prop属性的setter定义一个报错函数，在修改该属性时报错
         if (process.env.NODE_ENV !== 'production') {
             const hyphenatedKey = hyphenate(key)
             if (isReservedAttribute(hyphenatedKey) ||
@@ -141,12 +143,14 @@ function initProps(vm: Component, propsOptions: Object) {
         // static props are already proxied on the component's prototype
         // during Vue.extend(). We only need to proxy props defined at
         // instantiation here.
-        // 在vm上代理_props
+        // 在vm上代理_props中的属性
         if (!(key in vm)) {
             proxy(vm, `_props`, key)
         }
     }
-    toggleObserving(true)
+
+    // 还原依赖项收集开关
+    toggleObserving(true);
 }
 
 function initData(vm: Component) {

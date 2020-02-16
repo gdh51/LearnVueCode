@@ -1,30 +1,11 @@
-/* @flow */
+# 验证属性——validateProp()
 
-import {
-    warn
-} from './debug'
-import {
-    observe,
-    toggleObserving,
-    shouldObserve
-} from '../observer/index'
-import {
-    hasOwn,
-    isObject,
-    toRawType,
-    hyphenate,
-    capitalize,
-    isPlainObject
-} from 'shared/util'
+效验`Props`中属性的值，也即是我们我们定义`Props`属性的最重要的部分。基本上`Props`的功能就集中在效验这一块，那么这里我们来详细说明一下。
 
-type PropOptions = {
-    type: Function | Array < Function > | null,
-    default: any,
-    required: ? boolean,
-    validator: ? Function
-};
+首先依然是其的整体函数：
 
-export function validateProp(
+```js
+function validateProp(
     key: string,
     propOptions: Object,
     propsData: Object,
@@ -82,6 +63,7 @@ export function validateProp(
         toggleObserving(prevShouldObserve)
     }
 
+    // 效验设置的prop条件限制
     if (
         process.env.NODE_ENV !== 'production' &&
         // skip validation for weex recycle-list child component props
@@ -92,7 +74,62 @@ export function validateProp(
     }
     return value;
 }
+```
 
+简看以上效验Prop属性的部分，其实主要做了两件事：
+
+- [获取原值或默认值](#%e8%8e%b7%e5%8f%96%e5%8e%9f%e5%a7%8b%e5%80%bc%e6%88%96%e9%bb%98%e8%ae%a4%e5%80%bc)
+- [根据设置，效验得到的值](#%e6%a0%b9%e6%8d%ae%e8%ae%be%e7%bd%ae%e6%95%88%e9%aa%8c%e5%be%97%e5%88%b0%e7%9a%84%e5%80%bc)
+
+## 获取原始值或默认值
+
+那么首先是第一部分，这部分还是比较好理解，一个`prop`属性的值，首先是通过组件传递来获取，其次在其值为`undefined`时，从其设置的`default`函数中获取。**这里要特别强调是prop属性值为undefined时，才会获取默认值，即传入null，是会被作为prop值使用的**
+
+### 特殊值的转换——Boolean
+
+在传入值为`''`(空字符串)或同`prop`属性名一样的值的情况下，如果设置`type: Boolean`或`type: [Boolean, String]`，那么`Vue`会将其转换为`false`。
+
+```js
+if (booleanIndex > -1) {
+
+    // 如果未传入该prop值且未定义默认值时，则赋值为false
+    if (absent && !hasOwn(prop, 'default')) {
+        value = false;
+
+    // 如果传入空字符串或同键名的字符串值，也认为是有值
+    } else if (value === '' || value === hyphenate(key)) {
+        // only cast empty string / same name to boolean if
+        // boolean has higher priority
+        // 两个单独的例子，在空字符串或同名的键值时
+        // 如果Boolean类型具有更高的权重，则将其转化为布尔值
+        const stringIndex = getTypeIndex(String, prop.type)
+        if (stringIndex < 0 || booleanIndex < stringIndex) {
+            value = true;
+        }
+    }
+}
+```
+
+这里表达的意思就是在`Boolean`权重较大时，优先将`''`看做空值处理转化为`false`
+___
+其中涉及到获取下标的函数，具体查看请自行前往[`getTypeIndex()`](../工具方法/README.md#gettypeindex%e6%a3%80%e6%b5%8b%e4%bc%a0%e5%85%a5%e7%b1%bb%e5%9e%8b%e6%98%af%e5%90%a6%e7%ac%a6%e5%90%88%e6%9f%90%e4%b8%80%e4%b8%aa%e7%b1%bb%e5%9e%8b%e8%a6%81%e6%b1%82)；
+`hasOwn()`函数则是`Object.prototype.hasOwnProperty()`的封装。
+
+### 获取默认值
+
+那么在未传递或传递的值为`undefined`(`null`被视为有值)的情况，会优先获取组件该`prop`定义的`default`的返回值来作为默认值。
+
+```js
+if (value === undefined) {
+
+    // 获取设置的default默认值
+    value = getPropDefaultValue(vm, prop, key)
+}
+```
+
+这个函数就用来获取default中设置的值，一般情况下它直接获取我们当初定义在组件的值即可，但倘若在新的一次渲染中，该值仍然取默认值，那么则会直接返回上一次渲染获取的值，而避免重新对其进行响应式处理(函数比较简单，直接查看其中的注释即可)：
+
+```js
 /**
  * Get the default value of a prop.
  * 获取一个prop属性的默认值
@@ -134,7 +171,28 @@ function getPropDefaultValue(vm: ? Component, prop : PropOptions, key: string): 
         def.call(vm) :
         def
 }
+```
 
+在获取完其值之后呢，如果该值为对象类型的值，那么我们还需要将其进行响应式处理，将对象内的键值对变更为响应式的(这里只让大家清楚有这么一个操作，具体之后会详细介绍这部分)：
+
+```js
+// 对对象类型的value变更为响应式
+observe(value);
+```
+
+___
+到此为止，对于`prop`值的获取就处理完了，接下来我们要按照定义在主键上`prop`的各种限制对其进行断言：
+
+```js
+// 检测一个prop属性是否合法(包括type、require和valid属性)
+assertProp(prop, key, value, vm, absent);
+```
+
+## 根据设置，效验得到的值
+
+承接上文，这里我们直接来看assertProp()这个函数。
+
+```js
 /**
  * Assert whether a prop is valid.
  * 断言一个prop是否有效
@@ -213,118 +271,20 @@ function assertProp(
         }
     }
 }
+```
 
-const simpleCheckRE = /^(String|Number|Boolean|Function|Symbol)$/
+总结下效验的步骤，本次效验一个效验了三个属性：
 
-function assertType(value: any, type: Function): {
-    valid: boolean;
-    expectedType: string;
-} {
-    let valid;
+- `required`
+- `type`
+- `validator`
 
-    // 获取该类型的函数名称，即Object则返回Object字符串
-    const expectedType = getType(type);
+这里我直接简述下三个效验的过程：
 
-    // 这里的普通值检查使用的typeof，所以要进行区分
-    if (simpleCheckRE.test(expectedType)) {
-        const t = typeof value;
-        valid = t === expectedType.toLowerCase()
-        // for primitive wrapper objects
-        if (!valid && t === 'object') {
-            valid = value instanceof type
-        }
+首先是`required`函数，只要用户未向组件传入值，则定性为错误；其次是`type`，只要用户传入值或得到的默认值符合`type`数组中任意一个数据类型类，那么则视为有效；最后则是`validator`效验器，只要效验器函数值返回真值，那么则认为其有效。
 
-    // 单独检测普通对象
-    } else if (expectedType === 'Object') {
-        valid = isPlainObject(value);
+>这其中断言`type`时，使用的[`assertType()`](../工具方法/README.md#asserttype%e6%96%ad%e8%a8%80value%e6%98%af%e5%90%a6%e4%b8%batype%e7%b1%bb%e5%9e%8b)方法用于确认`value`是否属于`type`的同类别函数。
 
-    // 效验数组
-    } else if (expectedType === 'Array') {
-        valid = Array.isArray(value);
+到此为止，整个效验过程就结束了。
 
-    // 自定义构造函数的值也能进行效验
-    } else {
-        valid = value instanceof type
-    }
-    return {
-        valid,
-        expectedType
-    }
-}
-
-/**
- * Use function string name to check built-in types,
- * because a simple equality check will fail when running
- * across different vms / iframes.
- * 使用函数的字符串名称是检查内置的类型，因为在不同vms或iframes中直接的
- * 比较会失败
- */
-function getType(fn) {
-
-    // 返回该type类型的函数名称
-    const match = fn && fn.toString().match(/^\s*function (\w+)/);
-    return match ? match[1] : ''
-}
-
-function isSameType(a, b) {
-    return getType(a) === getType(b)
-}
-
-// 检查expectedTypes
-function getTypeIndex(type, expectedTypes): number {
-
-    // 验证非数组情况
-    if (!Array.isArray(expectedTypes)) {
-        return isSameType(expectedTypes, type) ? 0 : -1
-    }
-
-    // 验证expectedTypes为数组的情况
-    for (let i = 0, len = expectedTypes.length; i < len; i++) {
-
-        // 返回符合条件的下标
-        if (isSameType(expectedTypes[i], type)) {
-            return i;
-        }
-    }
-    return -1
-}
-
-function getInvalidTypeMessage(name, value, expectedTypes) {
-    let message = `Invalid prop: type check failed for prop "${name}".` +
-        ` Expected ${expectedTypes.map(capitalize).join(', ')}`
-    const expectedType = expectedTypes[0]
-    const receivedType = toRawType(value)
-    const expectedValue = styleValue(value, expectedType)
-    const receivedValue = styleValue(value, receivedType)
-    // check if we need to specify expected value
-    if (expectedTypes.length === 1 &&
-        isExplicable(expectedType) &&
-        !isBoolean(expectedType, receivedType)) {
-        message += ` with value ${expectedValue}`
-    }
-    message += `, got ${receivedType} `
-    // check if we need to specify received value
-    if (isExplicable(receivedType)) {
-        message += `with value ${receivedValue}.`
-    }
-    return message
-}
-
-function styleValue(value, type) {
-    if (type === 'String') {
-        return `"${value}"`
-    } else if (type === 'Number') {
-        return `${Number(value)}`
-    } else {
-        return `${value}`
-    }
-}
-
-function isExplicable(value) {
-    const explicitTypes = ['string', 'number', 'boolean']
-    return explicitTypes.some(elem => value.toLowerCase() === elem)
-}
-
-function isBoolean(...args) {
-    return args.some(elem => elem.toLowerCase() === 'boolean')
-}
+![validateProp](../imgs/validateProp.svg)

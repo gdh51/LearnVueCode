@@ -151,7 +151,7 @@ export function defineReactive(
     shallow ? : boolean
 ) {
     // 实例化一个该属性的观察者队列
-    const dep = new Dep()
+    const dep = new Dep();
 
     const property = Object.getOwnPropertyDescriptor(obj, key)
     if (property && property.configurable === false) {
