@@ -510,7 +510,7 @@ export function createPatchFunction(backend) {
             // 调用其destroy()钩子函数
             if (isDef(i = data.hook) && isDef(i = i.destroy)) i(vnode);
 
-            // 调用module中的destroy()钩子函数
+            // 调用我们定义的组件模块中的destroy()钩子函数
             for (i = 0; i < cbs.destroy.length; ++i) cbs.destroy[i](vnode)
         }
 
