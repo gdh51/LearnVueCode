@@ -23,6 +23,6 @@ lifecycleMixin(Vue);
 renderMixin(Vue);
 ```
 
-### new一个Vue实例时做了什么
+## new一个Vue实例时做了什么
 
 [实例化一个Vue](./初始化一个Vue)

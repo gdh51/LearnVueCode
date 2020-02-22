@@ -154,14 +154,18 @@ function initProps(vm: Component, propsOptions: Object) {
 }
 
 function initData(vm: Component) {
+
+    // 获取组中中定义的data
     let data = vm.$options.data;
 
-    // 获取用户定义的data, 然后挂载在Vue实例的_data上
+    // 获取用户定义的data的真实值, 并挂载在Vue实例的_data上
     data = vm._data = typeof data === 'function' ?
+
+        // 获取函数值的返回值
         getData(data, vm) :
         data || {};
 
-    // 当函数形式返回的不是对象时报错你懂的
+    // 当函数形式返回的不是对象时报错，你懂的
     if (!isPlainObject(data)) {
         data = {}
         process.env.NODE_ENV !== 'production' && warn(
@@ -172,12 +176,15 @@ function initData(vm: Component) {
     }
 
     // proxy data on instance
-    const keys = Object.keys(data)
-    const props = vm.$options.props
-    const methods = vm.$options.methods
-    let i = keys.length
+    // 将data的属性字段代理到vm实例上，这样我们就可以直接访问vm.xx来获取该值
+    const keys = Object.keys(data);
 
-    // 通过之前的代码我们知道，props与methods会代理到vm实例上,
+    // 获取之前定义过的字段
+    const props = vm.$options.props;
+    const methods = vm.$options.methods;
+    let i = keys.length;
+
+    // 通过之前的代码我们知道，props与methods也会代理到vm实例上,
     // 所以此处data中属性名不能与其重复且不能为保留字
     while (i--) {
         const key = keys[i]
@@ -197,8 +204,8 @@ function initData(vm: Component) {
             )
         } else if (!isReserved(key)) {
 
-            // 代理data中属性到Vue实例上
-            proxy(vm, `_data`, key)
+            // 代理data中属性到Vue实例上(即直接从vm.xx访问vm._data.xx)
+            proxy(vm, `_data`, key);
         }
     }
 
@@ -207,11 +214,13 @@ function initData(vm: Component) {
 }
 
 export function getData(data: Function, vm: Component): any {
+
     // #7573 disable dep collection when invoking data getters
-    pushTarget()
+    // 禁止在调用getter时收集依赖项，防止重复收集依赖项
+    pushTarget();
     try {
 
-        // 返回函数形式中定义的对象
+        // 获取函数的返回值(即返回的对象)
         return data.call(vm, vm)
     } catch (e) {
         handleError(e, vm, `data()`)
@@ -227,8 +236,8 @@ const computedWatcherOptions = {
 
 function initComputed(vm: Component, computed: Object) {
 
-    // 在当前vm上挂载computed的Watcher
-    const watchers = vm._computedWatchers = Object.create(null)
+    // 在当前vm上挂载存放computed的Watcher的属性
+    const watchers = vm._computedWatchers = Object.create(null);
 
     // computed properties are just getters during SSR
     // (忽视)计算属性仅作为getter在服务器渲染下
@@ -236,6 +245,8 @@ function initComputed(vm: Component, computed: Object) {
 
     for (const key in computed) {
         const userDef = computed[key];
+
+        // 获取计算属性的取值器
         const getter = typeof userDef === 'function' ? userDef : userDef.get;
         if (process.env.NODE_ENV !== 'production' && getter == null) {
             warn(
@@ -244,6 +255,7 @@ function initComputed(vm: Component, computed: Object) {
             )
         }
 
+        // 为计算属性声明一个观察者对象，用于观察其他(变量)依赖项的变换
         if (!isSSR) {
 
             // create internal watcher for the computed property.
@@ -259,6 +271,8 @@ function initComputed(vm: Component, computed: Object) {
         // component-defined computed properties are already defined on the
         // component prototype. We only need to define computed properties defined
         // at instantiation here.
+        // 组件定义的计算属性已经定义在组件原型上(即我们编写代码的组件的)。
+        // 所以此时我们只需要将其定义在当前的实例对象上。
         if (!(key in vm)) {
             defineComputed(vm, key, userDef)
         } else if (process.env.NODE_ENV !== 'production') {
@@ -276,13 +290,21 @@ export function defineComputed(
     key: string,
     userDef: Object | Function
 ) {
-    const shouldCache = !isServerRendering()
+
+    // 是否应该缓存，仅在非服务器渲染下缓存
+    const shouldCache = !isServerRendering();
+
+    // 根据computed定义的类型来获取对应的getter
     if (typeof userDef === 'function') {
         sharedPropertyDefinition.get = shouldCache ?
             createComputedGetter(key) :
+
+            // 服务器渲染getter(其实就是直接的函数求值)
             createGetterInvoker(userDef)
         sharedPropertyDefinition.set = noop
     } else {
+
+        // 这里同上就不重复了
         sharedPropertyDefinition.get = userDef.get ?
             shouldCache && userDef.cache !== false ?
             createComputedGetter(key) :
@@ -290,6 +312,9 @@ export function defineComputed(
             noop
         sharedPropertyDefinition.set = userDef.set || noop
     }
+
+    // 未定义computed属性的setter时，为其定义一个报错setter，
+    // 当执行赋值行为时就报错
     if (process.env.NODE_ENV !== 'production' &&
         sharedPropertyDefinition.set === noop) {
         sharedPropertyDefinition.set = function () {
@@ -299,38 +324,52 @@ export function defineComputed(
             )
         }
     }
+
+    // 在target(这里其实就是vm实例)上定义该computed属性的getter(访问器)
     Object.defineProperty(target, key, sharedPropertyDefinition)
 }
 
 function createComputedGetter(key) {
+
+    // 封装取值函数
     return function computedGetter() {
 
-        // 取出对应computed属性的watcher对象
+        // 取出对应computed属性的Watcher对象
         const watcher = this._computedWatchers && this._computedWatchers[key]
+
         if (watcher) {
 
-            // 当为computed属性时，为watcher进行依赖项收集
+            // 如果当前Watcher允许重新求值，那么就对Watcher重新求值
+            // 这里的dirty相当于是否允许求值，会在该Watcher的依赖项变更时变为true
             if (watcher.dirty) {
                 watcher.evaluate()
             }
+
+            // 收集依赖项
             if (Dep.target) {
                 watcher.depend()
             }
-            return watcher.value
+
+            // 返回当前Watcher的值
+            return watcher.value;
         }
     }
 }
 
 function createGetterInvoker(fn) {
+
+    // 封装了原函数，直接的函数求值
     return function computedGetter() {
         return fn.call(this, this)
     }
 }
 
 function initMethods(vm: Component, methods: Object) {
+
+    // 获取props中设置的属性
     const props = vm.$options.props
 
-    // 如方法名已在props中定义或为保留字则报错
+    // 如果方法名与props中属性名重复或为保留字则报错
     for (const key in methods) {
         if (process.env.NODE_ENV !== 'production') {
             if (typeof methods[key] !== 'function') {
@@ -354,16 +393,19 @@ function initMethods(vm: Component, methods: Object) {
             }
         }
 
-        // 在vm实例上挂载该方法, 当该方法不为函数时, 直接清空, 将方法的this指向绑定为当前vm实例
+        // 在vm实例上挂载该方法, 当该方法不为函数时, 直接清空,
+        // 同时将方法的this指向绑定为当前vm实例
         vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm)
     }
 }
 
 function initWatch(vm: Component, watch: Object) {
+
+    // 遍历用户定义的watch
     for (const key in watch) {
         const handler = watch[key];
 
-        // 对watch的类型分别处理
+        // 对watch的类型分别处理创建Watcher
         if (Array.isArray(handler)) {
             for (let i = 0; i < handler.length; i++) {
                 createWatcher(vm, key, handler[i])
@@ -374,16 +416,23 @@ function initWatch(vm: Component, watch: Object) {
     }
 }
 
+// 该函数用于格式化参数，然后调用$watch API
 function createWatcher(
     vm: Component,
     expOrFn: string | Function,
+
+    // 定义的实际watch，可能有对象或字符串，函数形式
     handler: any,
     options ? : Object
 ) {
 
     // 处理对象形式的watch
     if (isPlainObject(handler)) {
+
+        // 对象形式的watch，将其视为options
         options = handler;
+
+        // 提出里面的函数处理器赋值给handler
         handler = handler.handler;
     }
 
@@ -392,7 +441,7 @@ function createWatcher(
         handler = vm[handler];
     }
 
-    // 注册watch
+    // 注册watch，调用原型API，参数分别为watch名、函数处理器、watch配置对象
     return vm.$watch(expOrFn, handler, options)
 }
 
@@ -441,13 +490,16 @@ export function stateMixin(Vue: Class < Component > ) {
         cb: any,
         options ? : Object
     ): Function {
-        const vm: Component = this
+        const vm: Component = this;
+
+        // 如果为对象，则格式化后在进行创建
         if (isPlainObject(cb)) {
             return createWatcher(vm, expOrFn, cb, options)
         }
 
-        options = options || {}
-        options.user = true
+        // 存储配置对象，定义特定字段user
+        options = options || {};
+        options.user = true;
 
         // 参数分别为 当前vm实例, watcher名, 回调函数, watcher配置
         const watcher = new Watcher(vm, expOrFn, cb, options);

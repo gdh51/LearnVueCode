@@ -49,3 +49,5 @@ vm._watchers = [];
 3. [初始化Data](./初始化Data/README.md)
 4. [初始化Computed](./初始化Computed/README.md)
 5. [初始化Watch](./初始化Watch/README.md)
+
+学习完上面的`State`，我们可以对于`Computed`和`Watch`它们涉及到了一个`Watcher`对象的处理和`Dep`对象，这里我们就可以来深入了解下它究竟是什么！

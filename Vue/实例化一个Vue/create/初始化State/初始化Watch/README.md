@@ -1,37 +1,46 @@
-# initWatch(vm, opts.watch)
-`Vue`通过`initWatch()`来初始化用户配置的`watch`。
+# initWatch(vm, opts.watch)——注册Watch监听器
+
+`Vue`通过`initWatch()`来初始化组件配置中的`watch`字段。
 
 ```js
-initWatch(vm, opts.watch);
 function initWatch(vm: Component, watch: Object) {
+
+    // 遍历用户定义的watch
     for (const key in watch) {
         const handler = watch[key];
 
-        // 对用户注册watch的形式分别处理
-        // 同一个属性的watch可以有多个函数来处理
+        // 对watch的类型分别处理创建Watcher
         if (Array.isArray(handler)) {
             for (let i = 0; i < handler.length; i++) {
-                createWatcher(vm, key, handler[i]);
+                createWatcher(vm, key, handler[i])
             }
         } else {
-            createWatcher(vm, key, handler);
+            createWatcher(vm, key, handler)
         }
     }
 }
 ```
 
-通过`createWatcher()`函数来为每个`watch`创建一个`watcher`实例，它们都是通过`vm.$watch()`方法来创建的
+作为调度函数，该函数仅是处理用户定义的`watch`格式，对于每一个`watch`处理器的具体处理，还需要通过`createWatcher()`来处理。通过`createWatcher()`函数来为**每个`watch`的函数监听器**创建一个`Watcher`实例，它们都是通过`Vue.prototype.$watch()`方法来创建的，按照我们的了解我们知道该`API`会返回一个用于注销该`Watcher`的函数，但很遗憾，寄生在组件中的`watch`无法注销。
+
 ```js
+// 该函数用于格式化参数，然后调用$watch API
 function createWatcher(
     vm: Component,
     expOrFn: string | Function,
+
+    // 定义的实际watch，可能有对象或字符串，函数形式
     handler: any,
     options ? : Object
 ) {
 
     // 处理对象形式的watch
     if (isPlainObject(handler)) {
+
+        // 对象形式的watch，将其视为options
         options = handler;
+
+        // 提出里面的函数处理器赋值给handler
         handler = handler.handler;
     }
 
@@ -40,38 +49,37 @@ function createWatcher(
         handler = vm[handler];
     }
 
-    // 注册watch
-    return vm.$watch(expOrFn, handler, options);
+    // 注册watch，调用原型API，参数分别为watch名、函数处理器、watch配置对象
+    return vm.$watch(expOrFn, handler, options)
 }
 ```
 
-我们知道可以通过`Vue`的实例方法`$watch`来注册一个`watch`，其实内部也是这种方式来注册的`watch`
+我们知道可以通过`Vue`的实例方法`Vue.prototype.$watch`可以来注册一个`watch`，其实内部也是这种方式来注册的`watch`：
+
 ```js
 Vue.prototype.$watch = function (
-    expOrFn: string | Function,
-    cb: any,
-    options ? : Object
-): Function {
-    const vm: Component = this
+        expOrFn: string | Function,
+        cb: any,
+        options ? : Object
+    ): Function {
+        const vm: Component = this;
+
+    // 如果为对象，则格式化后在进行创建
     if (isPlainObject(cb)) {
         return createWatcher(vm, expOrFn, cb, options)
     }
 
+    // 存储配置对象，定义特定字段user
     options = options || {};
-
-    // watch独有属性
     options.user = true;
 
-    // 实例化一个watcher并进行求值和依赖项收集
     // 参数分别为 当前vm实例, watcher名, 回调函数, watcher配置
     const watcher = new Watcher(vm, expOrFn, cb, options);
 
-    // 设置immediate时, 在注册完watch后立即触发一次
+    // 设置immediate时, 在注册完watcher后立即触发一次
     if (options.immediate) {
         try {
-
-            // 立即触发一次watch函数，并传入监听的值作为参数
-            cb.call(vm, watcher.value);
+            cb.call(vm, watcher.value)
         } catch (error) {
             handleError(error, vm, `callback for immediate watcher "${watcher.expression}"`)
         }
@@ -79,10 +87,13 @@ Vue.prototype.$watch = function (
 
     // 返回一个用于销毁watcher的函数
     return function unwatchFn() {
-        watcher.teardown();
+        watcher.teardown()
     }
 }
 ```
+
+从这个`API`，我们可以看出，相比于`computed`的创建，它仅创建了一个`Watcher`对象并未做其他处理，到此就告一段落，这部分内容。
+
 [实例化watcher的过程](../../Vue中的响应式属性/Watcher监听者对象)
 
 返回的函数可以用于注销该`watch`，具体过程为：
