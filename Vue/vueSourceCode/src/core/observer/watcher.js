@@ -31,22 +31,40 @@ let uid = 0
  * A watcher parses an expression, collects dependencies,
  * and fires callback when the expression value changes.
  * This is used for both the $watch() api and directives.
+ * 一个观察者解析一个表达式，收集依赖项，并在表达式的返回值改变时触发回调函数
  */
 export default class Watcher {
     vm: Component;
+
+    // 当为computed属性时，该值为函数，表示computed的求值表达式
+    // 当为watch属性时，该值表示watch的名称字符串
     expression: string;
     cb: Function;
     id: number;
+
+    // watch的特有属性，用于是否深度监听
     deep: boolean;
+
+    // watch的特有属性，用于执行回调函数
     user: boolean;
+
+    // 计算属性特有属性，是否延迟Watcher的求值
     lazy: boolean;
     sync: boolean;
+
+    // 是否允许允许Watcher进行表达式计算
     dirty: boolean;
+
+    // 渲染Watcher的特有属性，表示当前组件是否活跃
     active: boolean;
+
+    // 当前观察者对象依赖的依赖项
     deps: Array < Dep > ;
     newDeps: Array < Dep > ;
     depIds: SimpleSet;
     newDepIds: SimpleSet;
+
+    // 渲染Watcher特有属性，当前Watcher在重新计算(更新)前调用的函数
     before: ? Function;
     getter: Function;
     value: any;
@@ -60,14 +78,16 @@ export default class Watcher {
     ) {
         this.vm = vm
 
+        // 是否为渲染watcher
         if (isRenderWatcher) {
             vm._watcher = this;
         }
 
-        // 加入vm上的_watchers数组
+        // 将Watcher加入vm上的_watchers数组
         vm._watchers.push(this);
 
         // options
+        // 初始化配置
         if (options) {
             this.deep = !!options.deep;
             this.user = !!options.user;
@@ -75,6 +95,8 @@ export default class Watcher {
             this.sync = !!options.sync;
             this.before = options.before;
         } else {
+
+            // 未传入时默认为false
             this.deep = this.user = this.lazy = this.sync = false;
         }
         this.cb = cb;
@@ -86,17 +108,17 @@ export default class Watcher {
         this.depIds = new Set();
         this.newDepIds = new Set();
         this.expression = process.env.NODE_ENV !== 'production' ?
-            expOrFn.toString() :
-            '';
+            expOrFn.toString() : '';
 
-        // watcher变动所涉及的函数
+        // Watcher变动所涉及的函数
+        // 这里即渲染Watcher的渲染函数或计算属性的计算函数
         if (typeof expOrFn === 'function') {
-            this.getter = expOrFn
+            this.getter = expOrFn;
         } else {
 
-            // 当watcher名为字符串时, 可以是.运算符指定对象的某个属性
-            // getter为一个函数, 返回watcher名所对应的属性
-            this.getter = parsePath(expOrFn)
+            // 当Watcher名为字符串时, 可以是.运算符指定对象的某个属性
+            // getter为一个函数, 返回watch名所对应的属性(即监听函数)
+            this.getter = parsePath(expOrFn);
 
             // 当存在不规范的定义时会报错
             if (!this.getter) {
@@ -110,6 +132,7 @@ export default class Watcher {
             }
         }
 
+        // 当前Watcher的值，当是computed时，延迟求值(即本次不求值)
         this.value = this.lazy ?
             undefined :
             this.get();
@@ -117,10 +140,11 @@ export default class Watcher {
 
     /**
      * Evaluate the getter, and re-collect dependencies.
+     * 对getter进行一次求值，重新收集其依赖项
      */
     get() {
 
-        // 将当前watcher实例作为依赖的目标
+        // 将当前Watcher实例作为依赖的目标
         pushTarget(this);
         let value;
         const vm = this.vm;
@@ -143,10 +167,14 @@ export default class Watcher {
             if (this.deep) {
                 traverse(value);
             }
-            popTarget()
-            this.cleanupDeps()
+
+            // 移除当前作为依赖的Watcher
+            popTarget();
+
+            // 清空旧的依赖项收集
+            this.cleanupDeps();
         }
-        return value
+        return value;
     }
 
     /**
@@ -245,10 +273,11 @@ export default class Watcher {
     /**
      * Evaluate the value of the watcher.
      * This only gets called for lazy watchers.
+     * 计算Watcher的值，仅会被lazy Watcher调用
      */
     evaluate() {
-        this.value = this.get()
-        this.dirty = false
+        this.value = this.get();
+        this.dirty = false;
     }
 
     /**

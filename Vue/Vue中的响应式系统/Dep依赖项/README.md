@@ -1,53 +1,102 @@
 # Dep 依赖项
 
-在看这个之前，我们需要知道它用来解决一个什么问题：**它用来在某个被观察的值更新时，对其依赖于该值的对象进行局部更新，而不是每次都对对象的全部属性进行更新一次(即使某些属性未变更)**。
+在之前我们提到，`Dep`作为一个属性值的占位符，代表了该属性值，同时在观察者模式者作为一个主体被其他观察者观察。
 
-`Dep`对象实现比较简单，就是一个观察者队列
+不了解观察者模式的同学，我这里解释下它的作用：它用来解决一个什么问题，**它用来在某个被观察的值更新时，对观察该值的观察者们进行通知更新。这样同时也避免了对其他未改变值的更新**。
+
+`Dep`对象实现比较简单，就是一个观察者队列，这里我们只需先了解下其构造函数：
 
 ```js
-class Dep {
-    // 当前指向的Watcher实例
-    static target: ?Watcher;
+let uid = 0
 
-    // 唯一的dep id
+/**
+ * A dep is an observable that can have multiple
+ * directives subscribing to it.
+ * 一个观察者对象队列, 用于更新watcher
+ */
+class Dep {
+    static target: ? Watcher;
+
+    // 依赖项的uid
     id: number;
 
-    // Watcher实例队列，用于该Dep所代表值更新时通知的对象
-    subs: Array<Watcher>;
+    // 观察此依赖项的Watcher们
+    subs: Array < Watcher > ;
 
     constructor() {
-        this.id = uid++;
-        this.subs = [];
+        this.id = uid++
+        this.subs = []
+    }
+
+    addSub(sub: Watcher) {
+
+        // 将观察该依赖项的观察者添加至数组中
+        this.subs.push(sub)
     }
 
     removeSub(sub: Watcher) {
+
+        // 从数组中移除该观察者
         remove(this.subs, sub);
     }
 
+    depend() {
+
+        // 将该依赖项添加到观察者对象的依赖项数组中Watcher的API
+        if (Dep.target) {
+            Dep.target.addDep(this)
+        }
+    }
+
     notify() {
+
         // stabilize the subscriber list first
-        const subs = this.subs.slice();
+        // 浅复制观察者数组，防止影响原数组
+        const subs = this.subs.slice()
         if (process.env.NODE_ENV !== 'production' && !config.async) {
             // subs aren't sorted in scheduler if not running async
             // we need to sort them now to make sure they fire in correct
             // order
-            // 在异步时需要对sub进行排序, 因为它们会乱序
-            subs.sort((a, b) => a.id - b.id);
+            // 在异步时需要对sub进行排序, 因为它们会乱序，
+            // 要保证它们的更新是从父到子(即Watcher的创建顺序)
+            subs.sort((a, b) => a.id - b.id)
         }
+
+        // 通知观察者们更新
         for (let i = 0, l = subs.length; i < l; i++) {
             subs[i].update();
         }
     }
-
-    // 其余实例方法会在用到时再做解释
 }
+```
 
+除此之外，每次进行依赖项收集的`Watcher`都只会有一个，它会被置于`Dep.target`，所以想要收集依赖之前要先设置该属性：
+
+```js
 // The current target watcher being evaluated.
 // This is globally unique because only one watcher
 // can be evaluated at a time.
+// 当前进行依赖收集的Watcher
 Dep.target = null;
 const targetStack = [];
+
+// 将当前Watcher作为依赖项收集目标
+function pushTarget(target: ? Watcher) {
+    targetStack.push(target);
+    Dep.target = target;
+}
+
+// 弹出栈中最上层的Watcher
+function popTarget() {
+    targetStack.pop();
+    Dep.target = targetStack[targetStack.length - 1];
+}
 ```
+
+那么我们知道`Dep`要与`Watcher`一起使用，那么我们此时要先学习[`Watcher`的构造函数](../Watcher监听者对象/README.md)，在来解决下面的两个问题：
+
+- [什么时候与怎么进行依赖收集](#%e4%bb%80%e4%b9%88%e6%97%b6%e5%80%99%e4%b8%8e%e6%80%8e%e4%b9%88%e8%bf%9b%e8%a1%8c%e4%be%9d%e8%b5%96%e6%94%b6%e9%9b%86)
+- [如何触发依赖更新](#%e5%a6%82%e4%bd%95%e8%a7%a6%e5%8f%91%e4%be%9d%e8%b5%96%e6%9b%b4%e6%96%b0)
 
 ## 什么时候与怎么进行依赖收集？
 

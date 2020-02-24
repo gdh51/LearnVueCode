@@ -35,20 +35,34 @@ export function toggleObserving(value: boolean) {
  * object. Once attached, the observer converts the target
  * object's property keys into getter/setters that
  * collect dependencies and dispatch updates.
+ * Observer会挂载到每一个被观察的对象。一旦挂载，
+ * 这个观察者就会将该对象的键值对转化为可以收集和触发依赖项更新的getter/setter
  */
 export class Observer {
-    value: any;
-    dep: Dep;
-    vmCount: number; // number of vms that have this object as root $data
+    value: any
+    dep: Dep
+
+    // number of vms that have this object as root $data
+    // 若为根$data的vm实例的数量
+    vmCount: number
 
     constructor(value: any) {
-        this.value = value
-        this.dep = new Dep()
-        this.vmCount = 0
 
-        // 在data对象_ob_属性上绑定该观察者对象
-        def(value, '__ob__', this)
+        // 获取当前值
+        this.value = value;
+
+        // 为该对象本身声明一个依赖项，用于检测该对象本身属性的删除或增加
+        // 这里我们假定其为#dep1
+        this.dep = new Dep();
+        this.vmCount = 0;
+
+        // 在该对象的_ob_属性上绑定该观察者对象
+        def(value, '__ob__', this);
+
+        // 根据不同类型的对象类型值，分别调用不同方法对其字段进行响应式处理
         if (Array.isArray(value)) {
+
+            // 是否可以只用__proto__属性来访问原型对象
             if (hasProto) {
                 // 当浏览器可以使用__proto__属性时, 将value原型指向arrayMethods
                 protoAugment(value, arrayMethods)
@@ -59,7 +73,7 @@ export class Observer {
             }
             this.observeArray(value)
         } else {
-            // 遍历data中属性, 使其称为响应式并将其添加依赖到对应视图
+            // 遍历data中属性, 使每一个属性变为响应式并将其添加依赖到对应视图
             this.walk(value)
         }
     }
@@ -68,11 +82,14 @@ export class Observer {
      * Walk through all properties and convert them into
      * getter/setters. This method should only be called when
      * value type is Object.
+     * 遍历所有属性，将它们转化为getter/setters形式。(仅在为Object时这么做)
      */
     walk(obj: Object) {
         const keys = Object.keys(obj)
         for (let i = 0; i < keys.length; i++) {
-            defineReactive(obj, keys[i])
+
+            // 重写所以的对象键值对
+            defineReactive(obj, keys[i]);
         }
     }
 
@@ -80,6 +97,8 @@ export class Observer {
      * Observe a list of Array items.
      */
     observeArray(items: Array < any > ) {
+
+        // 对数组中每个元素调用观察方法
         for (let i = 0, l = items.length; i < l; i++) {
             observe(items[i])
         }
@@ -93,9 +112,7 @@ export class Observer {
  * the prototype chain using __proto__
  */
 function protoAugment(target, src: Object) {
-    /* eslint-disable no-proto */
     target.__proto__ = src
-    /* eslint-enable no-proto */
 }
 
 /**
@@ -114,61 +131,78 @@ function copyAugment(target: Object, src: Object, keys: Array < string > ) {
  * Attempt to create an observer instance for a value,
  * returns the new observer if successfully observed,
  * or the existing observer if the value already has one.
- * 创建一个observer或返回一个已有的
+ * 为一个值创建一个观察者实例，如果观察成功则返回一个该观察者否则返回
+ * 该值已有的观察者
  */
 export function observe(value: any, asRootData: ? boolean): Observer | void {
 
-    // 不是对象或是Vnode实例时, 退出
+    // 被设置的值要为对象，但不能为VNode，否则退出
     if (!isObject(value) || value instanceof VNode) {
         return
     }
-    let ob: Observer | void
+
+    // 定义观察对象类型
+    let ob: Observer | void;
+
+    // 如果已有观察者对象，则直接使用该对象并返回
     if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
-        ob = value.__ob__
+        ob = value.__ob__;
     } else if (
         shouldObserve &&
         !isServerRendering() &&
+
+        // (这句检测已经是没有必要的，因为在最开始有isObject进行了检查)
         (Array.isArray(value) || isPlainObject(value)) &&
         Object.isExtensible(value) &&
+
+        // 防止给vm添加观察者对象
         !value._isVue
     ) {
-        ob = new Observer(value)
+        ob = new Observer(value);
     }
+
+    // 如果为根观察者对象，则增加其观察的vm数量值
     if (asRootData && ob) {
         ob.vmCount++
     }
-    return ob
+    return ob;
 }
 
 /**
  * Define a reactive property on an Object.
+ * 在一个对象上定义一个响应式属性
  */
 export function defineReactive(
     obj: Object,
     key: string,
     val: any,
     customSetter ? : ? Function,
+
+    // 是否深度递归进行响应式处理，默认为false
     shallow ? : boolean
 ) {
     // 实例化一个该属性的观察者队列
     const dep = new Dep();
 
-    const property = Object.getOwnPropertyDescriptor(obj, key)
+    const property = Object.getOwnPropertyDescriptor(obj, key);
+
+    // 如果不可配置则直接返回
     if (property && property.configurable === false) {
         return
     }
 
     // cater for pre-defined getter/setters
-    // 预定义getter/setter
-    const getter = property && property.get
-    const setter = property && property.set
+    // 获取用户定义的原始getter/setter
+    const getter = property && property.get;
+    const setter = property && property.set;
 
-    // 在只有setter时, 获取该值
+    // 在无getter但有setter时, 通过setter获取一次值作为该属性的原始值
     if ((!getter || setter) && arguments.length === 2) {
         val = obj[key]
     }
 
-    let childOb = !shallow && observe(val)
+    // 递归处理val为对象的值，将其转化为响应式
+    let childOb = !shallow && observe(val);
     Object.defineProperty(obj, key, {
         enumerable: true,
         configurable: true,
@@ -189,22 +223,31 @@ export function defineReactive(
         },
         set: function reactiveSetter(newVal) {
             const value = getter ? getter.call(obj) : val
-            /* eslint-disable no-self-compare */
+
+            // 值未变更则直接返回
             if (newVal === value || (newVal !== newVal && value !== value)) {
                 return
             }
-            /* eslint-enable no-self-compare */
+
+            // 调用自定义setter，比如_props会添加一个
             if (process.env.NODE_ENV !== 'production' && customSetter) {
                 customSetter()
             }
             // #7981: for accessor properties without setter
+            // 如果仅有getter却无setter也直接返回
             if (getter && !setter) return
+
+            // 定义setter时，用setter求值
             if (setter) {
-                setter.call(obj, newVal)
+                setter.call(obj, newVal);
             } else {
+
+                // 否则直接更新值
                 val = newVal
             }
-            childOb = !shallow && observe(newVal)
+
+            // 在要深度响应化时，递归进行响应化处理当前对象值
+            childOb = !shallow && observe(newVal);
 
             // 触发更新依赖项
             dep.notify()

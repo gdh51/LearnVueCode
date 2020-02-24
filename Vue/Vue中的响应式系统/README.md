@@ -1,64 +1,15 @@
-# observe()——创建或返回一个已有的观察者对象, 响应式的起源
+# Vue中的响应式系统
 
-在 Vue 中, 一个对象要变更为响应式都是通过这个函数来启动的,之后便会以该对象为基础递归来添加观察者对象与将对象中属性变更为响应式。
+在`Vue`中，响应式系统一共由3个组件组成，它们是：
 
-每个对象的观察者对象都会挂载到该对象的`__ob__`属性上。
+- `Watcher`(观察者)
+- `Observer`(观察者)
+- `Dep`(依赖项)
 
-这个过程大致如图：
-![observe流程](<./img/observe(value).png>)
+它们之间有这种关系，如图：
 
-如我们在定义以下属性：
+![Components' Relation](./img/组件关系.svg)
 
-```js
-let data = { a: 1, b: {
-  c: 2
-}};
+这里解读下上图的含义：首先是`Observer`对象，它负责初始化其观察的对象旗下的`Dep`依赖项们，**同时它要对这个被观察对象的属性的增删进行管理**；而`Dep`依赖项则对标一个具体的属性值，**它负责管理这个属性的变更和访问**，这里我们可以将其作为一个主题来看待，所以它可以**被其他`Watcher`观察者观察**。当`Dep`发生改变时，就会通知`Watcher`们进行更新。
 
-// 则运用该函数后, 该对象会成为：
-data = {
-  a: 1,
-  b: {
-    c: 2,
-    __ob__: {
-      // b的Observer对象
-    }
-  }
-  __ob__: {
-    // data的Observer对象
-  }
-}
-```
-
-源码如下, 通过注释解释：
-
-```js
-function observe(value: any, asRootData: ?boolean): Observer | void {
-    // 不是对象或是Vnode实例时, 退出
-    if (!isObject(value) || value instanceof VNode) {
-        return;
-    }
-
-    let ob: Observer | void;
-
-    // 已存在时, 直接返回
-    if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
-        ob = value.__ob__;
-    } else if (
-        // 非服务器渲染时, 为该属性添加观察者对象
-        shouldObserve &&
-        !isServerRendering() &&
-        (Array.isArray(value) || isPlainObject(value)) &&
-        Object.isExtensible(value) &&
-        !value._isVue
-    ) {
-        // 为该对象添加观察者对象并变更其中所有属性为响应式
-        ob = new Observer(value);
-    }
-    if (asRootData && ob) {
-        ob.vmCount++;
-    }
-    return ob;
-}
-```
-
-[查看源码中 Observer 对象](./Observer观察者对象)
+那么梳理一下，我们就可以得知在一个vm生命周期内，首先是`Observer`最先工作，因为它要辅助初始化和管理`Dep`，那么我们可以看下具体[`class Observer`](./Observer观察者对象/README.md)(点击传送)是如何工作的。
