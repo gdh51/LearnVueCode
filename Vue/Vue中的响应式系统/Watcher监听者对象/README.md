@@ -25,13 +25,15 @@ class Watcher {
     // 当为computed属性时，该值为函数，表示computed的求值表达式
     // 当为watch属性时，该值表示watch的名称字符串
     expression: string;
+
+    // 仅监听属性具有实质的该函数，其他watcher为空函数
     cb: Function;
     id: number;
 
     // watch的特有属性，用于是否深度监听
     deep: boolean;
 
-    // watch的特有属性，用于执行回调函数
+    // watch的特有属性，用于出错时是否报错
     user: boolean;
 
     // 计算属性特有属性，是否延迟Watcher的求值
@@ -41,7 +43,7 @@ class Watcher {
     // 是否允许允许Watcher进行表达式计算
     dirty: boolean;
 
-    // 渲染Watcher的特有属性，表示当前组件是否活跃
+    // 渲染Watcher的特有属性，表示当前组件是否活跃(是否销毁)
     active: boolean;
 
     // 当前观察者对象依赖的依赖项
@@ -126,9 +128,21 @@ class Watcher {
 }
 ```
 
-那么这里我们按照不同的`Watcher`分别来进行学习。
+那么这里我们按照不同的`Watcher`分别来进行学习：
 
-在我们设置一个`watch`监听函数时，可能设置的是一个对象中的某个属性，那么此时，该函数就会解析这个字符串，返回那个对应的属性
+- [计算属性Watcher](./计算属性Watcher/README.md)
+- [监听属性Watcher](./监听属性Watcher/README.md)
+- [渲染Watcher](./渲染Watcher/README.md)
+
+那么下面有`Watcher`原型方法的具体解析，当然也可以通过以上的具体`Watcher`来渐进式的学习：
+
+- [Watcher.prototype.evaluate()——计算Watcher的值(lazy Watcher专属)](#watcherprototypeevaluate%e8%ae%a1%e7%ae%97watcher%e7%9a%84%e5%80%bclazy-watcher%e4%b8%93%e5%b1%9e)
+- [Watcher.prototype.get()——计算Watcher的值，收集依赖项](#watcherprototypeget%e8%ae%a1%e7%ae%97watcher%e7%9a%84%e5%80%bc%e6%94%b6%e9%9b%86%e4%be%9d%e8%b5%96%e9%a1%b9)
+- [Watcher.prototype.addDep()——为Watcher添加依赖项](#watcherprototypeadddep%e4%b8%bawatcher%e6%b7%bb%e5%8a%a0%e4%be%9d%e8%b5%96%e9%a1%b9)
+- [traverse(value)——遍历 value，将其所有属性的依赖添加到当前 watcher](#traversevalue%e9%81%8d%e5%8e%86-value%e5%b0%86%e5%85%b6%e6%89%80%e6%9c%89%e5%b1%9e%e6%80%a7%e7%9a%84%e4%be%9d%e8%b5%96%e6%b7%bb%e5%8a%a0%e5%88%b0%e5%bd%93%e5%89%8d-watcher)
+- [Watcher.prototype.cleanupDeps()——清除已不存在依赖项，交替依赖项](#watcherprototypecleanupdeps%e6%b8%85%e9%99%a4%e5%b7%b2%e4%b8%8d%e5%ad%98%e5%9c%a8%e4%be%9d%e8%b5%96%e9%a1%b9%e4%ba%a4%e6%9b%bf%e4%be%9d%e8%b5%96%e9%a1%b9)
+- [Watcher.ptototype.update()——更新 watcher](#watcherptototypeupdate%e6%9b%b4%e6%96%b0-watcher)
+- [Watcher.prototype.run()——重新收集依赖项，并触发回调](#watcherprototyperun%e9%87%8d%e6%96%b0%e6%94%b6%e9%9b%86%e4%be%9d%e8%b5%96%e9%a1%b9%e5%b9%b6%e8%a7%a6%e5%8f%91%e5%9b%9e%e8%b0%83)
 
 ## Watcher.prototype.evaluate()——计算Watcher的值(lazy Watcher专属)
 
@@ -374,16 +388,81 @@ Watcher.prototype.cleanupDeps = function () {
 
 ## Watcher.ptototype.update()——更新 watcher
 
+当依赖项发生更新时，首先会触发该函数，对于不同的`watcher`，有三种不同的做法：
+
+- 计算属性，更新允许求值的属性`.dirty`
+- 渲染`watcher`与监听属性，加入刷新队列等待更新。
+- 第三个未知，可能用于服务器渲染。
+
 ```js
-update() {
+/**
+ * Subscriber interface.
+ * Will be called when a dependency changes.
+ * 订阅者接口，会在依赖项更新时触发
+ */
+Watcher.prototype.update() {
+
+    // 计算属性专属
     if (this.lazy) {
-        this.dirty = true
+        this.dirty = true;
+
+    // 未知的一个属性，可能用于服务器渲染
     } else if (this.sync) {
-        this.run()
+        this.run();
+
+    // 渲染Watcher和监听属性的通道
     } else {
+
+        // 加入刷新队列，等待更新
         queueWatcher(this)
     }
 }
 ```
 
+## Watcher.prototype.run()——重新收集依赖项，并触发回调
 
+该函数用于更新`watcher`对其重新进行求值并收集依赖项，并同时触发其回调函数。
+
+```js
+/**
+ * Scheduler job interface.
+ * Will be called by the scheduler.
+ * 刷新任务调度的接口，仅被它调用
+ */
+Watcher.prototype.run = function () {
+
+    // 当前Watcher实例是否活跃(未销毁)
+    if (this.active) {
+
+        // 对当前Watcher重新求值，收集依赖项
+        const value = this.get();
+
+        // 如果当前Watcher的值发生变化或为深度监听或为对象
+        if (
+            value !== this.value ||
+            // Deep watchers and watchers on Object/Arrays should fire even
+            // when the value is the same, because the value may
+            // have mutated.
+            isObject(value) ||
+            this.deep
+        ) {
+            // set new value
+            const oldValue = this.value;
+            this.value = value;
+
+            // 调用watch监听属性的回调函数
+            if (this.user) {
+                try {
+                    this.cb.call(this.vm, value, oldValue)
+                } catch (e) {
+                    handleError(e, this.vm, `callback for watcher "${this.expression}"`)
+                }
+            } else {
+                this.cb.call(this.vm, value, oldValue)
+            }
+        }
+    }
+}
+```
+
+在各个`watcher`中除监听属性拥有自己的`.cb`外，其他`watcher`(计算属性和渲染`watcher`)的`.cb`属性都为`function noop(a, b, c) {}`为一个空函数。

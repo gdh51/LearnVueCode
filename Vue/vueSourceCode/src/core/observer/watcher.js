@@ -246,14 +246,22 @@ export default class Watcher {
     /**
      * Subscriber interface.
      * Will be called when a dependency changes.
+     * 订阅者接口，会在依赖项更新时触发
      */
     update() {
-        /* istanbul ignore else */
+
+        // 计算属性专属
         if (this.lazy) {
-            this.dirty = true
+            this.dirty = true;
+
+        // 未知的一个属性，可能用于服务器渲染
         } else if (this.sync) {
-            this.run()
+            this.run();
+
+        // 渲染Watcher和监听属性的通道
         } else {
+
+            // 加入刷新队列，等待更新
             queueWatcher(this)
         }
     }
@@ -261,10 +269,17 @@ export default class Watcher {
     /**
      * Scheduler job interface.
      * Will be called by the scheduler.
+     * 刷新任务调度的接口，仅被它调用
      */
     run() {
+
+        // 当前Watcher实例是否活跃(未销毁)
         if (this.active) {
+
+            // 对当前Watcher重新求值，收集依赖项
             const value = this.get();
+
+            // 如果当前Watcher的值发生变化或为深度监听或为对象
             if (
                 value !== this.value ||
                 // Deep watchers and watchers on Object/Arrays should fire even
@@ -274,8 +289,10 @@ export default class Watcher {
                 this.deep
             ) {
                 // set new value
-                const oldValue = this.value
-                this.value = value
+                const oldValue = this.value;
+                this.value = value;
+
+                // 调用watch监听属性的回调函数
                 if (this.user) {
                     try {
                         this.cb.call(this.vm, value, oldValue)
