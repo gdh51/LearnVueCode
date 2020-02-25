@@ -98,9 +98,9 @@ function popTarget() {
 - [什么时候与怎么进行依赖收集](#%e4%bb%80%e4%b9%88%e6%97%b6%e5%80%99%e4%b8%8e%e6%80%8e%e4%b9%88%e8%bf%9b%e8%a1%8c%e4%be%9d%e8%b5%96%e6%94%b6%e9%9b%86)
 - [如何触发依赖更新](#%e5%a6%82%e4%bd%95%e8%a7%a6%e5%8f%91%e4%be%9d%e8%b5%96%e6%9b%b4%e6%96%b0)
 
-## 什么时候与怎么进行依赖收集？
+## 什么时候与怎么进行依赖收集
 
-那么什么时候，会开始进行依赖收集呢？当我们第一次获取通过的函数[defineReactive()](../Observer观察者对象/#defineReactive)定义响应式属性的值时，会将目前`Dep.target`指向的`Watcher`添加到这个属性的依赖`deps`数组中，同时也会将该`dep`对象添加到`Dep.target`所指向的`Watcher`对象实例中去。
+那么什么时候，会开始进行依赖收集呢？当我们第一次获取通过的函数`defineReactive()`定义响应式属性的值时，会将目前`Dep.target`指向的`Watcher`添加到这个属性的依赖`deps`数组中，同时也会将该`dep`对象添加到`Dep.target`所指向的`Watcher`对象实例中去。
 
 具体的收集过程一切还要从取值函数开始说起，具体过程如下：
 
@@ -110,7 +110,7 @@ get: function reactiveGetter() {
 
     const value = getter ? getter.call(obj) : val;
 
-    // 将Dep.target指向的Watcher添加到当前deps队列中
+    // 如果当前Dep.target指向了Watcher，那么帮助其收集依赖项
     if (Dep.target) {
 
         // 如果是新的依赖项则将Dep.target所指向的Watcher添加到deps队列中，同时要将该依赖项添加到Watcher的最新依赖项队列中。
@@ -127,14 +127,15 @@ get: function reactiveGetter() {
         }
     }
     return value;
-},
+}
 ```
 
-在上述过程中，当我们取某个响应式属性值时，在`Dep.target`指向有效`Watcher`对象时，则会先触发`dep.depend()`, 该函数如下:
+在上述过程中，当我们取某个响应式属性值时，如果`Dep.target`指向有效`Watcher`对象时，则会先触发`dep.depend()`进行依赖项收集，该函数，实则为封装的`Watcher.prototype.addDep()`方法，具体如下:
 
 ```js
-// 在该Watcher对象中添加该依赖项，如果是新的依赖项，还要在该依赖项的deps中添加该Watcher
-Dep.prototype.depend() {
+// 在该Watcher对象中依赖项数组中添加该依赖项，
+// 如果是新的依赖项，还要在该依赖项的deps中添加该Watcher
+Dep.prototype.depend = function () {
     if (Dep.target) {
 
         // 调用Watcher的addDep()方法，并将该依赖项dep对象作为参数
@@ -143,46 +144,30 @@ Dep.prototype.depend() {
 }
 ```
 
-`watcher.addDep()`函数的作用是给`Watcher`的`newDeps`属性中添加所有的依赖项，如果该依赖是新的，则还要**将`Watcher`添加到该依赖项的`deps`队列中**。
+[`watcher.addDep()`](../Watcher监听者对象/README.md#watcherprototypeadddep%e4%b8%bawatcher%e6%b7%bb%e5%8a%a0%e4%be%9d%e8%b5%96%e9%a1%b9)(点击查看详细)函数的作用是给`watcher.newDeps`属性中添加所有的依赖项，如果该依赖是新的，则还要**将`Watcher`添加到该依赖项的`deps`队列中**。
+
+之后，如果**当前`getter`取值的结果是对象或数组**时，还要将对象和数组的`Watcher`添加到该对象或数组的`dep.subs`(观察者队列)队列中并添加它们的`Dep`依赖项添加至该`Watcher`的依赖项数组中：
 
 ```js
-Watcher.prototype.addDep(dep: Dep) {
+// 闭包中的childOb为如下，如果val不为对象则为undefined
+let childOb = !shallow && observe(val);
 
-    // 获取该依赖项id
-    const id = dep.id;
+if (childOb) {
 
-    // 将所有的dep项添加到Watcher的新deps队列中
-    if (!this.newDepIds.has(id)) {
-        this.newDepIds.add(id);
-        this.newDeps.push(dep);
-
-        // 如果是新的依赖项，还需要将该Watcher添加到依赖项的deps队列中
-        if (!this.depIds.has(id)) {
-            dep.addSub(this)
-        }
+    // 将Watcher添加到该对象的deps队列中
+    childOb.dep.depend();
+    if (Array.isArray(value)) {
+        dependArray(value);
     }
 }
-```
 
-这里简单贴以下 dep.addSub()代码,看一眼就会：
-
-```js
-Dep.prototype.addSub(sub: Watcher) {
-
-    // 将该Watcher添加到dep.subs队列中
-    this.subs.push(sub);
-}
-```
-
-之后，如果当前`getter`取值是对象或数组时，还有将`Watcher`添加到该对象或数组的`deps`队列中。
-
-如果该属性是对象是数组, 则还需要给数组中的对象或数组添加该`Watcher`：
-
-```js
+// 对数组中的对象元素进行依赖项收集
 function dependArray(value: Array<any>) {
     for (let e, i = 0, l = value.length; i < l; i++) {
         e = value[i];
         e && e.__ob__ && e.__ob__.dep.depend();
+
+        // 如果该元素依然是数组那么递归直到找到非数组对象来进行依赖项收集
         if (Array.isArray(e)) {
             dependArray(e);
         }
@@ -190,27 +175,15 @@ function dependArray(value: Array<any>) {
 }
 ```
 
+这里我们可以看到对于一个**对象值**，我们不仅收集了代表这个对象的`Dep`同时也收集了对象内部管理键值对的`Dep`，这是什么目的呢？因为在`Vue`中**对对象的观察体现在以下两个方面**：
+
+- 对象整个是否改变
+- 对象中键值对是否新增会减少
+
+对于数组，和对象差不多，唯一有区别的地方就是，对于数组的观察，多了**对数组中元素是对象或数组时，也要对这些数组对象进行依赖收集，并要深度递归观察其中的数组元素，直到观察到非数组值为止**。
+
 整个过程用图来总结：
 ![依赖项收集](../img/依赖项收集.svg)
-
-## 关于 Dep 当前依赖项队列
-
-`Dep.target`是一个队列的形式，而`target`会永远指向队列的最后一个`watcher`实例,下面为源码，很好理解
-
-```js
-Dep.target = null;
-const targetStack = [];
-
-function pushTarget(target: ?Watcher) {
-    targetStack.push(target);
-    Dep.target = target;
-}
-
-function popTarget() {
-    targetStack.pop();
-    Dep.target = targetStack[targetStack.length - 1];
-}
-```
 
 ## 如何触发依赖更新
 
@@ -219,6 +192,7 @@ function popTarget() {
 > Dep.prototype.notify()用于分别给 deps 中所挂载的 Watcher 触发其 Watcher.prototype.update()方法
 
 首先当我们改变某个响应式属性的值时, 触发该属性的`setter`函数，简单的对新值效验后，便通过`dep.notify()`来进行更新：
+
 ```js
 set: function reactiveSetter(newVal) {
     const value = getter ? getter.call(obj) : val;

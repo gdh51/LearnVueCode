@@ -146,15 +146,17 @@ evaluate() {
 }
 ```
 
-## Watcher.prototype.get()——计算Watcher的值
+那么具体求值就是下面的这个方法。
+
+## Watcher.prototype.get()——计算Watcher的值，收集依赖项
 
 该方法用来触发`Watcher`的`getter`函数，对其进行求值，并收集依赖项, 并按以下的顺序：
 
-1. 首先通过`pushTarget()`指定要进行收集依赖项的`Watcher`
-2. 对`Watcher`函数进行求值，收集依赖项(注意有`.`运算符的路径时的特殊性情况)
+1. 首先通过`pushTarget()`指定当前的`Watcher`为要进行收集依赖项的`Watcher`
+2. 对`Watcher`的`getter`函数进行求值，收集依赖项(注意有`.`运算符的路径时的特殊性情况)
 3. 如果是深度监听`(deep = true)`，则还要遍历整个求值结果(是对象的其他下)，进行依赖项收集
-4. 通过`cleanupDeps()`替换`Watcher`中的新旧`deps`列队，并根据是否还存在这个`dep`依赖项，来决定是否移除该`Watcher`。
-5. 通过`popTarget()`移除当前指定的`watcher`
+4. 通过`cleanupDeps()`更新`Watcher`中的新旧`deps`列队，并根据是否还存在这个`dep`依赖项，来决定是否移除该`Watcher`。
+5. 通过`popTarget()`移除当前指定的`Watcher`
 
 具体过程为：
 
@@ -200,23 +202,46 @@ get () {
 }
 ```
 
+那么就如上面我说的那样，首先是调用`watcher.getter()`来进行求值，具体的每种`Watcher`的求值方式在每个`Watcher`中具体有将，但我们要知道，求值就会触发`Dep`依赖项的`getter`取值器，进行依赖项收集。([什么时候进行依赖项项收集](../Dep依赖项/README.md#%e4%bb%80%e4%b9%88%e6%97%b6%e5%80%99%e4%b8%8e%e6%80%8e%e4%b9%88%e8%bf%9b%e8%a1%8c%e4%be%9d%e8%b5%96%e6%94%b6%e9%9b%86))
+
+那么之后便调用`popTarget()`移除当前收集依赖项的`Watcher`，最后调用[`Watcher.prototype.cleanupDeps()`](#watcherprototypecleanupdeps%e6%b8%85%e9%99%a4%e5%b7%b2%e4%b8%8d%e5%ad%98%e5%9c%a8%e4%be%9d%e8%b5%96%e9%a1%b9%e4%ba%a4%e6%9b%bf%e4%be%9d%e8%b5%96%e9%a1%b9)将`watcher`的新依赖项更新进旧依赖项中。
+
+到此为止，整个`Watcher`求值过程就算全部结束了。
+
+### 深度监听对象的特殊情况
+
+注意上面描述中我们并没有提到这个问题：
+
+```js
+if (this.deep) {
+    traverse(value);
+}
+```
+
+这个问题就是`watch`函数的深度监听问题，在之前的依赖项收集中我们可以看到，我们只收集了具体使用的值，对于对象或数组这种值，我们并没有收集其内部的元素值。所以`Watcher.prototype.traverse()`就会遍历这些对象或数组，进行深度收集：
+
 其中，当我们深度监听对象时，会调用以下函数：
 
-### traverse(value)——遍历 value，将其所有属性的依赖添加到当前 watcher
+## traverse(value)——遍历 value，将其所有属性的依赖添加到当前 watcher
 
 该函数的目的有两个：
 
-1. 添加每个属性的依赖项
-2. 当属性值为对象或数组时，还要添加其自身的`dep`依赖项(用于对象或数组的增加或删除元素)
+1. 添加对象每个键值对(或数组元素)的依赖项
+2. 当属性值为对象或数组时，**不会**添加用于管理键值对(或元素)的`deps`
 
 ```js
-// 生成一个Set数组，防止重复添加dep依赖项(防止循环引用)
-const seenObjects = new Set();
+// 一个用于记录对象是否访问过的set
+const seenObjects = new Set()
 
+/**
+ * Recursively traverse an object to evoke all converted
+ * getters, so that every nested property inside the object
+ * is collected as a "deep" dependency.
+ */
 function traverse(val: any) {
     _traverse(val, seenObjects);
 
-    // 清空所有depid
+    // 清空Set表
     seenObjects.clear();
 }
 
@@ -225,81 +250,129 @@ function _traverse(val: any, seen: SimpleSet) {
     const isA = Array.isArray(val);
 
     // 非对象或数组或冻结属性或Vnode时直接返回
-    if (
-        (!isA && !isObject(val)) ||
-        Object.isFrozen(val) ||
-        val instanceof VNode
-    ) {
-        return;
+    if ((!isA && !isObject(val)) || Object.isFrozen(val) || val instanceof VNode) {
+        return
     }
 
-    // 直接取出对象或数组上的观察者的depid，添加至Set数组中
+    // 对于对象或数组，添加它们的依赖项到seen防止循环引用
     if (val.__ob__) {
         const depId = val.__ob__.dep.id;
-        if (seen.has(depId)) {
-            return;
-        }
 
+        // 已经进行收集则直接返回，防止循环引用
+        if (seen.has(depId)) {
+            return
+        }
         seen.add(depId);
     }
 
-    // 遍历数组和对象，将其对象或数组元素自身的depid添加至set数组中
+    // 递归继续收集依赖项
     if (isA) {
-        i = val.length;
+        i = val.length
         while (i--) _traverse(val[i], seen);
     } else {
-        keys = Object.keys(val);
+        keys = Object.keys(val)
         i = keys.length;
         while (i--) _traverse(val[keys[i]], seen);
     }
 }
 ```
 
-最后，我们需要对该`watcher`依赖项队列的变更，进行整理，具体过程如下：
+从该函数我们可以看到，对于**watch函数监听对象时，对象以及其内部对象的键值对增删是不会被监控到的**！
 
-### Watcher.prototype.cleanupDeps()——清除已不存在依赖项，交替依赖项
+## Watcher.prototype.addDep()——为Watcher添加依赖项
 
-整个过程做了两件事：
-
-1. 如果该`watcher`某些旧的`dep`依赖项已不存在最新的队列中，则移除旧的`dep`依赖项的该`watcher`
-2. 替换新旧`deps`依赖项队列，并清空新的依赖项队列。
+该函数用于将该新增的依赖项添加至`Watcher`的依赖项数组中，并同时将该`Watcher`添加至`Dep`依赖项的观察者数组中。(该函数只处理新增的`Dep`，如果是重复的那么不做处理)
 
 ```js
-    cleanupDeps() {
-        let i = this.deps.length
+/**
+ * Add a dependency to this directive.
+ * 向当前Watcher添加一个依赖项
+ */
+Watcher.prototype.addDep = function(dep: Dep) {
 
-        // 如果该旧的dep依赖项已不存在于新的deps队列，则要从旧的dep依赖项中移除该watcher
-        while (i--) {
+    // 获取当前dep的唯一标识符
+    const id = dep.id;
 
-            // 取出旧的依赖项
-            const dep = this.deps[i];
+    // 防止重复添加dep
+    if (!this.newDepIds.has(id)) {
 
-            // 当最新的依赖项队列已不存在该旧依赖项时，从该旧的依赖项移除该watcher
-            if (!this.newDepIds.has(dep.id)) {
-                dep.removeSub(this);
-            }
+        // 将当前dep添加至Watcher的新deps数组中
+        this.newDepIds.add(id);
+        this.newDeps.push(dep);
+
+        // 如果旧的deps数组中没有该依赖项，
+        // 那么新增的依赖项还应该将该Watcher添加到它的观察者队列中
+        if (!this.depIds.has(id)) {
+            dep.addSub(this);
         }
-
-        // 替换新旧依赖项队列
-        let tmp = this.depIds;
-        this.depIds = this.newDepIds;
-
-        // 赋值后又情况了新的deps队列，这里是什么骚操作，没看懂
-        this.newDepIds = tmp;
-        this.newDepIds.clear();
-        tmp = this.deps;
-
-        // 这里又是什么骚操作，没看懂
-        this.deps = this.newDeps;
-        this.newDeps = tmp;
-        this.newDeps.length = 0;
     }
+}
+
+Dep.prototype.addSub = function (sub: Watcher) {
+
+    // 将观察该依赖项的观察者添加至数组中
+    this.subs.push(sub);
+}
+```
+
+## Watcher.prototype.cleanupDeps()——清除已不存在依赖项，交替依赖项
+
+还记得之前调用`Watcher.prototype.get()`时收集依赖项吗？它会将本次依赖项收集所需的所有依赖项保存在`watcher.newDeps`中，对于新增的`Dep`它还会将该`watcher`添加到该`Dep`的观察者(`dep.subs`)队列中。
+
+那么`cleanupDeps`整个过程做了两件事：
+
+1. 如果该`watcher`某些旧的`dep`依赖项已不存在最新的队列中，则移除旧的`dep`依赖项的观察者队列中的该`watcher`
+2. 替换新旧`deps`依赖项队列，并清空新的新的依赖项(`newDeps`)队列。
+
+```js
+/**
+ * Clean up for dependency collection.
+ * 清理依赖项收集
+ */
+Watcher.prototype.cleanupDeps = function () {
+
+    // 获取该Watcher原的依赖项数组
+    let i = this.deps.length
+
+    // 如果该旧的dep依赖项已不存在于新的deps队列，则要从旧的dep依赖项中移除该watcher
+    while (i--) {
+
+        // 取出旧的依赖项
+        const dep = this.deps[i];
+
+        // 当最新的依赖项队列已不存在该旧依赖项时，从该旧的依赖项移除该watcher
+        if (!this.newDepIds.has(dep.id)) {
+
+            // 将该Watcher从该依赖项的观察者队列中移除
+            dep.removeSub(this);
+        }
+    }
+
+     // 替换新旧依赖项队列
+    let tmp = this.depIds;
+
+    // 更新依赖项id数组
+    this.depIds = this.newDepIds;
+
+    // 这里是什么骚操作，没看懂
+    this.newDepIds = tmp;
+    this.newDepIds.clear();
+    tmp = this.deps;
+
+    // 这里又是什么骚操作，没看懂
+    // 这里替换了两个依赖项数组
+    this.deps = this.newDeps;
+    this.newDeps = tmp;
+
+    // 清空newDeps
+    this.newDeps.length = 0;
+}
 ```
 
 至此，就是watcher函数全部的求值过程，用一张图来总结一下一个watcher的具体求值过程：
 ![watcher求值过程](../img/watcher求值.svg)
 
-### Watcher.ptototype.update()——更新 watcher
+## Watcher.ptototype.update()——更新 watcher
 
 ```js
 update() {
@@ -312,4 +385,5 @@ update() {
     }
 }
 ```
+
 

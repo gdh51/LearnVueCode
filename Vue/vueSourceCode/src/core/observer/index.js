@@ -207,13 +207,17 @@ export function defineReactive(
         enumerable: true,
         configurable: true,
         get: function reactiveGetter() {
-            const value = getter ? getter.call(obj) : val
+            const value = getter ? getter.call(obj) : val;
+
+            // 如果有Watcher收集依赖项
             if (Dep.target) {
 
-                // 将当前属性添加到对应组件的Dep()对象中去
+                // 将当前属性添加到收集依赖项的Watcher的Dep()对象中去
                 dep.depend();
                 if (childOb) {
-                    childOb.dep.depend()
+                    childOb.dep.depend();
+
+                    // 对于数组，为每个数组元素递归调用.depend()
                     if (Array.isArray(value)) {
                         dependArray(value)
                     }

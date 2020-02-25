@@ -179,22 +179,34 @@ export default class Watcher {
 
     /**
      * Add a dependency to this directive.
+     * 向当前Watcher添加一个依赖项
      */
     addDep(dep: Dep) {
-        const id = dep.id
+
+        // 获取当前dep的唯一标识符
+        const id = dep.id;
+
+        // 防止重复添加dep
         if (!this.newDepIds.has(id)) {
-            this.newDepIds.add(id)
-            this.newDeps.push(dep)
+
+            // 将当前dep添加至Watcher的新deps数组中
+            this.newDepIds.add(id);
+            this.newDeps.push(dep);
+
+            // 如果旧的deps数组中没有该依赖项，那么添加进其数组
             if (!this.depIds.has(id)) {
-                dep.addSub(this)
+                dep.addSub(this);
             }
         }
     }
 
     /**
      * Clean up for dependency collection.
+     * 清理依赖项收集
      */
     cleanupDeps() {
+
+        // 获取该Watcher原的依赖项数组
         let i = this.deps.length
 
         // 如果该旧的dep依赖项已不存在于新的deps队列，则要从旧的dep依赖项中移除该watcher
@@ -205,12 +217,16 @@ export default class Watcher {
 
             // 当最新的依赖项队列已不存在该旧依赖项时，从该旧的依赖项移除该watcher
             if (!this.newDepIds.has(dep.id)) {
+
+                // 将该Watcher从该依赖项的观察者队列中移除
                 dep.removeSub(this);
             }
         }
 
         // 替换新旧依赖项队列
         let tmp = this.depIds;
+
+        // 更新依赖项id数组
         this.depIds = this.newDepIds;
 
         // 这里是什么骚操作，没看懂
@@ -219,8 +235,11 @@ export default class Watcher {
         tmp = this.deps;
 
         // 这里又是什么骚操作，没看懂
+        // 这里替换了两个依赖项数组
         this.deps = this.newDeps;
         this.newDeps = tmp;
+
+        // 清空newDeps
         this.newDeps.length = 0;
     }
 
@@ -284,9 +303,11 @@ export default class Watcher {
      * Depend on all deps collected by this watcher.
      */
     depend() {
-        let i = this.deps.length
+        let i = this.deps.length;
+
+        // 调用该Watcher下的dep重新进行依赖项收集
         while (i--) {
-            this.deps[i].depend()
+            this.deps[i].depend();
         }
     }
 
