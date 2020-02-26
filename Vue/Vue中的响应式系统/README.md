@@ -23,4 +23,4 @@
 1. [class Observer](./Observer观察者对象/README.md)
 2. [class Dep](./Dep依赖项/README.md)
 3. [class Watcher](./Watcher监听者对象/README.md)
-4. [flushQueue刷新队列](../Vue的Watcher更新机制/README.md)
+4. [flushQueue刷新队列](./Vue的Watcher更新机制/README.md)

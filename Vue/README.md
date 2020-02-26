@@ -1,28 +1,23 @@
-# Vue构造函数
+# Vue
 
-Vue 构造函数
+对于`Vue`这个库呢，我会按照想了解的内容来划分板块：
 
-```js
-function Vue(options) {
-    //只能做构造函数使用
-    if (!(this instanceof Vue)) {
-        warn(
-            'Vue is a constructor and should be called with the `new` keyword'
-        );
-    }
+## Vue生命周期
 
-    //初始化
-    this._init(options);
-}
+如果想按照其**生命周期**来进行了解，那么可以查看以下内容：
 
-// 五个在Vue构造函数之前的初始化
-initMixin(Vue);
-stateMixin(Vue);
-eventsMixin(Vue);
-lifecycleMixin(Vue);
-renderMixin(Vue);
-```
+- [实例化一个Vue](./实例化一个Vue/README.MD)
 
-## new一个Vue实例时做了什么
+它包含从`Vue`构造函数初始化，到第一次整个视图的渲染完成。
 
-[实例化一个Vue](./初始化一个Vue)
+## 响应式系统原理
+
+对于想了解`Vue`**响应式系统的原理**或基于哪几个组件来完成可以查看以下内容：
+
+- [Vue中的响应式系统](./Vue中的响应式系统/README.md)
+
+## Vue中的DOM更新之diff算法
+
+如果想对Vue中DOM是如何进行更新的，则可以查看以下内容：
+
+- [Vue中的diff算法](./Vue中的diff算法/README.md)
