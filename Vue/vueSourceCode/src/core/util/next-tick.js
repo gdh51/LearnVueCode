@@ -15,7 +15,10 @@ import {
 
 export let isUsingMicroTask = false
 
-const callbacks = []
+// 等待执行的函数的队列
+const callbacks = [];
+
+// 是否需要等待执行任务调度
 let pending = false
 
 function flushCallbacks() {

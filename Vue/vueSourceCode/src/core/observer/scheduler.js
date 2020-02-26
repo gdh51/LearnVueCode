@@ -84,8 +84,12 @@ if (inBrowser && !isIE) {
  * Flush both queues and run the watchers.
  */
 function flushSchedulerQueue() {
-    currentFlushTimestamp = getNow()
-    flushing = true
+
+    // 获取当前更新的时间(该时间用于处理BUG)
+    currentFlushTimestamp = getNow();
+
+    // 更新刷新队列的状态为正在更新
+    flushing = true;
     let watcher, id
 
     // Sort queue before flush.
@@ -98,20 +102,29 @@ function flushSchedulerQueue() {
     // 用户自定义的watch会在渲染watcher调用
     // 3. If a component is destroyed during a parent component's watcher run,
     //    its watchers can be skipped.
-    // 当一个组件在其父级watcher运行时消耗了，那么直接跳过
+    // 当一个组件在其父级watcher运行时销毁了，那么直接跳过
     queue.sort((a, b) => a.id - b.id)
 
     // do not cache length because more watchers might be pushed
     // as we run existing watchers
+    // 动态计算队列长度，因为可能会有新的watcher在更新时加入
     for (index = 0; index < queue.length; index++) {
-        watcher = queue[index]
+        watcher = queue[index];
+
+        // 触发渲染函数的beforeUpdate回调函数
         if (watcher.before) {
             watcher.before()
         }
-        id = watcher.id
-        has[id] = null
-        watcher.run()
+        id = watcher.id;
+
+        // 清楚状态，允许当前Watcher再次加入更新队列
+        has[id] = null;
+
+        // 更新watcher
+        watcher.run();
+
         // in dev build, check and stop circular updates.
+        // 一个组件过量的更新，发出可能存在无尽循环的警告
         if (process.env.NODE_ENV !== 'production' && has[id] != null) {
             circular[id] = (circular[id] || 0) + 1
             if (circular[id] > MAX_UPDATE_COUNT) {
@@ -132,14 +145,16 @@ function flushSchedulerQueue() {
     const activatedQueue = activatedChildren.slice()
     const updatedQueue = queue.slice()
 
+    // 重置更新队列状态
     resetSchedulerState()
 
     // call component updated and activated hooks
+    // 调用组件的updated和activated钩子函数
     callActivatedHooks(activatedQueue)
     callUpdatedHooks(updatedQueue)
 
     // devtool hook
-    /* istanbul ignore if */
+    // 触发devtool的更新
     if (devtools && config.devtools) {
         devtools.emit('flush')
     }
@@ -147,9 +162,11 @@ function flushSchedulerQueue() {
 
 function callUpdatedHooks(queue) {
     let i = queue.length
+
+    // 可以看到是按照子——>父的顺序触发的
     while (i--) {
         const watcher = queue[i]
-        const vm = watcher.vm
+        const vm = watcher.vm;
         if (vm._watcher === watcher && vm._isMounted && !vm._isDestroyed) {
             callHook(vm, 'updated')
         }
@@ -181,6 +198,8 @@ function callActivatedHooks(queue) {
  * Push a watcher into the watcher queue.
  * Jobs with duplicate IDs will be skipped unless it's
  * pushed when the queue is being flushed.
+ * 将一个watcher实例推入这个观察者队列中。
+ * 重复的watcher会跳过除非该watcher已经进行了处理
  */
 export function queueWatcher(watcher: Watcher) {
     const id = watcher.id;
@@ -189,13 +208,15 @@ export function queueWatcher(watcher: Watcher) {
     if (has[id] == null) {
         has[id] = true;
 
-        // 任务更新队列中是否存在该watcher
+        // 未对队列进行刷新时，直接将watcher加入队列中
         if (!flushing) {
             queue.push(watcher);
         } else {
 
             // if already flushing, splice the watcher based on its id
             // if already past its id, it will be run next immediately.
+            // 如果已经处于更新时，有新的watcher加入，
+            // 则将当前watcher加入到整个队列中，id按小到大排序的对应位置
             let i = queue.length - 1;
             while (i > index && queue[i].id > watcher.id) {
                 i--;
@@ -204,6 +225,7 @@ export function queueWatcher(watcher: Watcher) {
         }
 
         // queue the flush
+        // 在下一次event loop时进行队列刷新
         if (!waiting) {
             waiting = true;
 
@@ -212,6 +234,7 @@ export function queueWatcher(watcher: Watcher) {
                 return
             }
 
+            // 调用该函数进行队列刷新
             nextTick(flushSchedulerQueue)
         }
     }

@@ -134,6 +134,8 @@ class Watcher {
 - [监听属性Watcher](./监听属性Watcher/README.md)
 - [渲染Watcher](./渲染Watcher/README.md)
 
+在上面三个`Watcher`的更新中，涉及到一个[刷新/更新队列](../../Vue的Watcher更新机制/README.md)的运作，这里我们需要在学习这三个`Watcher`的中途进行进行学习。
+
 那么下面有`Watcher`原型方法的具体解析，当然也可以通过以上的具体`Watcher`来渐进式的学习：
 
 - [Watcher.prototype.evaluate()——计算Watcher的值(lazy Watcher专属)](#watcherprototypeevaluate%e8%ae%a1%e7%ae%97watcher%e7%9a%84%e5%80%bclazy-watcher%e4%b8%93%e5%b1%9e)

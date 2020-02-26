@@ -187,11 +187,9 @@ function dependArray(value: Array<any>) {
 
 ## 如何触发依赖更新
 
-当我们某个响应式属性的值改变时，就会通过其值定义的`setter`函数中的`dep.notify()`通知其挂载其下`(deps.subs)`数组下的全部`Wachter`对象对旧值进行更新，具体流程如下：
+当我们某个依赖项的值改变时，就会通过其值定义的`reactiveSetter`函数中的`dep.notify()`通知`deps.subs`观察者数组中的全部`wachter`实例对旧值进行更新，具体流程如下：
 
-> Dep.prototype.notify()用于分别给 deps 中所挂载的 Watcher 触发其 Watcher.prototype.update()方法
-
-首先当我们改变某个响应式属性的值时, 触发该属性的`setter`函数，简单的对新值效验后，便通过`dep.notify()`来进行更新：
+首先当我们改变某个响应式属性的值时, 触发该属性的`setter`函数，简单的对新值效验后，如果值发生了变化，便通过`dep.notify()`来进行更新：
 
 ```js
 set: function reactiveSetter(newVal) {
@@ -216,65 +214,67 @@ set: function reactiveSetter(newVal) {
     // 如果更新的属性的值为对象或数组时, 继续递归为该属性添加观察者对象(变更为响应式)
     childOb = !shallow && observe(newVal);
 
-    // 更新依赖该值的所以属性
+    // 更新依赖该值的所有属性
     dep.notify();
 }
 ```
 
-通过要更新的`dep`依赖项调用`dep.notify()`函数，该`dep`依赖项会对其监听它的`watcher`进行通知并更新：
+那么需要更新的`dep`依赖项就调用`dep.notify()`函数。该`dep`依赖项会对其观察它的`watcher`进行通知并更新：
 
 ```js
-Dep.prototype.notify () {
+Dep.prototype.notify = function () {
 
     // stabilize the subscriber list first
-    const subs = this.subs.slice()
+    // 浅复制观察者数组，防止影响原数组，因为我们下面要进行排序
+    const subs = this.subs.slice();
     if (process.env.NODE_ENV !== 'production' && !config.async) {
-
         // subs aren't sorted in scheduler if not running async
         // we need to sort them now to make sure they fire in correct
         // order
-        // 在异步时需要对sub进行排序, 因为它们会乱序
+        // 在异步时需要对sub进行排序, 因为它们会乱序，
+        // 要保证它们的更新是从父到子(即Watcher的创建顺序)
         subs.sort((a, b) => a.id - b.id)
     }
 
-    // 逐个通知Watcher更新
+    // 通知观察者们更新
     for (let i = 0, l = subs.length; i < l; i++) {
         subs[i].update();
     }
 }
 ```
 
-此时会逐个对`dep.subs`队列中依赖该`dep`的`Watcher`实例调用`update()`方法进行更新，在该方法中，会针对`watcher`的配置进行不同的更新，主要分为两种情况：
-1. `lazy watcher`即我们所熟悉的`computed`属性的`watcher`
-2. 其余`watcher`
+此时会逐个对`dep.subs`队列中依赖该`dep`的`watcher`实例调用`Watcher.prototype.update()`方法进行更新。
 
->下面第二种情况是同步模式(this.sync = true)下，即不进行异步更新，基本上不存在。
+在该方法中，会针对`watcher`的配置进行不同的更新，主要分为两种情况：
+
+1. `Computed Watcher`即我们所熟悉的`Computed`属性的`Watcher`
+2. 其余`Watcher`
 
 ```js
-Watcher.prototype.update() {
+/**
+ * Subscriber interface.
+ * Will be called when a dependency changes.
+ * 订阅者接口，会在依赖项更新时触发
+ */
+Watcher.prototype.update = function () {
 
-        if (this.lazy) {
+    // 计算属性专属
+    if (this.lazy) {
+        this.dirty = true;
 
-            // 计算属性独有属性，值为true时用于更新computed属性是否可计算状态的地方
-            this.dirty = true;
-        } else if (this.sync) {
+    // 未知的一个属性，可能用于服务器渲染
+    } else if (this.sync) {
+        this.run();
 
-            // 同步watcher实例，则直接调用回调函数
-            this.run();
-        } else {
+    // 渲染Watcher和监听属性的通道
+    } else {
 
-            // watch属性更新的地方
-            // 正常情况都应该通过这里进行更新
-            queueWatcher(this);
-        }
+        // 加入刷新队列，等待更新
+        queueWatcher(this)
     }
+}
 ```
 
->当我调用`update()`方法时，就会根据不同的`watcher`来进行更新，大多数情况是通过`queueWatcher()`来更新，这里不单独说明`lazy watcher`如何进行更新了。
+当我调用`watcher.update()`方法时，就会根据不同的`Watcher`来进行更新。`Render Watcher`与`Watch Watcher`都是通过`queueWatcher()`来更新，这里不单独说明`Computed Watcher`如何进行更新了，在`Computed Watcher`板块会讲解。
 
-[computed更新过程-lazy watcher]()
-
-我们可以看到，但凡有一个`dep`依赖项更新时，就会将调用`queueWatcher()`并传入该`watcher`，[下一部分](../../nextTick与渲染更新)
-
-回头可以来看看图
-![依赖项更新](../img/依赖项更新.svg)
+我们可以看到，但凡有一个`dep`依赖项更新时，就会将调用`queueWatcher()`并传入该`watcher`，之后呢就要待到学习[刷新队列](../../Vue的Watcher更新机制/README.md)这个概念了。
