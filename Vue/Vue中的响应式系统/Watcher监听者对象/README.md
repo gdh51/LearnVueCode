@@ -394,7 +394,7 @@ Watcher.prototype.cleanupDeps = function () {
 
 - 计算属性，更新允许求值的属性`.dirty`
 - 渲染`watcher`与监听属性，加入刷新队列等待更新。
-- 第三个未知，可能用于服务器渲染。
+- 第三个表示`watcher`不通过刷新队列异步更新，而是直接同步进行求值(`VueX`就是基于这个来开启严格模式，这个配置在官网文档中没有说明)
 
 ```js
 /**
@@ -408,7 +408,7 @@ Watcher.prototype.update() {
     if (this.lazy) {
         this.dirty = true;
 
-    // 未知的一个属性，可能用于服务器渲染
+    // 当前watcher是否同步更新
     } else if (this.sync) {
         this.run();
 
