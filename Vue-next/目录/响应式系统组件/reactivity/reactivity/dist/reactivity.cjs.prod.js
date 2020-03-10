@@ -209,7 +209,11 @@ function track(target, type, key) {
     }
 }
 function trigger(target, type, key, newValue, oldValue, oldTarget) {
+
+    // 获取该对象的依赖项集合map
     const depsMap = targetMap.get(target);
+
+    // 未进行依赖项收集时返回
     if (depsMap === void 0) {
         // never been tracked
         return;
@@ -231,7 +235,9 @@ function trigger(target, type, key, newValue, oldValue, oldTarget) {
         });
     }
     else {
+
         // schedule runs for SET | ADD | DELETE
+        // 为set/add/delete调度run方法
         if (key !== void 0) {
             addRunners(effects, computedRunners, depsMap.get(key));
         }
@@ -286,9 +292,17 @@ function unlock() {
 const builtInSymbols = new Set(Object.getOwnPropertyNames(Symbol)
     .map(key => Symbol[key])
     .filter(isSymbol));
+
+// 普通取值器
 const get = /*#__PURE__*/ createGetter();
+
+// 单层取值器
 const shallowReactiveGet = /*#__PURE__*/ createGetter(false, true);
+
+// 只读取值器
 const readonlyGet = /*#__PURE__*/ createGetter(true);
+
+// 单层只读取值器
 const shallowReadonlyGet = /*#__PURE__*/ createGetter(true, true);
 const arrayInstrumentations = {};
 ['includes', 'indexOf', 'lastIndexOf'].forEach(key => {
@@ -300,12 +314,17 @@ const arrayInstrumentations = {};
         return arr[key](...args.map(toRaw));
     };
 });
+
+/**
+ * @param {Boolean} isReadonly 是否为只读
+ * @param {Boolean} shallow 是否只代理对象的第一层
+ */
 function createGetter(isReadonly = false, shallow = false) {
 
     // 闭包存储配置
     return function get(target, key, receiver) {
 
-        // 对于数组方法形式的访问，不进行依赖项收集，直接返回答案
+        // 对于数组特殊方法形式的访问，不进行依赖项收集，直接返回答案
         if (isArray(target) && hasOwn(arrayInstrumentations, key)) {
             return Reflect.get(arrayInstrumentations, key, receiver);
         }
@@ -318,22 +337,31 @@ function createGetter(isReadonly = false, shallow = false) {
             return res;
         }
 
-        // 是否只是浅代理
+        // 是否只代理当前层
         if (shallow) {
+
+            // 收集依赖项
             track(target, "get" /* GET */, key);
+
             // TODO strict mode that returns a shallow-readonly version of the value
             return res;
         }
 
         // ref unwrapping, only for Objects, not for Arrays.
+        // 是否为定义了ref属性的对象
         if (isRef(res) && !isArray(target)) {
             return res.value;
         }
+
+        // 收集当前层级中的依赖项
         track(target, "get" /* GET */, key);
+
+        // 非对象值直接返回，对象值递归继续代理
         return isObject(res)
             ? isReadonly
                 ? // need to lazy access readonly and reactive here to avoid
                     // circular dependency
+                    // 对对象进行lazy式的响应式处理
                     readonly(res)
                 : reactive(res)
             : res;
@@ -345,24 +373,39 @@ const readonlySet = /*#__PURE__*/ createSetter(true);
 const shallowReadonlySet = /*#__PURE__*/ createSetter(true, true);
 function createSetter(isReadonly = false, shallow = false) {
     return function set(target, key, value, receiver) {
+
+        // 如果为只读则直接返回
         if (isReadonly && LOCKED) {
             return true;
         }
+
+        // 存储原值
         const oldValue = target[key];
         if (!shallow) {
+
+            // 获取被代理的原值
             value = toRaw(value);
+
+            // 如果当前值为具有ref属性的对象，而原值不是，则直接将该值赋予old
             if (!isArray(target) && isRef(oldValue) && !isRef(value)) {
                 oldValue.value = value;
                 return true;
             }
         }
         const hadKey = hasOwn(target, key);
+
+        // 将该值设置在该对象上
         const result = Reflect.set(target, key, value, receiver);
+
         // don't trigger if target is something up in the prototype chain of original
+        // 仅触发自有属性
         if (target === toRaw(receiver)) {
+
+            // 处理新增键值
             if (!hadKey) {
                 trigger(target, "add" /* ADD */, key, value);
             }
+            // 处理相同键值，在值未改变的情况下不做处理
             else if (hasChanged(value, oldValue)) {
                 trigger(target, "set" /* SET */, key, value);
             }
