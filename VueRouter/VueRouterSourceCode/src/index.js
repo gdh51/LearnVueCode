@@ -119,35 +119,48 @@ export default class VueRouter {
     }
 
     init(app: any /* Vue component instance */ ) {
+
+        // app为router挂载的根实例
         process.env.NODE_ENV !== 'production' && assert(
             install.installed,
             `not installed. Make sure to call \`Vue.use(VueRouter)\` ` +
             `before creating root instance.`
-        )
+        );
 
-        this.apps.push(app)
+        // 将所有挂载了router的根vm实例，添加进apps中
+        this.apps.push(app);
 
         // set up app destroyed handler
         // https://github.com/vuejs/vue-router/issues/2639
         app.$once('hook:destroyed', () => {
+
             // clean out app from this.apps array once destroyed
-            const index = this.apps.indexOf(app)
-            if (index > -1) this.apps.splice(index, 1)
+            // 当该根vm实例销毁时，从apps中移除
+            const index = this.apps.indexOf(app);
+            if (index > -1) this.apps.splice(index, 1);
+
             // ensure we still have a main app or null if no apps
             // we do not release the router so it can be reused
-            if (this.app === app) this.app = this.apps[0] || null
+            // 确保仍有一个主要的根vm实例或没有vm实例
+            // 我们不会移除router，以保证它可以在今后被复用
+            // 更新当前的app变量指向
+            if (this.app === app) this.app = this.apps[0] || null;
         })
 
         // main app previously initialized
         // return as we don't need to set up new history listener
+        // 如果之前存在初始化过的实例，那么我们就不必去重新添加history的监听器了
         if (this.app) {
             return
         }
 
-        this.app = app
+        // 将当前的根vm实例挂载在app上
+        this.app = app;
 
+        // 获取路由模式对象
         const history = this.history
 
+        // 在各种模式下加载当前路径的路由
         if (history instanceof HTML5History) {
             history.transitionTo(history.getCurrentLocation())
         } else if (history instanceof HashHistory) {
@@ -161,6 +174,7 @@ export default class VueRouter {
             )
         }
 
+        // 存储一个路由表更新函数
         history.listen(route => {
             this.apps.forEach((app) => {
                 app._route = route

@@ -94,6 +94,8 @@ export class History {
         // 路由切换中断时调用的函数
         onAbort ? : Function
     ) {
+
+        // 获取当地址匹配的路由对象
         const route = this.router.match(location, this.current);
         this.confirmTransition(
             route,

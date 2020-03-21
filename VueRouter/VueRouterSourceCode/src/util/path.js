@@ -5,15 +5,21 @@ export function resolvePath(
     base: string,
     append ? : boolean
 ): string {
-    const firstChar = relative.charAt(0)
+
+    // 获取当前relative传入的具体是什么类型的属性
+    const firstChar = relative.charAt(0);
+
+    // 如果为路径，则直接返回
     if (firstChar === '/') {
         return relative
     }
 
+    // 如果为查询字符串或hash值则拼接后返回
     if (firstChar === '?' || firstChar === '#') {
         return base + relative
     }
 
+    // 不符合时则将base传入的路径地址进行分隔
     const stack = base.split('/')
 
     // remove trailing segment if:
@@ -42,6 +48,7 @@ export function resolvePath(
     return stack.join('/')
 }
 
+// 解析URL，转换为参数形式
 export function parsePath(path: string): {
     path: string;
     query: string;
@@ -62,6 +69,7 @@ export function parsePath(path: string): {
         path = path.slice(0, queryIndex)
     }
 
+    // 返回对应部分的字符串表达式
     return {
         path,
         query,

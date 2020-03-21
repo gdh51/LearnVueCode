@@ -42,18 +42,21 @@ export function createMatcher(
 
     function match(
 
-        // 当前的URL地址
+        // 当前的URL地址(完整的，包括hash)或一个路径信息的对象
         raw: RawLocation,
 
         // 当前的路由地址的信息对象
         currentRoute ? : Route,
         redirectedFrom ? : Location
     ): Route {
+
+        // 对当前的路由信息进行处理，同一为对象的形式
         const location = normalizeLocation(raw, currentRoute, false, router);
         const {
             name
         } = location;
 
+        // 如果存在直接的路由组件名称
         if (name) {
             const record = nameMap[name]
             if (process.env.NODE_ENV !== 'production') {
@@ -78,7 +81,11 @@ export function createMatcher(
 
             location.path = fillParams(record.path, location.params, `named route "${name}"`)
             return _createRoute(record, location, redirectedFrom)
+
+        // 只存在路径形式的路由
         } else if (location.path) {
+
+            //
             location.params = {}
             for (let i = 0; i < pathList.length; i++) {
                 const path = pathList[i]
@@ -88,7 +95,9 @@ export function createMatcher(
                 }
             }
         }
+
         // no match
+        // 无匹配时返回个空path信息对象
         return _createRoute(null, location)
     }
 

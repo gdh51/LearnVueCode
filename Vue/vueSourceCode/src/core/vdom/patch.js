@@ -535,7 +535,7 @@ export function createPatchFunction(backend) {
                     removeAndInvokeRemoveHook(ch);
                     invokeDestroyHook(ch);
 
-                // 移除文本节点
+                    // 移除文本节点
                 } else { // Text node
                     removeNode(ch.elm);
                 }
@@ -588,7 +588,7 @@ export function createPatchFunction(backend) {
                 rm();
             }
 
-        // 没有Hook函数时，直接移除即可
+            // 没有Hook函数时，直接移除即可
         } else {
             removeNode(vnode.elm)
         }
@@ -627,7 +627,7 @@ export function createPatchFunction(backend) {
                 // 当旧节点的尾指针指向的节点不存在时，指针左移
                 oldEndVnode = oldCh[--oldEndIdx]
 
-            // 当新旧两个头指针相等时
+                // 当新旧两个头指针相等时
             } else if (sameVnode(oldStartVnode, newStartVnode)) {
 
                 // 当新旧节点头指针指向的节点大致相同时，对其进行打补丁更新，然后双方指针右移
@@ -635,7 +635,7 @@ export function createPatchFunction(backend) {
                 oldStartVnode = oldCh[++oldStartIdx]
                 newStartVnode = newCh[++newStartIdx]
 
-            // 当新旧节点两个尾指针指向节点相同时
+                // 当新旧节点两个尾指针指向节点相同时
             } else if (sameVnode(oldEndVnode, newEndVnode)) {
 
                 // 当新旧节点尾指针指向的节点大致相同时，对其进行打补丁更新，然后双方指针左移
@@ -643,7 +643,7 @@ export function createPatchFunction(backend) {
                 oldEndVnode = oldCh[--oldEndIdx]
                 newEndVnode = newCh[--newEndIdx]
 
-            // 当旧的头指针节点与新的尾指针节点相同时
+                // 当旧的头指针节点与新的尾指针节点相同时
             } else if (sameVnode(oldStartVnode, newEndVnode)) {
 
                 // 当新节点头指针，与旧节点尾指针指向的节点大致相同时，对其进行打补丁更新，然后双方指针向内部移动
@@ -654,7 +654,7 @@ export function createPatchFunction(backend) {
                 oldStartVnode = oldCh[++oldStartIdx]
                 newEndVnode = newCh[--newEndIdx]
 
-            // 当旧的尾指针节点与新的头指针节点相同时
+                // 当旧的尾指针节点与新的头指针节点相同时
             } else if (sameVnode(oldEndVnode, newStartVnode)) {
 
                 // 当新节点尾指针，与旧节点头指针指向的节点大致相同时，对其进行打补丁更新，然后双方指针向内部移动
@@ -665,7 +665,7 @@ export function createPatchFunction(backend) {
                 oldEndVnode = oldCh[--oldEndIdx]
                 newStartVnode = newCh[++newStartIdx];
 
-            // 其他情况，优先查找是否有相同节点
+                // 其他情况，优先查找是否有相同节点
             } else {
                 // 当4个指针都没有对应大致相等的节点时，通过其子节点的key值生成指针之间hash表，来看是否有相同的key
 
@@ -720,7 +720,7 @@ export function createPatchFunction(backend) {
             refElm = isUndef(newCh[newEndIdx + 1]) ? null : newCh[newEndIdx + 1].elm
             addVnodes(parentElm, refElm, newCh, newStartIdx, newEndIdx, insertedVnodeQueue)
 
-        // 如果是新指针相遇，那么说明旧节点中有一部分节点是多余的，那么就直接删除
+            // 如果是新指针相遇，那么说明旧节点中有一部分节点是多余的，那么就直接删除
         } else if (newStartIdx > newEndIdx) {
             removeVnodes(parentElm, oldCh, oldStartIdx, oldEndIdx)
         }
@@ -845,7 +845,7 @@ export function createPatchFunction(backend) {
             if (isDef(oldCh) && isDef(ch)) {
                 if (oldCh !== ch) updateChildren(elm, oldCh, ch, insertedVnodeQueue, removeOnly)
 
-            // 之前没有子节点数组，现在有
+                // 之前没有子节点数组，现在有
             } else if (isDef(ch)) {
 
                 // 检查子数组中是否定义有重复的key值
@@ -855,16 +855,16 @@ export function createPatchFunction(backend) {
                 if (isDef(oldVnode.text)) nodeOps.setTextContent(elm, '')
                 addVnodes(elm, null, ch, 0, ch.length - 1, insertedVnodeQueue)
 
-            // 之前有现在没有子节点数组，则直接移除
+                // 之前有现在没有子节点数组，则直接移除
             } else if (isDef(oldCh)) {
                 removeVnodes(elm, oldCh, 0, oldCh.length - 1)
 
-            // 子节点为文本节点则直接更新
+                // 子节点为文本节点则直接更新
             } else if (isDef(oldVnode.text)) {
                 nodeOps.setTextContent(elm, '')
             }
 
-        // 如果当前节点为文本节点且文本改变，那么直接改变其文本即可
+            // 如果当前节点为文本节点且文本改变，那么直接改变其文本即可
         } else if (oldVnode.text !== vnode.text) {
             nodeOps.setTextContent(elm, vnode.text)
         }
@@ -905,6 +905,7 @@ export function createPatchFunction(backend) {
     const isRenderedModule = makeMap('attrs,class,staticClass,staticStyle,key');
 
     // Note: this is a browser-only function so we can assume elms are DOM nodes.
+    // 注意：这是一个仅浏览器可用的函数，所以我们可以鉴定elms为DOM元素
     function hydrate(elm, vnode, insertedVnodeQueue, inVPre) {
         let i
         const {
@@ -1146,7 +1147,7 @@ export function createPatchFunction(backend) {
                     // 移除该元素，并调用其destroy钩子函数
                     removeVnodes(parentElm, [oldVnode], 0, 0);
 
-                // 如果未挂载元素，那么直接调用其destroy()钩子函数
+                    // 如果未挂载元素，那么直接调用其destroy()钩子函数
                 } else if (isDef(oldVnode.tag)) {
                     invokeDestroyHook(oldVnode);
                 }

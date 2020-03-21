@@ -37,6 +37,8 @@ export class HTML5History extends History {
 
         // 获取完整的URL信息
         const initLocation = getLocation(this.base);
+
+        // 监听popstate事件，做出变化
         window.addEventListener('popstate', e => {
 
             // 获取当前路径信息对象
