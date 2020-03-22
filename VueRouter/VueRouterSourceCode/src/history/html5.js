@@ -30,12 +30,12 @@ export class HTML5History extends History {
         const expectScroll = router.options.scrollBehavior;
         const supportsScroll = supportsPushState && expectScroll;
 
-        // 如果支持控制滚动条，且用户想控制，
+        // 如果支持控制滚动条且用户想控制，则记录当前页面信息
         if (supportsScroll) {
-            setupScroll()
+            setupScroll();
         }
 
-        // 获取完整的URL信息
+        // 获取完整的URL 路径 信息
         const initLocation = getLocation(this.base);
 
         // 监听popstate事件，做出变化
@@ -46,20 +46,23 @@ export class HTML5History extends History {
 
             // Avoiding first `popstate` event dispatched in some browsers but first
             // history route not updated since async guard at the same time.
+            // 避免第一次popstate事件触发时(在某些浏览器)history路由不进行更新
             const location = getLocation(this.base);
 
-            // 初始化路由时直接退出
+            // 初始化路由时，则直接退出
             if (this.current === START && location === initLocation) {
                 return
             }
 
             // 其余时执行路由跳转时页面高度发生变化时的滚动
             this.transitionTo(location, route => {
+
+                // 跳转到对应的位置
                 if (supportsScroll) {
                     handleScroll(router, route, current, true)
                 }
             });
-        })
+        });
     }
 
     go(n: number) {

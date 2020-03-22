@@ -10,6 +10,8 @@ import {
 } from './util/warn'
 
 export function createRouteMap(
+
+    // 原始的路由配置对象(option.routes)
     routes: Array < RouteConfig > ,
     oldPathList ? : Array < string > ,
     oldPathMap ? : Dictionary < RouteRecord > ,
@@ -22,13 +24,17 @@ export function createRouteMap(
     // the path list is used to control path matching priority
     // 一个用于匹配路径的路径表
     const pathList: Array < string > = oldPathList || [];
+
+    // 路径到对应路由信息的映射表
     const pathMap: Dictionary < RouteRecord > = oldPathMap || Object.create(null);
+
+    // 命名路由到路由信息的映射表
     const nameMap: Dictionary < RouteRecord > = oldNameMap || Object.create(null);
 
-    // 为每一个路由配置添加到路由map上
+    // 为每一个路由配置添加到这两个路由map上
     routes.forEach(route => {
         addRouteRecord(pathList, pathMap, nameMap, route)
-    })
+    });
 
     // ensure wildcard routes are always at the end
     // 确保通配符路径永远在路由表数组的最后
@@ -66,15 +72,24 @@ export function createRouteMap(
 }
 
 function addRouteRecord(
+
+    // 按我们定义的路由配置顺序转换后的路由表
     pathList: Array < string > ,
+
+    // 路径到路由信息的映射表
     pathMap: Dictionary < RouteRecord > ,
+
+    // 命名路由到路由信息的映射表
     nameMap: Dictionary < RouteRecord > ,
 
     // 用户定义的路由配置表
     route: RouteConfig,
+
+    // 子路由的父路由
     parent ? : RouteRecord,
     matchAs ? : string
 ) {
+
     // 提取配置中的路由地址和组件名称
     const {
         path,
@@ -92,7 +107,7 @@ function addRouteRecord(
         )
     }
 
-    // 2.6新增api，用于将控制正则表达式路由规则的解析行为
+    // 2.6新增api，用于将控制j将路径转化为正则表达式规则的解析行为
     const pathToRegexpOptions: PathToRegexpOptions =
         route.pathToRegexpOptions || {};
 
@@ -118,7 +133,7 @@ function addRouteRecord(
             default: route.component
         },
 
-        // 组件代表的vm实例
+        // 当前路径下的vm实例
         instances: {},
 
         // 当前路由名称
@@ -193,7 +208,7 @@ function addRouteRecord(
     // 如果路由存在任何形式的别名
     if (route.alias !== undefined) {
 
-        // 格式化别名为数组
+        // 格式化别名为数组，并依次添加为一个单独的路由
         const aliases = Array.isArray(route.alias) ? route.alias : [route.alias]
         for (let i = 0; i < aliases.length; ++i) {
             const alias = aliases[i];
@@ -212,7 +227,7 @@ function addRouteRecord(
             const aliasRoute = {
                 path: alias,
                 children: route.children
-            }
+            };
             addRouteRecord(
                 pathList,
                 pathMap,
@@ -262,6 +277,8 @@ function compileRouteRegex(
 
 function normalizePath(
     path: string,
+
+    // 父级路由记录对象
     parent ? : RouteRecord,
     strict ? : boolean
 ): string {
@@ -275,6 +292,6 @@ function normalizePath(
     // 初始化时，直接返回地址
     if (parent == null) return path
 
-    // 清空全部 //
+    // 清空全部 //，并返回完整的路径信息(如为子路由则还要包含父路由)
     return cleanPath(`${parent.path}/${path}`)
 }

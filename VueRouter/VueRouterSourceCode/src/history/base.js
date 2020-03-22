@@ -85,7 +85,7 @@ export class History {
 
     transitionTo(
 
-        // 当前完整的URL地址
+        // 当前路径信息字符串
         location: RawLocation,
 
         // 路由切换完成时调用的函数

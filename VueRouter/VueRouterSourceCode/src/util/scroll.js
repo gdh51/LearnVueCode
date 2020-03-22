@@ -28,29 +28,40 @@ export function setupScroll() {
         key: getStateKey()
     }, '', absolutePath);
 
-    // 注册一个浏览器地址事件发生变化时触发的事件
+    // 注册popstate事件，当用户前进或后退时存储
     window.addEventListener('popstate', e => {
 
-        // 每次变化时先保存
+        // 每次切换地址时，将上一个路径的滚动条的位置信息保存下来
         saveScrollPosition();
 
         // 更新全局的key
         if (e.state && e.state.key) {
             setStateKey(e.state.key);
         }
-    })
+    });
 }
 
 export function handleScroll(
+
+    // 路由实例
     router: Router,
+
+    // 跳转的路由记录信息对象
     to: Route,
+
+    // 跳转前的路由记录信息对象
     from: Route,
+
+    // 是否是通过popstate事件触发
     isPop: boolean
 ) {
+
+    // 如果当前没有任何vm实例挂载则直接返回不进行处理
     if (!router.app) {
         return
     }
 
+    // 如果用户没有定义滚动行为，也直接退出
     const behavior = router.options.scrollBehavior
     if (!behavior) {
         return
@@ -61,19 +72,26 @@ export function handleScroll(
     }
 
     // wait until re-render finishes before scrolling
+    // 在组件渲染完成后在进行滚动
     router.app.$nextTick(() => {
-        const position = getScrollPosition()
+
+        // 获取当前key值下最初所处于的位置信息
+        const position = getScrollPosition();
+
+        // 获取用户定义的滚动位置
         const shouldScroll = behavior.call(
             router,
             to,
             from,
             isPop ? position : null
-        )
+        );
 
+        // 如果用户未定义行为则直接返回
         if (!shouldScroll) {
             return
         }
 
+        // 如果返回promise，则待promise状态改变时在更新
         if (typeof shouldScroll.then === 'function') {
             shouldScroll
                 .then(shouldScroll => {
@@ -85,6 +103,8 @@ export function handleScroll(
                     }
                 })
         } else {
+
+            // 普通的情况，则直接滚动到对应位置
             scrollToPosition(shouldScroll, position)
         }
     })
@@ -112,9 +132,13 @@ function getScrollPosition(): ? Object {
 }
 
 function getElementPosition(el: Element, offset: Object) : Object {
-    const docEl: any = document.documentElement
-    const docRect = docEl.getBoundingClientRect()
-    const elRect = el.getBoundingClientRect()
+
+    // 获取html元素在视窗的位置信息
+    const docEl: any = document.documentElement;
+    const docRect = docEl.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+
+    //  返回元素在整个html视图中的位置，这里要减去用户设置的偏移量
     return {
         x: elRect.left - docRect.left - offset.x,
         y: elRect.top - docRect.top - offset.y
@@ -143,26 +167,37 @@ function isNumber(v: any): boolean {
     return typeof v === 'number'
 }
 
+// 以数字开头的锚点
 const hashStartsWithNumberRE = /^#\d/
 
 function scrollToPosition(shouldScroll, position) {
-    const isObject = typeof shouldScroll === 'object'
+    const isObject = typeof shouldScroll === 'object';
+
+    // 滚动到#锚点的处理
     if (isObject && typeof shouldScroll.selector === 'string') {
+
         // getElementById would still fail if the selector contains a more complicated query like #main[data-attr]
         // but at the same time, it doesn't make much sense to select an element with an id and an extra selector
         const el = hashStartsWithNumberRE.test(shouldScroll.selector) // $flow-disable-line
             ?
             document.getElementById(shouldScroll.selector.slice(1)) // $flow-disable-line
             :
+
+            // 支持选择器模式匹配
             document.querySelector(shouldScroll.selector)
 
+        // 如果找到对应的元素
         if (el) {
+            // 获取用户是否定义offset
             let offset =
                 shouldScroll.offset && typeof shouldScroll.offset === 'object' ?
-                shouldScroll.offset :
-                {}
-            offset = normalizeOffset(offset)
-            position = getElementPosition(el, offset)
+                shouldScroll.offset : {};
+
+            // 标准化offset的数值
+            offset = normalizeOffset(offset);
+
+            // 获取元素在html元素中最终的偏移量
+            position = getElementPosition(el, offset);
         } else if (isValidPosition(shouldScroll)) {
             position = normalizePosition(shouldScroll)
         }
@@ -170,6 +205,7 @@ function scrollToPosition(shouldScroll, position) {
         position = normalizePosition(shouldScroll)
     }
 
+    // 滚动吧！
     if (position) {
         window.scrollTo(position.x, position.y)
     }

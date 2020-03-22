@@ -42,7 +42,7 @@ export function createMatcher(
 
     function match(
 
-        // 当前的URL地址(完整的，包括hash)或一个路径信息的对象
+        // 当前的路径字符串(包括hash)或一个路径信息的对象
         raw: RawLocation,
 
         // 当前的路由地址的信息对象
@@ -58,10 +58,14 @@ export function createMatcher(
 
         // 如果存在直接的路由组件名称
         if (name) {
+
+            // 取出开路径下的路由信息对象
             const record = nameMap[name]
             if (process.env.NODE_ENV !== 'production') {
                 warn(record, `Route with name '${name}' does not exist`)
             }
+
+            // 没有则返回空路由
             if (!record) return _createRoute(null, location)
             const paramNames = record.regex.keys
                 .filter(key => !key.optional)
@@ -71,6 +75,7 @@ export function createMatcher(
                 location.params = {}
             }
 
+            // 将剩余的路径参数复制进location中
             if (currentRoute && typeof currentRoute.params === 'object') {
                 for (const key in currentRoute.params) {
                     if (!(key in location.params) && paramNames.indexOf(key) > -1) {
@@ -79,13 +84,16 @@ export function createMatcher(
                 }
             }
 
+            // 将参数与当前路径合并为完成的路径
             location.path = fillParams(record.path, location.params, `named route "${name}"`)
-            return _createRoute(record, location, redirectedFrom)
+
+            // 创建路由对象并返回
+            return _createRoute(record, location, redirectedFrom);
 
         // 只存在路径形式的路由
         } else if (location.path) {
 
-            //
+            // 返回匹配路径的路由对象
             location.params = {}
             for (let i = 0; i < pathList.length; i++) {
                 const path = pathList[i]
