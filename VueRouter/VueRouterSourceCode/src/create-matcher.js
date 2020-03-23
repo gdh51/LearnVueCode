@@ -200,16 +200,26 @@ export function createMatcher(
     }
 
     function _createRoute(
+
+        // 当前匹配的路由记录对象
         record: ? RouteRecord,
+
+        // 当前的路径信息
         location : Location,
+
+        // 重定向的地址
         redirectedFrom ? : Location
     ): Route {
+
+        // 优先从定向
         if (record && record.redirect) {
             return redirect(record, redirectedFrom || location)
         }
         if (record && record.matchAs) {
             return alias(record, location, record.matchAs)
         }
+
+        // 其余情况返回新的当前路径的信息
         return createRoute(record, location, redirectedFrom, router)
     }
 

@@ -62,6 +62,8 @@ export default {
 
         // 获取路由表，和当前路径信息对象
         const router = this.$router
+
+        // 当前路径的路由记录对象
         const current = this.$route
         const {
             location,
@@ -74,6 +76,8 @@ export default {
         );
 
         const classes = {}
+
+        // 获取全局的class
         const globalActiveClass = router.options.linkActiveClass
         const globalExactActiveClass = router.options.linkExactActiveClass
         // Support global empty active class
@@ -94,9 +98,12 @@ export default {
             createRoute(null, normalizeLocation(route.redirectedFrom), null, router) :
             route
 
+        // 是否为相同路由跳转
         classes[exactActiveClass] = isSameRoute(current, compareTarget)
         classes[activeClass] = this.exact ?
             classes[exactActiveClass] :
+
+            // 后者是否为前者的子路由
             isIncludedRoute(current, compareTarget)
 
         const handler = e => {
@@ -109,6 +116,7 @@ export default {
             }
         }
 
+        // 默认添加点击事情
         const on = {
             click: guardEvent
         }
@@ -124,6 +132,7 @@ export default {
             class: classes
         }
 
+        // 有插槽时，将属性传递给插槽元素
         const scopedSlot = !this.$scopedSlots.$hasNormal &&
             this.$scopedSlots.default &&
             this.$scopedSlots.default({
@@ -135,8 +144,12 @@ export default {
             })
 
         if (scopedSlot) {
+
+            // 当插入一个时，直接返回
             if (scopedSlot.length === 1) {
-                return scopedSlot[0]
+                return scopedSlot[0];
+
+            // 插入了多个插槽元素
             } else if (scopedSlot.length > 1 || !scopedSlot.length) {
                 if (process.env.NODE_ENV !== 'production') {
                     warn(
@@ -150,17 +163,23 @@ export default {
             }
         }
 
+        // 默认使用a标签做包裹元素
         if (this.tag === 'a') {
             data.on = on
             data.attrs = {
                 href
             }
         } else {
+
             // find the first <a> child and apply listener and href
+            // 找到第一个a标签为其添加事件监听器！
             const a = findAnchor(this.$slots.default)
             if (a) {
                 // in case the <a> is a static node
+                // 防止该元素被作为一个静态节点
                 a.isStatic = false
+
+                // 为该节点整上路由的属性
                 const aData = (a.data = extend({}, a.data))
                 aData.on = aData.on || {}
                 // transform existing events in both objects into arrays so we can push later
@@ -183,7 +202,9 @@ export default {
                 const aAttrs = (a.data.attrs = extend({}, a.data.attrs))
                 aAttrs.href = href
             } else {
+
                 // doesn't have <a> child, apply listener to self
+                // 如果不是a标签，则整在定义的元素上
                 data.on = on
             }
         }
@@ -211,6 +232,7 @@ function guardEvent(e) {
     return true
 }
 
+// 从当前子节点数组中找到第一个a标签节点
 function findAnchor(children) {
     if (children) {
         let child

@@ -92,6 +92,8 @@ export class HTML5History extends History {
     }
 
     ensureURL(push ? : boolean) {
+
+        // 如果具有其他的信息参数(如查询字符串)，则调用history api更新
         if (getLocation(this.base) !== this.current.fullPath) {
             const current = cleanPath(this.base + this.current.fullPath)
             push ? pushState(current) : replaceState(current)

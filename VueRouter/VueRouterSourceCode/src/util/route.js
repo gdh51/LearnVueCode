@@ -36,7 +36,7 @@ export function createRoute(
         // 返回完整的URL地址
         fullPath: getFullPath(location, stringifyQuery),
 
-        // 返回所有的路由信息对象添加至本次信息中
+        // 将当前路由及其所有父级路由按序添加到该数组
         matched: record ? formatMatch(record) : []
     }
 
@@ -70,6 +70,7 @@ export const START = createRoute(null, {
     path: '/'
 });
 
+// 将当前子路由的记录表，按子->父->根的顺序存放在该数组中
 function formatMatch(record: ? RouteRecord): Array < RouteRecord > {
     const res = [];
 
@@ -97,17 +98,33 @@ function getFullPath({
 }
 
 export function isSameRoute(a: Route, b: ? Route): boolean {
+
+    // 为初始化路由则直接返回
     if (b === START) {
-        return a === b
+        return a === b;
+
+    // 无路由时直接返回false
     } else if (!b) {
         return false
+
+    // 如果存在路径时
     } else if (a.path && b.path) {
         return (
+
+            // 将路径末尾的/清除掉后，是否相等
             a.path.replace(trailingSlashRE, '') === b.path.replace(trailingSlashRE, '') &&
+
+            // hash值也要想等
             a.hash === b.hash &&
+
+            // 且query一样
             isObjectEqual(a.query, b.query)
         )
+
+    // 当不为路径而是指定命名路由时
     } else if (a.name && b.name) {
+
+        // 同样是满足这些条件相同
         return (
             a.name === b.name &&
             a.hash === b.hash &&
