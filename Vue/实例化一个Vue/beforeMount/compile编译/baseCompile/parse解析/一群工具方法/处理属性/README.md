@@ -155,86 +155,34 @@ function checkInFor(el: ASTElement): boolean {
 在2.6及其以上版本中，无论哪一种写法，其实处理效果都一样，都会在含有一个默认`template`元素来承载插槽内容。
 
 ```js
+// 提取v-slot语法
+var slotRE = /^v-slot(:|$)|^#/;
 // handle content being passed to a component as slot,
 // e.g. <template slot="xxx">, <div slot-scope="xxx">
 // 处理作为插入slot的组件
 function processSlotContent(el) {
+
+    // 插槽绑定的prop值
     let slotScope;
 
-    // 旧语法，处理作用域插槽，处理作为模版插入的标签
-    if (el.tag === 'template') {
-
-        // 处理scope属性, 该属性已在高版本废弃，所以提示用户不要再使用
-        slotScope = getAndRemoveAttr(el, 'scope');
-
-        if (process.env.NODE_ENV !== 'production' && slotScope) {
-            warn(
-                `the "scope" attribute for scoped slots have been deprecated and ` +
-                `replaced by "slot-scope" since 2.5. The new "slot-scope" attribute ` +
-                `can also be used on plain elements in addition to <template> to ` +
-                `denote scoped slots.`,
-                el.rawAttrsMap['scope'],
-                true
-            )
-        }
-
-        // 处理slot-scope属性
-        el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope');
-
-    // 不再模版上使用时
-    } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) {
-
-        // 同v-for属性一起使用时，报错，提示用户两者优先级冲突
-        if (process.env.NODE_ENV !== 'production' && el.attrsMap['v-for']) {
-            warn(
-                `Ambiguous combined usage of slot-scope and v-for on <${el.tag}> ` +
-                `(v-for takes higher priority). Use a wrapper <template> for the ` +
-                `scoped slot to make it clearer.`,
-                el.rawAttrsMap['slot-scope'],
-                true
-            )
-        }
-        el.slotScope = slotScope;
-    }
-
-    // slot="xxx"
-    // 旧语法：获取slot的字符串表达式值，支持获取动态值
-    const slotTarget = getBindingAttr(el, 'slot');
-
-    // 旧语法：处理插槽绑定的插槽名称
-    if (slotTarget) {
-
-        // 获取内容绑定的插槽名称，默认绑定目标为default
-        el.slotTarget = slotTarget === '""' ? '"default"' : slotTarget;
-
-        // 是否绑定的是动态属性目标
-        el.slotTargetDynamic = !!(el.attrsMap[':slot'] || el.attrsMap['v-bind:slot'])
-
-        // preserve slot as an attribute for native shadow DOM compat
-        // only for non-scoped slots.
-        // 为非template元素预备一个插槽属性(不支持2.6版本下)
-        if (el.tag !== 'template' && !el.slotScope) {
-
-            // 为el添加一个已处理的slot属性(添加在新的属性中)
-            addAttr(el, 'slot', slotTarget, getRawBindingAttr(el, 'slot'));
-        }
-    }
-------------------------------------版本分割线----------------------------------
     // 2.6 v-slot syntax
     // 2.6 v-slot 语法
     if (process.env.NEW_SLOT_SYNTAX) {
 
-        // 插入模版的情况
+        // 当前元素为template时(即怀疑为使用作用域插槽的模版)
         if (el.tag === 'template') {
 
             // v-slot on <template>
-            // 处理掉模版上的v-slot属性
+            // 处理掉并获取template上的v-slot属性
             const slotBinding = getAndRemoveAttrByRegex(el, slotRE);
+
+            // 那么如果存在
             if (slotBinding) {
 
+                // 对当前作用域插槽的用法错误进行验证
                 if (process.env.NODE_ENV !== 'production') {
 
-                    // 新旧版本语法一起用，报错
+                    // 新旧版本语法一起用，报错(旧语法单独定义这两个属性)
                     if (el.slotTarget || el.slotScope) {
                         warn(
                             `Unexpected mixed usage of different slot syntaxes.`,
@@ -252,6 +200,7 @@ function processSlotContent(el) {
                     }
                 }
 
+                // 从v-slot:name="xxx"上提取出具名插槽的名称
                 const {
 
                     // 插槽名称字符串表达式
@@ -265,14 +214,18 @@ function processSlotContent(el) {
                 el.slotTarget = name;
                 el.slotTargetDynamic = dynamic;
 
-                // 插槽指定的prop值(没有则指定默认值)
-                el.slotScope = slotBinding.value || emptySlotScopeToken // force it into a scoped slot for perf
+                // 在ast元素上设置插槽绑定的作用域(没有时则指定默认值)
+                // force it into a scoped slot for perf
+                // 强制其为一个作用域插槽(即默认)
+                el.slotScope = slotBinding.value || emptySlotScopeToken
             }
         } else {
 
             // v-slot on component, denotes default slot
             // 直接在组件上使用插槽，则表示使用默认插槽
             const slotBinding = getAndRemoveAttrByRegex(el, slotRE);
+
+            // 如果在某个ast元素上具有插槽属性，则该ast元素一定要为组件
             if (slotBinding) {
                 if (process.env.NODE_ENV !== 'production') {
 
@@ -304,24 +257,28 @@ function processSlotContent(el) {
                 }
 
                 // add the component's children to its default slot
-                // 初始化插槽
+                // 将组件中的插槽内容节点添加到其children
+                // 并初始化作用域插槽属性
                 const slots = el.scopedSlots || (el.scopedSlots = {});
 
-                // 处理并返回插槽名称，和是否为动态名称
+                // 处理并返回具名插槽名称(即指定了名称的情况)和是否为动态的名称
                 const {
                     name,
                     dynamic
                 } = getSlotName(slotBinding);
 
-                // 为插槽创建一个代表默认插槽的模版ast元素对象，并指定其父元素为当前组件
+                // 为插槽创建一个template ast元素对象，将其存放在scopedSlots[slotName]中
+                // 并指定其父元素为当前组件
                 const slotContainer = slots[name] = createASTElement('template', [], el);
                 slotContainer.slotTarget = name;
                 slotContainer.slotTargetDynamic = dynamic;
 
-                // 因为中间新增了一层template元素，所以要将组件的子元素转移到template元素旗下
+                // 将组件中的子节点转移到该template中，
+                // 这里含义就是替我写了第一种语法
                 slotContainer.children = el.children.filter((c: any) => {
 
-                    // 这里要排除重复的v-slot使用，即子元素出现这种情况，这样就作用域混淆了
+                    // 在这种语法下，如果还在插槽内容中使用了如下模版的内容(即定义其他的作用域插槽)，
+                    // 则将其删除
                     // <template v-slot="prop">
                     if (!c.slotScope) {
 
@@ -331,11 +288,11 @@ function processSlotContent(el) {
                     }
                 });
 
-                // 设置当前组件的插槽作用域为当前插槽绑定的值
+                // 给当前的作用域插槽绑定作用域
                 slotContainer.slotScope = slotBinding.value || emptySlotScopeToken;
 
                 // remove children as they are returned from scopedSlots now
-                // 移除组件ast对象上的子节点数组，因为它们已经转义到作用域插槽对象中了
+                // 移除原组件ast对象上的子节点数组，因为它们已经转移到作用域插槽对象中了
                 // (这里也同时说明了，如果你混写了<template v-slot="prop">这种写法，那么这种写法会被直接移除)
                 el.children = [];
 
@@ -347,17 +304,60 @@ function processSlotContent(el) {
 }
 ```
 
-这里我们只说明2.6及其以上的语法：
-首先，`Vue`按`v-slot`属性定义的位置来对该属性进行处理：
+这里我们只说明`2.6`及其以上的语法(其余语法代码已删除)：
+首先在`2.6`后，统一使用`v-slot`来定义插槽(可省略)，并且按`v-slot`属性定义的位置来对该属性进行处理，一共有两种情况：
 
-1. 定义在`<template>`模版上：如果是定义在模版上，则`<template>`的位置必须位于组件内部，之后便对`slot`绑定的插槽名和`prop`属性进行字符串表达式提取
-2. 直接定义在组件上时：不能与1中语法混用，然后会创建一个`<template>`元素来接替原组件的子节点数组，然后将该`<template>`元素挂载到该组件的`scopedSlots`中，然后重复1中的步骤。注意：如果你混用了1中语法，那么1中语法定义的所有子节点将被抛弃。
+1. **定义在`<template>`模版上**：如果是定义在模版上，则`<template>`的位置必须位于组件内部，之后便对`v-slot`绑定的插槽名和绑定的作用域`prop`属性进行字符串表达式提取。
 
-**无论定义在哪，都不能和旧语法混用**.
+```html
+<!-- 语法1 -->
+<component>
+    <template v-slot:name1="prop1"></template>
+    <template v-slot:name2="prop2"></template>
+</component>
+```
 
-### 为什么组件后解析
+2. **直接定义在组件上时**：不能与`1`中语法**混用**，其会创建一个`<template>`元素来接替原组件的子节点数组，然后将该`<template>`元素挂载到该组件的`scopedSlots`中，然后重复`1`中的步骤。(注意：如果你混用了`1`中语法，那么`1`中语法定义的所有子节点将被抛弃。)
 
-这里其实不是组件后解析了，观察整个解析流程，我们可以知道，`processSlotContent()`的调用是在该元素闭合时，而`el.scopedSlots`属性的生成其实早在子元素调用`closeElement()`闭合时就已经在父元素中生成了，这之后才有`processSlotContent()`的调用，所以并不是组件后解析了。
+```html
+<component v-slot:name="prop">
+    <!-- 其余元素，但不能写上面那种语法了 -->
+</component>
+```
+
+**无论定义在哪，都不能和旧语法混用**。
+
+![offical guid](./imgs/second.png)
+
+从第一种情况，我们可以看到，对于插槽内容中的节点的处理，还未进行转义，这个之后会做。那么最后，组件元素和其子元素会有个这种关系：
+
+```js
+// 对象形式表示
+const component = {
+    children: [],
+    scopedSlots: {
+
+        // 这里表示作用域插槽使用的template元素
+        template1: {
+
+            // 插槽指定的名称
+            slotTarget,
+
+            // 插槽绑定的子组件的值
+            slotScope,
+
+            // 插槽名称是否为动态的
+            slotTargetDynamic
+        },
+
+        template2: {
+            slotTarget,
+            slotScope,
+            slotTargetDynamic
+        },
+    }
+}
+```
 
 ## processSlotOutlet()——处理插槽位
 

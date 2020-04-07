@@ -61,21 +61,32 @@ function initRender(vm: Component) {
 }
 ```
 
-## resolveSlots()——处理2.5 slot="name"属性
+## resolveSlots()——普通插槽内容
 
-该方法是完全为了处理`2.5`以下的旧插槽语法而产生的，对于新语法，其只会返回一个空对象(所以可以忽略)。
+该方法用于处理普通的插槽内容，即不使用`v-slot`语法的插槽，比如下面这种：
 
-### 2.5方法下的该方法
+```html
+<component>
+    <div></div>
+</component>
+
+<!-- 这种也要处理，特殊情况 -->
+<component>
+    <template v-slot:default>
+    <div></div>
+</component>
+```
+
+那么其具体代码如下(已删除旧语法逻辑)：
 
 ```js
 /**
  * Runtime helper for resolving raw children VNodes into a slot object.
- * 运行时助手，用于将子Vnode转换为插槽对象，该函数主要用于处理2.5语法。在2.6语法中，仅对
- * 组件标签未指定任何插槽名的内容才进行处理
+ * 运行时助手，用于将组件插槽中子节点Vnode添加到插槽对象上
  */
 function resolveSlots(
 
-    // 组件标签中内容(即我们写在父vm实例中的组件标签里面的插槽内容的VNode)
+    // 普通的插槽内容(未使用v-slot语法)
     children: ? Array < VNode > ,
 
     // 组件所在的vm实例上下文
@@ -84,63 +95,17 @@ function resolveSlots(
     [key: string]: Array < VNode >
 } {
 
-    // 如果组件并没有传入插槽内容，则直接返回
+    // 如果组件并没有传入普通的插槽内容，则直接返回空对象
+    // 如果使用纯粹的作用域插槽则在此处就返回
     if (!children || !children.length) {
         return {}
     }
 
-    // 初始化插槽属性
+    // 初始化p它插槽对象
     const slots = {};
 
-    // 遍历插槽中的节点
-    for (let i = 0, l = children.length; i < l; i++) {
-        const child = children[i];
+    slots.default = [...children];
 
-        // 查看该子Vnode的属性
-        const data = child.data;
-
-        // remove slot attribute if the node is resolved as a Vue slot node
-        // 移除插槽的属性，如果该节点已被解析为插槽节点(该属性为2.5语法slot="name")
-        if (data && data.attrs && data.attrs.slot) {
-
-            // 这里删除的原因是因为除了data.attrs.slot，data.slot也存在
-            delete data.attrs.slot;
-        }
-
-        // named slots should only be respected if the vnode was rendered in the
-        // same context.
-        // 只有当具名插槽的内容里面的节点和该组件VNode在同一个上下文时，才进行渲染(2.5语法slot="name")
-        if ((child.context === context || child.fnContext === context) &&
-            data && data.slot != null
-        ) {
-            // 插槽命名
-            const name = data.slot;
-
-            // 取出该插槽内的子节点，或为其初始化一个子节点数组
-            const slot = (slots[name] || (slots[name] = []));
-
-            // 若该节点为template，则跳过模版元素，将其子VNode节点直接存入该名称slot对象数组中
-            if (child.tag === 'template') {
-                slot.push.apply(slot, child.children || [])
-            } else {
-
-                // 非模版元素直接添加
-                slot.push(child)
-            }
-        } else {
-
-            // 非slot="name"语法时，即我们下面举例的情况，将其加入slots.default中
-            (slots.default || (slots.default = [])).push(child)
-        }
-    }
-
-    // ignore slots that contains only whitespace
-    // 忽略(删除)那些只包含空格的插槽
-    for (const name in slots) {
-        if (slots[name].every(isWhitespace)) {
-            delete slots[name]
-        }
-    }
     return slots;
 }
 
@@ -151,59 +116,4 @@ function isWhitespace(node: VNode): boolean {
 }
 ```
 
-可以看到，在`2.5`方法中，该方法会将具有`slot="name"`属性的模版的子`VNode`存放在其对应的`slots[name] = [VNodes]`数组中，其中子`VNode`节点数组中的空白元素会被删除。
-
-### 2.6语法下的该方法
-
-对于2.6仅有以下情况可以进入该函数，但其实这种情况也是2.5存在的默认语法：
-
-```html
-<child1>
-    <template>
-        <div>任意内容</div>
-    </template>
-</child1>
-```
-
-即不指定任何插槽命名，直接使用默认插槽，在这种情况下，该方法相当于：
-
-```js
-function resolveSlots(
-
-    // 组件标签中内容(即我们写在父vm实例中的组件标签里面的插槽内容的VNode)
-    children: ? Array < VNode > ,
-
-    // 组件所在的vm实例上下文
-    context : ? Component
-): {
-    [key: string]: Array < VNode >
-} {
-
-    // 如果组件并没有传入插槽内容，则直接返回
-    if (!children || !children.length) {
-        return {}
-    }
-
-    // 初始化插槽属性
-    const slots = {};
-
-    // 非slot="name"语法时，即我们下面举例的情况，将其加入slots.default中
-    (slots.default || (slots.default = [])).push(children)
-
-    // ignore slots that contains only whitespace
-    // 忽略(删除)那些只包含空格的插槽
-    if (slots.default.every(isWhitespace)) {
-        delete slots.default;
-    }
-
-    return slots;
-}
-```
-
-即结果就是将模版中的子`VNode`直接存放在`slots.default = [VNode]`中。
-
-### 为什么没对2.6具名插槽进行处理
-
-这里没对`2.6`中具名插槽的`VNode`处理的原因很简单，它必须在其组件实例中进行处理，因为如果我们要为插槽传递一个`prop`，根据我们的认知，渲染函数生成`DOM`时，获取组件`vm`实例上的数据，必须处于该`vm`实例中，所以我们必须在那里进行处理。
-
-在`Vue 3.0`中该方法也肯定会被删除大部分，或完全移除。
+以上方法的处理结果简单说明下就是将普通插槽内容所代表的子节点属性定义在`$slots.default`下。

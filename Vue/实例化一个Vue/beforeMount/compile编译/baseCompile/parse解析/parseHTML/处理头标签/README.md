@@ -440,30 +440,33 @@ ___
             }
         }
 
-        // 当前元素为子元素时，且未被禁用时
+        // 当前元素为子元素时，且非被禁用的标签(脚本标签)
         if (currentParent && !element.forbidden) {
 
-            // 处理元素elseif与else条件
+            // 如果当前处理的元素具有v-else-if或v-else属性
             if (element.elseif || element.else) {
 
                 // 添加该元素至上一个v-if元素的显示判断条件队列中
                 processIfConditions(element, currentParent)
             } else {
 
-                // 具有插槽绑定值时
+                // 当当前元素为作用域插槽时(且不具有v-else/v-else-if)
+                // (这种情况仅会出现在在组件内template上定义v-slot，
+                // 此时我们知道template元素还在组件元素的children中，
+                // 所以我们要对其所在位置进行转义)
                 if (element.slotScope) {
 
                     // scoped slot
-                    // 插槽名称
+                    // 获取当前作用域插槽的名称
                     const name = element.slotTarget || '"default"';
 
-                    // 将该元素存储到父元素的插槽作用域中
+                    // 将代表该作用域插槽的元素存储到父元素的scopedSlots集合中
                     (currentParent.scopedSlots || (currentParent.scopedSlots = {}))[name] = element
                 }
 
                 // keep it in the children list so that v-else(-if) conditions can
                 // find it as the prev node.
-                // 将当前元素加入父元素的子队列中
+                // 将当前元素加入父元素的子队列中，所以v-else(-if)的块能通过前一个节点找到
                 currentParent.children.push(element);
                 element.parent = currentParent;
             }
@@ -471,7 +474,8 @@ ___
 
         // final children cleanup
         // filter out scoped slots
-        // 最后对children属性进行清理，删除插槽元素
+        // 对子节点数组中的作用域插槽节点进行清理，移除具有作用域插槽的元素
+        // (因为上面我们已经将其转移到父元素scopedSlots中，如果这里还出现则说明是错误的语法)
         element.children = element.children.filter(c => !(c: any).slotScope);
 
         // remove trailing whitespace node again

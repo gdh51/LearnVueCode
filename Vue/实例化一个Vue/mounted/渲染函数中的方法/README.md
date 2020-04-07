@@ -6,7 +6,7 @@
 - [_m()——renderStatic()渲染静态节点](#mrenderstatic%e6%b8%b2%e6%9f%93%e9%9d%99%e6%80%81%e8%8a%82%e7%82%b9)
 - [_l()——renderList()渲染v-for列表](#lrenderlist%e6%b8%b2%e6%9f%93v-for%e5%88%97%e8%a1%a8)
 - [_v()——createTextVNode()创建纯文本节点](#vcreatetextvnode%e5%88%9b%e5%bb%ba%e7%ba%af%e6%96%87%e6%9c%ac%e8%8a%82%e7%82%b9)
-- [_u()——resolveScopedSlots()初步处理具名插槽](#uresolvescopedslots%e5%88%9d%e6%ad%a5%e5%a4%84%e7%90%86%e5%85%b7%e5%90%8d%e6%8f%92%e6%a7%bd)
+- [_u()——resolveScopedSlots()初步处理作用域插槽](#uresolvescopedslots%e5%88%9d%e6%ad%a5%e5%a4%84%e7%90%86%e5%85%b7%e5%90%8d%e6%8f%92%e6%a7%bd)
 - [_t()——renderSlot()为插槽内容生成VNode节点](#trenderslot%e4%b8%ba%e6%8f%92%e6%a7%bd%e5%86%85%e5%ae%b9%e7%94%9f%e6%88%90vnode%e8%8a%82%e7%82%b9)
 
 ## _m()——renderStatic()渲染静态节点
@@ -392,22 +392,27 @@ function renderList(
 
 ## _u()——resolveScopedSlots()初步处理具名插槽
 
-该函数用于初步处理具名插槽对象，为其定义是否需要强制更新的属性`$stable`与一些反向代理属性。
+该函数用于初步处理组件上的作用域插槽对象，返回一个对象，对象上包括对应作用域插槽名称对应的函数，以及以下两个变量：
+
+- `$key`：表示插槽内容是否在更新时复用
+- `$stable`：插槽的渲染函数是否需要每次重新计算
+
+以及对应插槽函数上的`.proxy`属性，它仅存在于未定义作用域的插槽上，它表示是否将该具名插槽函数直接代理到`vm.$scopedSlots`上。
 
 ```js
 function resolveScopedSlots(
 
-    // 具名插槽对象数组
+    // 作用域插槽对象数组
     fns: ScopedSlotsData, // see flow/vnode
 
-    // 处理结果
+    // 处理后的结果
     res ? : Object,
 
     // the following are added in 2.6
     // 是否具有动态的插槽名称，即是否需要强制更新
     hasDynamicKeys ? : boolean,
 
-    // 是否由插槽内容生成hash key值
+    // 是否由插槽内容生成hash key值来禁止复用
     contentHashKey ? : number
 ): {
     [key: string]: Function,
@@ -417,17 +422,18 @@ function resolveScopedSlots(
     // 取之前结果对象，或初始化
     res = res || {
 
-        // 定义是否稳定，即是否需要强制更新
+        // 定义是否稳定，即该插槽的结果是否唯一
+        // (动态插槽时，不同名称结果不同)
         $stable: !hasDynamicKeys
     };
 
-    // 遍历具名插槽对象
+    // 遍历作用域插槽对象
     for (let i = 0; i < fns.length; i++) {
 
-        // 取某个具名插槽对象
+        // 获取某个作用域插槽对象
         const slot = fns[i];
 
-        // 如果一个具名插槽的内容中仍有多个具名插槽则递归处理。
+        // 如果一个作用域插槽的内容中仍有多个作用域插槽则递归处理。
         if (Array.isArray(slot)) {
             resolveScopedSlots(slot, res, hasDynamicKeys)
 
@@ -435,19 +441,19 @@ function resolveScopedSlots(
         } else if (slot) {
 
             // marker for reverse proxying v-slot without scope on this.$slots
-            // 给没有定义作用域的反向代理插槽提供标记
+            // 给没有定义作用域的插槽设置反向代理提供标记
             if (slot.proxy) {
                 slot.fn.proxy = true
             }
 
-            // 将对应 插槽名：渲染函数 添加至最终结果
+            // 将对应作用域插槽的函数挂载到对应插槽名位置
             res[slot.key] = slot.fn
         }
     }
 
-    // 是否具有内容hash值
+    // 是否具有内容hash值来禁止复用，有则定义在$key上
     if (contentHashKey) {
-        (res: any).$key = contentHashKey
+        res.$key = contentHashKey
     }
 
     return res;
@@ -467,14 +473,14 @@ function renderSlot(
     // 插槽元素中的默认子节点数组
     fallback: ? Array < VNode > ,
 
-    // 插槽上的其他属性
+    // 单独传递的prop属性
     props : ? Object,
 
-    // 插槽绑定的组件vm实例中的值
+    // 通过v-bind传递的的prop
     bindObject : ? Object
 ): ? Array < VNode > {
 
-    // 获取对应名称的插槽渲染函数
+    // 获取对应名称的作用域插槽渲染Vnode渲染函数
     const scopedSlotFn = this.$scopedSlots[name];
     let nodes;
 
@@ -493,7 +499,7 @@ function renderSlot(
                 )
             }
 
-            // 将作用域值直接合并到插槽元素的属性对象上
+            // 将两个传递的prop合并为一个(实际上在模版解析时这两个值是不共存的)
             props = extend(extend({}, bindObject), props)
         }
 
@@ -505,19 +511,7 @@ function renderSlot(
         nodes = this.$slots[name] || fallback
     }
 
-    // 为插槽元素创建一个template元素代替(2.5 slot语法)
-    const target = props && props.slot
-    if (target) {
-
-        // 调用总是优化的API创建一个template VNode
-        return this.$createElement('template', {
-            slot: target
-        }, nodes)
-    } else {
-
-        // 2.6情况直接返回nodes
-        return nodes;
-    }
+    return nodes;
 }
 ```
 
