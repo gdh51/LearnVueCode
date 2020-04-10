@@ -11960,17 +11960,27 @@
         propsData,
         listeners,
         parentVnode,
+
+        // 组件中的插槽内容(普通内容，不含v-slot语法的)
         renderChildren
     ) {
 
         // determine whether component has slot children
         // we need to do this before overwriting $options._renderChildren.
+        // 在重写$options._renderChildren前，判断组件是否存在slot子元素
 
         // check if there are dynamic scopedSlots (hand-written or compiled but with
         // dynamic slot names). Static scoped slots compiled from template has the
         // "$stable" marker.
+        // 检查是否存在动态的scopedSlots，静态的插槽已经被标记为$stable
+
+        // 获取新的作用域插槽中的Vnode节点
         var newScopedSlots = parentVnode.data.scopedSlots;
+
+        // 获取当前普通操场和作用域插槽处理后最终结果的对象
         var oldScopedSlots = vm.$scopedSlots;
+
+        // 是否为动态的作用域插槽
         var hasDynamicScopedSlot = !!(
             (newScopedSlots && !newScopedSlots.$stable) ||
             (oldScopedSlots !== emptyObject && !oldScopedSlots.$stable) ||
@@ -11980,9 +11990,16 @@
         // Any static slot children from the parent may have changed during parent's
         // update. Dynamic scoped slots may also have changed. In such cases, a forced
         // update is necessary to ensure correctness.
+        // 静态插槽的子节点可能会在父节点更新时更新。这种情况下需要强制更新
         var needsForceUpdate = !!(
+
+            // 是否具有新的普通插槽内容(不具有v-slot语法)
             renderChildren || // has new static slots
+
+            // 之前是否具有普通插槽内容
             vm.$options._renderChildren || // has old static slots
+
+            // 是否为动态插槽
             hasDynamicScopedSlot
         );
 
@@ -11992,6 +12009,8 @@
         if (vm._vnode) { // update child tree's parent
             vm._vnode.parent = parentVnode;
         }
+
+        // 更新要进行渲染的静态插槽内容
         vm.$options._renderChildren = renderChildren;
 
         // update $attrs and $listeners hash
@@ -12022,8 +12041,13 @@
         updateComponentListeners(vm, listeners, oldListeners);
 
         // resolve slots + force update if has children
+        // 当需要强制更新，获取最新的插槽渲染函数
         if (needsForceUpdate) {
+
+            // 更新普通插槽中对应的插槽所代表的子节点数组
             vm.$slots = resolveSlots(renderChildren, parentVnode.context);
+
+            // 更新其子组件中的内容
             vm.$forceUpdate();
         }
     }
@@ -12386,12 +12410,20 @@
 
         prepatch: function prepatch(oldVnode, vnode) {
             var options = vnode.componentOptions;
+
+            // 原组件节点所代表的vm实例
             var child = vnode.componentInstance = oldVnode.componentInstance;
+
+
             updateChildComponent(
                 child,
                 options.propsData, // updated props
                 options.listeners, // updated listeners
+
+                // 新的组件节点
                 vnode, // new parent vnode
+
+                // 普通插槽内容
                 options.children // new children
             );
         },

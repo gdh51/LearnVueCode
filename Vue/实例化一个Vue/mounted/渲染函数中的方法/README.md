@@ -484,7 +484,7 @@ function renderSlot(
     const scopedSlotFn = this.$scopedSlots[name];
     let nodes;
 
-    // 如果有该名称插槽
+    // 如果作用域插槽中具有该渲染函数，则直接使用
     if (scopedSlotFn) { // scoped slot
 
         // 初始化或直接使用插槽的属性对象

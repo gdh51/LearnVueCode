@@ -7,7 +7,7 @@
 我们从两个部分来看一个插槽运作的生命周期：
 
 - [模版转化为渲染函数(未直接使用渲染函数)](#%e6%a8%a1%e7%89%88%e8%bd%ac%e5%8c%96%e4%b8%ba%e6%b8%b2%e6%9f%93%e5%87%bd%e6%95%b0%e6%9c%aa%e7%9b%b4%e6%8e%a5%e4%bd%bf%e7%94%a8%e6%b8%b2%e6%9f%93%e5%87%bd%e6%95%b0)
-- 组件更新(未写)
+- [组件更新](#%e7%bb%84%e4%bb%b6%e6%9b%b4%e6%96%b0)
 
 最后还有一些问题，和手动编写渲染函数时，如何使用插槽
 
@@ -476,6 +476,78 @@ function resolveSlots(
 }
 ```
 
+## 组件更新
+
+众所周知，但一个响应式属性值发生变化时，就会调度刷新队列(`flushQueue`)，重新对渲染`Watcher`的回调函数(`updateComponent`)进行求值，生成新的`Vnode Tree`，然后启动`patch()`方法对新旧`Vnode`进行对比更新。
+
+现在我们以一个实例为例，来看这个过程，假设现在有个这么结构的模版：
+
+```html
+<!-- c1 -->
+<div>
+    <slot v-bind="{ a: 1 }">子</slot>
+    <c2></c2>
+</div>
+
+<!-- c2 -->
+<div>孙子</div>
+
+<!-- root -->
+<c1 v-slot="xxx">{{ xxx.a }} {{ b }}</c1>
+```
+
+从上到下依次是孙子、子、根组件，子组件向插槽传递一个对象，根组件使用这个对象中的`a`，并使用自身的变量`b`。此时我们改变`b`的值，触发更新。
+
+按照之前的流程，我们触发当前`c1 vm`实例的`Watcher`求值得出新的`Vnode Tree`，然后与原`Vnode`节点进行对比更新，对于普通的`Vnode`节点，其进行简单的位置变换，而对于**组件`Vnode`节点**，它在进行对比更新前要调用`componentVNodeHooks.prepatch()`函数对其组件实例进行预更新。
+
+在插槽中，预更新的目的主要是尽量避免插槽中使用的组件的更新。只要插槽内容不是动态更新的情况下，`Vue`都不会去更新插槽中组件内部内容(会对组件节点更新)。具体的判断条件如下：
+
+```js
+// 获取新的作用域插槽中的Vnode节点
+var newScopedSlots = parentVnode.data.scopedSlots;
+
+// 获取当前普通操场和作用域插槽处理后最终结果的对象
+var oldScopedSlots = vm.$scopedSlots;
+
+// 是否为动态的作用域插槽
+var hasDynamicScopedSlot = !!(
+    (newScopedSlots && !newScopedSlots.$stable) ||
+    (oldScopedSlots !== emptyObject && !oldScopedSlots.$stable) ||
+    (newScopedSlots && vm.$scopedSlots.$key !== newScopedSlots.$key)
+);
+
+// Any static slot children from the parent may have changed during parent's
+// update. Dynamic scoped slots may also have changed. In such cases, a forced
+// update is necessary to ensure correctness.
+// 静态插槽的子节点可能会在父节点更新时更新。这种情况下需要强制更新
+var needsForceUpdate = !!(
+
+    // 是否具有新的普通插槽内容(不具有v-slot语法)
+    renderChildren || // has new static slots
+
+    // 之前是否具有普通插槽内容
+    vm.$options._renderChildren || // has old static slots
+
+    // 是否为动态插槽
+    hasDynamicScopedSlot
+);
+
+// 更新要进行渲染的静态插槽内容
+vm.$options._renderChildren = renderChildren;
+```
+
+结合之前`normalizeScopedSlots()`函数中生成的`vm.$scopedSlots`标准化后的对象，我们可以得知当前组件中的插槽内容的情况，是否需要每次更新等等，具体情况简化下来分为：
+
+- 普通插槽内容(不含`v-slot`语法)：每次必定更新插槽中的组件
+- 作用域插槽(含`v-slot`语法)：当带插槽的组件具有以下情况时，需要更新插槽中组件(一句话总结插槽渲染出来的结构或当前插槽的渲染只要是动态的都需要强制更新)：
+  - 组件元素为`v-for`渲染
+  - 作用域插槽存在`v-if`语句块
+  - 作用域插槽具有动态插槽名称
+  - 作用域插槽使用`v-for`渲染
+  - 使用了插槽作用域的组件处于另一个插槽作用域(非默认插槽作用域)中或当前组件处于`v-for`(和`情况1-描述1`的不同，这种情况是处于一个组件的内部)也需要强制更新
+
+以上情况时，我们就需要对插槽中的组件重新进行渲染，更新其子组件。之后的情况就和初始化渲染时一样，取出对应的插槽函数生成`Vnode`进行渲染。
+
 ## 一些问题的探讨
 
 通过上个板块内容的探讨，我们可能仍会存在一些疑问，比如，
@@ -588,3 +660,58 @@ function render(c) {
 ```
 
 我可以在子组件通过`this.$scopedSlots[name]`来访问对应具名插槽的子节点生成函数。
+
+### 动态插入插槽内容，如何做到
+
+有时候我们通过`Vue.extend()`方法生成一个组件时，可能该组件具有一个插槽，此时如果我们想对其插槽进行内容的插入就不能像写在模版中一样，那我们能想到的就是插入到其`vm`实例的`.$slots`或`.$scopedSlots`中，那么这里我们需要注意的是，我们插入插槽内容时，已经是实例化之后了，那么就不会有`resolveSlots()`(处理普通插槽)的处理，仅会有重新计算渲染函数前`normalizeScopedSlots`的处理，它将`.$slots`和`.$scopedSlots`中的对应名称插槽中的节点整合为函数(优先作用域插槽)，以便等会生成`Vnode`节点。
+
+由于一般这种动态插入都是在根`vm`实例进行的，所以当前`vm`实例不会更新任何关于`.scopedSlots`属性，从此之后的渲染也不会涉及该属性。那么在`renderSlot()`函数中其会直接从`.$slots[name]`中取出对应`Vnode`来进行渲染：
+
+```js
+
+// 此时该值永远为undefined，应该该对象并没有初始化
+const scopedSlotFn = this.$scopedSlots[name];
+let nodes;
+
+// 如果有该名称插槽
+if (scopedSlotFn) { // scoped slot
+
+// 在标准化插槽对象中不存在该对象时，在反向代理的$slots中查找，若都没有则默认内容
+} else {
+    nodes = this.$slots[name] || fallback
+}
+```
+
+可以看到其直接取出`Vnode`来进行渲染，所以我们**无法向这个插槽传递子组件中的变量**，这种写法就是如下这种：
+
+```js
+// 生成组件的构造函数
+let C = Vue.extend(component);
+let el = document.createElement('div');
+    document.body.appendChild(el);
+
+// 实例化并挂载组件
+let c1I = new C().$mount(el);
+
+// 向插槽中注入内容，内容为Vnode节点或文本
+c1I.$slots.default = ['sd'];
+
+// 刷新视图
+c1I.$forceUpdate();
+```
+
+当然如果我们要把插槽传值利用起来，那么就需要这样插入：
+
+```js
+c1I.$options._parentVnode = {
+    data: {
+        scopedSlots: {
+
+            // 这里写对应的作用域插槽函数
+            default: props => props.a
+        }
+    }
+};
+```
+
+此时不要试图去`.$scopedSlots`去定义对应的插槽函数，因为该对象是初始化的不可拓展函数。
