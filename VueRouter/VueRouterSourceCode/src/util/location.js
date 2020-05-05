@@ -21,30 +21,30 @@ import {
 // 该函数用于处理当前路由跳转的参数信息
 export function normalizeLocation(
 
-    // 当前URL地址或其当前router-link指定的to对象
+    // 当前的路径字符串或其当前router-link指定的to对象
     raw: RawLocation,
 
-    // 当前地址对应的信息对象
+    // 当前地址对应的路径地址对象（这里指未跳转前的）
     current: ? Route,
 
     // 是否添加到最后
     append : ? boolean,
 
-    // 路由器
+    // 路由实例
     router : ? VueRouter
 ): Location {
 
-    // 将URL地址格式化为对象
+    // 将路径字符串同一为对象形式(next就表示即将要跳转的路径)
     let next: Location = typeof raw === 'string' ? {
         path: raw
     } : raw;
 
     // named target
-    // 如果已经标准化则直接返回
+    // 如果已经标准化则直接返回处理后的结果
     if (next._normalized) {
         return next;
 
-    // 如果为命名路由，则复制(某种意义上是深复制)其属性后直接返回
+    // 如果跳转的为命名路由，则复制(某种意义上是深复制)其属性后直接返回
     } else if (next.name) {
         next = extend({}, raw);
         const params = next.params
@@ -55,7 +55,7 @@ export function normalizeLocation(
     }
 
     // relative params
-    // 当无其他路由信息，而有路径信息时，将其处理为当前路径下的子路径
+    // 当无路径字符串但具有路径对象时，将其处理为当前路径下的子路径(即视为相对路径)
     if (!next.path && next.params && current) {
         next = extend({}, next);
 
@@ -66,7 +66,7 @@ export function normalizeLocation(
         // 优先保留要跳转的路径信息
         const params: any = extend(extend({}, current.params), next.params);
 
-        // 如果当前路由的组件使用命名形式，那么直接复用并更新子路径信息
+        // 如果当前路径对象具有命名组件，那么直接复用并更新子路径信息
         if (current.name) {
             next.name = current.name;
             next.params = params;
@@ -85,17 +85,22 @@ export function normalizeLocation(
         return next
     }
 
-    // 获取URL，各部分的路径信息
+    // 提出url中各个参数的信息(hash/query/path)
     const parsedPath = parsePath(next.path || '');
 
-    // 获取当前路径的字符串
+    // 获取跳转前路径的字符串
     const basePath = (current && current.path) || '/';
 
-    // 是否解析到路径地址，如果是则需要进行一个合并处理，否则使用现有的
+    // 要跳转的路由是否给定了路径，如果给定了则进行合并
     const path = parsedPath.path ?
-        resolvePath(parsedPath.path, basePath, append || next.append) :
-        basePath
 
+        // 处理路径为最终路径
+        resolvePath(parsedPath.path, basePath, append || next.append) :
+
+        // 否则返回上一个路由的路径
+        basePath;
+
+    // 解析查询合并查询字符串
     const query = resolveQuery(
         parsedPath.query,
         next.query,
@@ -108,10 +113,11 @@ export function normalizeLocation(
         hash = `#${hash}`
     }
 
+    // 返回标准化后结果
     return {
         _normalized: true,
         path,
         query,
         hash
-    }
+    };
 }

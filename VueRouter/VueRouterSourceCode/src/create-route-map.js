@@ -13,6 +13,8 @@ export function createRouteMap(
 
     // 原始的路由配置对象(option.routes)
     routes: Array < RouteConfig > ,
+
+    // 以下三个参数为之前该函数输出结果，用于添加新的路由信息
     oldPathList ? : Array < string > ,
     oldPathMap ? : Dictionary < RouteRecord > ,
     oldNameMap ? : Dictionary < RouteRecord >
@@ -31,20 +33,20 @@ export function createRouteMap(
     // 命名路由到路由信息的映射表
     const nameMap: Dictionary < RouteRecord > = oldNameMap || Object.create(null);
 
-    // 为每一个路由配置添加到这两个路由map上
+    // 遍历，将原始路由中的路由信息添加到三个表中
     routes.forEach(route => {
-        addRouteRecord(pathList, pathMap, nameMap, route)
+        addRouteRecord(pathList, pathMap, nameMap, route);
     });
 
     // ensure wildcard routes are always at the end
-    // 确保通配符路径永远在路由表数组的最后
+    // 确保通配符路径永远在转化后路由表数组的最后
     for (let i = 0, l = pathList.length; i < l; i++) {
 
         // 找到通配符路径将其添加到路径表数组
         if (pathList[i] === '*') {
-            pathList.push(pathList.splice(i, 1)[0])
-            l--
-            i--
+            pathList.push(pathList.splice(i, 1)[0]);
+            l--;
+            i--;
         }
     }
 
@@ -90,7 +92,7 @@ function addRouteRecord(
     matchAs ? : string
 ) {
 
-    // 提取配置中的路由地址和组件名称
+    // 提取原始配置中的路由地址和组件名称
     const {
         path,
         name
@@ -107,7 +109,7 @@ function addRouteRecord(
         )
     }
 
-    // 2.6新增api，用于将控制j将路径转化为正则表达式规则的解析行为
+    // 2.6新增api，用于将控制将路径转化为正则表达式规则的解析行为，具体参考regToExp库
     const pathToRegexpOptions: PathToRegexpOptions =
         route.pathToRegexpOptions || {};
 
@@ -128,16 +130,18 @@ function addRouteRecord(
         // 根据path生成一份正则表达式
         regex: compileRouteRegex(normalizedPath, pathToRegexpOptions),
 
-        // 该路由路径下代表的组件(默认情况下存放于default)
+        // 该路由路径视图下代表的组件(默认情况下存放于default)
         components: route.components || {
             default: route.component
         },
 
-        // 当前路径下的vm实例
+        // 当前路由地址下的生成的vm实例
         instances: {},
 
         // 当前路由名称
         name,
+
+        // 父级路由地址
         parent,
         matchAs,
 
@@ -150,15 +154,23 @@ function addRouteRecord(
 
         // 是否将组件参数信息设置为组件实例属性
         props: route.props == null ?
+
+            // 未定义传入组件的参数时，初始化为空对象
             {} :
+
+            // 是否定义有子组件视图
             route.components ?
+
+            // 当定义有命名视图时，则使用原定义
             route.props :
+
+            // 未有命名视图时，则存放在默认位置中
             {
                 default: route.props
             }
     }
 
-    // 是否设置子路由路径
+    // 如果设置了嵌套路由，则将其作为子路由加入当前路由中
     if (route.children) {
         // Warn if route is named, does not redirect and has a default child route.
         // If users navigate to this route by name, the default child will
@@ -190,6 +202,8 @@ function addRouteRecord(
 
         // 遍历子路由数组，将其添加到记录中
         route.children.forEach(child => {
+
+            // 当前路由为别名路由时，将其路由匹配规则定义为导向前路由
             const childMatchAs = matchAs ?
                 cleanPath(`${matchAs}/${child.path}`) :
                 undefined;
@@ -201,8 +215,8 @@ function addRouteRecord(
 
     // 如果Map中不存在该地址，则分别存入pathList与pathMap
     if (!pathMap[record.path]) {
-        pathList.push(record.path)
-        pathMap[record.path] = record
+        pathList.push(record.path);
+        pathMap[record.path] = record;
     }
 
     // 如果路由存在任何形式的别名

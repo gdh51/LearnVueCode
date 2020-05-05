@@ -59,14 +59,26 @@ export default class VueRouter {
     afterHooks: Array < ? AfterNavigationHook > ;
 
     constructor(options: RouterOptions = {}) {
-        this.app = null
-        this.apps = []
-        this.options = options
+
+        // 当前挂载的根Vue实例
+        this.app = null;
+
+        // 路由作为挂载的根Vue实例数量
+        this.apps = [];
+
+        // 原始的路由配置
+        this.options = options;
+
+        // 全局路由前置守卫
         this.beforeHooks = [];
+
+        // 全局解析守卫
         this.resolveHooks = [];
+
+        // 全局后置守卫
         this.afterHooks = [];
 
-        // 根据路由配置创建3个路由表-
+        // 根据路由配置创建3个不同类型的路由表
         this.matcher = createMatcher(options.routes || [], this)
 
         // 默认为hash模式
@@ -240,8 +252,7 @@ export default class VueRouter {
         const route: any = to ?
             to.matched ?
             to :
-            this.resolve(to).route :
-            this.currentRoute
+            this.resolve(to).route : this.currentRoute
         if (!route) {
             return []
         }

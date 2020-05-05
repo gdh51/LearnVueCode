@@ -37,6 +37,8 @@ export function createMatcher(
     } = createRouteMap(routes)
 
     function addRoutes(routes) {
+
+        // 添加新的路由路径，在原3表的基础上
         createRouteMap(routes, pathList, pathMap, nameMap)
     }
 
@@ -50,22 +52,22 @@ export function createMatcher(
         redirectedFrom ? : Location
     ): Route {
 
-        // 对当前的路由信息进行处理，同一为对象的形式
+        // 结合当前路径对象与将来的路径对象参数生成将来的路径对象
         const location = normalizeLocation(raw, currentRoute, false, router);
         const {
             name
         } = location;
 
-        // 如果存在直接的路由组件名称
+        // 如果将来的路径对象指定了组件名称
         if (name) {
 
-            // 取出开路径下的路由信息对象
-            const record = nameMap[name]
+            // 取出指定路径下的路由信息对象
+            const record = nameMap[name];
             if (process.env.NODE_ENV !== 'production') {
                 warn(record, `Route with name '${name}' does not exist`)
             }
 
-            // 没有则返回空路由
+            // 如果没有该组件，则返回一个空路由
             if (!record) return _createRoute(null, location)
             const paramNames = record.regex.keys
                 .filter(key => !key.optional)
