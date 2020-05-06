@@ -67,8 +67,8 @@ export function createMatcher(
                 warn(record, `Route with name '${name}' does not exist`)
             }
 
-            // 如果没有该组件，则返回一个空路由
-            if (!record) return _createRoute(null, location)
+            // 如果没有该组件，则返回一个空路径信息对象
+            if (!record) return _createRoute(null, location);
             const paramNames = record.regex.keys
                 .filter(key => !key.optional)
                 .map(key => key.name)
@@ -89,17 +89,19 @@ export function createMatcher(
             // 将参数与当前路径合并为完成的路径
             location.path = fillParams(record.path, location.params, `named route "${name}"`)
 
-            // 创建路由对象并返回
+            // 创建新的路径对象返回
             return _createRoute(record, location, redirectedFrom);
 
-        // 只存在路径形式的路由
+        // 当指定了跳转的路径时
         } else if (location.path) {
 
             // 返回匹配路径的路由对象
             location.params = {}
             for (let i = 0; i < pathList.length; i++) {
-                const path = pathList[i]
-                const record = pathMap[path]
+                const path = pathList[i];
+                const record = pathMap[path];
+
+                // 查询匹配到的路由，同name一样创建一个路径信息对象返回
                 if (matchRoute(record.regex, location.path, location.params)) {
                     return _createRoute(record, location, redirectedFrom)
                 }
@@ -107,7 +109,7 @@ export function createMatcher(
         }
 
         // no match
-        // 无匹配时返回个空path信息对象
+        // 无匹配时返回个空路径信息对象
         return _createRoute(null, location)
     }
 
@@ -203,25 +205,27 @@ export function createMatcher(
 
     function _createRoute(
 
-        // 当前匹配的路由记录对象
+        // 当前匹配到的路由信息对象
         record: ? RouteRecord,
 
-        // 当前的路径信息
+        // 当前的路径信息对象
         location : Location,
 
-        // 重定向的地址
+        // 重定向的地址的路径信息对象
         redirectedFrom ? : Location
     ): Route {
 
-        // 优先从定向
+        // 优先进行重定向
         if (record && record.redirect) {
             return redirect(record, redirectedFrom || location)
         }
+
+        // 其次进行别名跳转
         if (record && record.matchAs) {
             return alias(record, location, record.matchAs)
         }
 
-        // 其余情况返回新的当前路径的信息
+        // 其余情况则创建一个新的路径信息对象返回
         return createRoute(record, location, redirectedFrom, router)
     }
 
@@ -236,15 +240,22 @@ function matchRoute(
     path: string,
     params: Object
 ): boolean {
-    const m = path.match(regex)
 
+    // 是否匹配当前路径？
+    const m = path.match(regex);
+
+    // 不匹配时，直接返回false
     if (!m) {
-        return false
+        return false;
+
+    // 匹配时，如果没有其他路径参数，则直接返回true
     } else if (!params) {
         return true
     }
 
+    // 如果具有其他路径参数时，解决一个BUG
     for (let i = 1, len = m.length; i < len; ++i) {
+
         const key = regex.keys[i - 1]
         const val = typeof m[i] === 'string' ? decodeURIComponent(m[i]) : m[i]
         if (key) {

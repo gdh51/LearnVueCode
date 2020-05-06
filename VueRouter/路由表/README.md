@@ -405,3 +405,162 @@ function addRoutes(routes) {
     createRouteMap(routes, pathList, pathMap, nameMap)
 }
 ```
+
+其次是`match()`函数，它用于匹配当前传入的**当前位置信息对象**来生成一个**当前路径信息对象**，也就是我们即将要跳转的最终地址的信息。
+
+```js
+function match(
+
+    // 当前的路径字符串(包括hash)或一个路径信息的对象
+    raw: RawLocation,
+
+    // 当前的路由地址的信息对象
+    currentRoute ? : Route,
+    redirectedFrom ? : Location
+): Route {
+
+    // 结合当前路径对象与将来的路径对象参数生成将来的路径对象
+    const location = normalizeLocation(raw, currentRoute, false, router);
+    const {
+        name
+    } = location;
+
+    // 如果将来的路径对象指定了组件名称
+    if (name) {
+
+        // 取出指定路径下的路由信息对象
+        const record = nameMap[name];
+        if (process.env.NODE_ENV !== 'production') {
+            warn(record, `Route with name '${name}' does not exist`)
+        }
+
+        // 如果没有该组件，则返回一个空路径信息对象
+        if (!record) return _createRoute(null, location);
+        const paramNames = record.regex.keys
+            .filter(key => !key.optional)
+            .map(key => key.name)
+
+        if (typeof location.params !== 'object') {
+            location.params = {}
+        }
+
+        // 将剩余的路径参数复制进location中
+        if (currentRoute && typeof currentRoute.params === 'object') {
+            for (const key in currentRoute.params) {
+                if (!(key in location.params) && paramNames.indexOf(key) > -1) {
+                    location.params[key] = currentRoute.params[key]
+                }
+            }
+        }
+
+        // 将参数与当前路径合并为完成的路径
+        location.path = fillParams(record.path, location.params, `named route "${name}"`)
+
+        // 创建新的路径对象返回
+        return _createRoute(record, location, redirectedFrom);
+
+    // 当指定了跳转的路径时
+    } else if (location.path) {
+
+        // 返回匹配路径的路由对象
+        location.params = {}
+        for (let i = 0; i < pathList.length; i++) {
+            const path = pathList[i];
+            const record = pathMap[path];
+
+            // 查询匹配到的路由，同name一样创建一个路径信息对象返回
+            if (matchRoute(record.regex, location.path, location.params)) {
+                return _createRoute(record, location, redirectedFrom)
+            }
+        }
+    }
+
+    // no match
+    // 无匹配时返回个空路径信息对象
+    return _createRoute(null, location)
+}
+```
+
+该函数大致的思路就是根据我们即将要跳转的当前位置信息对象，去匹配对应的路由表上的路由对象，找到匹配的路由对象则创建一个新的路径信息对象返回，否则返回一个空的路径信息对象，具体最终的路径信息对象的创建由`_createRoute()`函数来完成，它负责处理路由跳转的类型：重定向、别名、直接跳转：
+
+```js
+function _createRoute(
+
+    // 当前匹配到的路由信息对象
+    record: ? RouteRecord,
+
+    // 当前的路径信息对象(未处理完全的)
+    location : Location,
+
+    // 重定向的地址的路径信息对象
+    redirectedFrom ? : Location
+): Route {
+
+    // 优先进行重定向
+    if (record && record.redirect) {
+        return redirect(record, redirectedFrom || location)
+    }
+
+    // 其次进行别名跳转
+    if (record && record.matchAs) {
+        return alias(record, location, record.matchAs)
+    }
+
+    // 其余情况则创建一个新的路径信息对象返回
+    return createRoute(record, location, redirectedFrom, router)
+}
+```
+
+无论是哪种跳转，最终的路径信息对象的创建都是通过`createRoute()`函数来完成：
+
+```js
+function createRoute(
+
+    // 当前匹配到的路由信息对象
+    record: ? RouteRecord,
+
+    // 即将要跳转的路由地址对象
+    location : Location,
+
+    // 需要重定向的路由地址对象
+    redirectedFrom ? : ? Location,
+    router ? : VueRouter
+): Route {
+
+    // 获取用户提供的提取查询字符串的自定义函数
+    const stringifyQuery = router && router.options.stringifyQuery;
+
+    // 提取当前地址的查询字符串对象
+    let query: any = location.query || {}
+    try {
+        // 深度克隆query对象
+        query = clone(query)
+    } catch (e) {}
+
+    // 生成以即将要跳转的路径为基础的路由信息对象
+    const route: Route = {
+        name: location.name || (record && record.name),
+        meta: (record && record.meta) || {},
+        path: location.path || '/',
+        hash: location.hash || '',
+        query,
+        params: location.params || {},
+
+        // 返回完整的URL地址
+        fullPath: getFullPath(location, stringifyQuery),
+
+        // 将当前路由及其所有父级路由按父->子的顺序添加到该数组
+        matched: record ? formatMatch(record) : []
+    }
+
+    // 如果是从定向，那么还要记录从定向之前的地址
+    if (redirectedFrom) {
+        route.redirectedFrom = getFullPath(redirectedFrom, stringifyQuery)
+    }
+
+    // 返回该当前路径生成的路径信息对象，并不允许修改
+    return Object.freeze(route)
+}
+```
+
+该函数并不负责，我们的主要关注点就是其中的`route.matched`属性，它表示的匹配到的路径下的组件及其父组件，待会会用于视图的渲染。

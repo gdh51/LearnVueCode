@@ -70,9 +70,12 @@ export class HTML5History extends History {
     }
 
     push(location: RawLocation, onComplete ? : Function, onAbort ? : Function) {
+
+        // 获取当前(跳转前)的位置信息对象
         const {
             current: fromRoute
-        } = this
+        } = this;
+
         this.transitionTo(location, route => {
             pushState(cleanPath(this.base + route.fullPath))
             handleScroll(this.router, route, fromRoute, false)

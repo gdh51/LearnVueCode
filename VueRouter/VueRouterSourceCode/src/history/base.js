@@ -85,7 +85,7 @@ export class History {
 
     transitionTo(
 
-        // 当前路径信息字符串
+        // 当前的位置信息对象
         location: RawLocation,
 
         // 路由切换完成时调用的函数
@@ -95,13 +95,17 @@ export class History {
         onAbort ? : Function
     ) {
 
-        // 获取当地址匹配后生成的路由对象
+        // 获取匹配当前位置信息对象而产生的新的当前路径信息对象
         const route = this.router.match(location, this.current);
         this.confirmTransition(
             route,
             () => {
+
+                // 更新当前路径信息对象
                 this.updateRoute(route)
                 onComplete && onComplete(route)
+
+                // 进行URL的跳转
                 this.ensureURL()
 
                 // fire ready cbs once
@@ -128,7 +132,7 @@ export class History {
 
     confirmTransition(route: Route, onComplete: Function, onAbort ? : Function) {
 
-        // 保存跳转前路径对象
+        // 保存跳转前路径信息对象
         const current = this.current;
 
         // 定义中断函数，错误回调仅在主动调用push/replace时触发
@@ -150,12 +154,12 @@ export class History {
             onAbort && onAbort(err)
         }
 
-        // 是否为相同的URL(包括跳转的组件和URL完全相同)跳转
+        // 跳转前后的路径信息对象是否相同？(即转化为URL后全等)
         if (
             isSameRoute(route, current) &&
 
             // in the case the route map has been dynamically appended to
-            // 且匹配的路由map都相同
+            // 且匹配的路由中的组件数量也相同
             route.matched.length === current.matched.length
         ) {
 
@@ -164,7 +168,7 @@ export class History {
             return abort(new NavigationDuplicated(route))
         }
 
-        // 返回要更新的路由纪录对象
+        // 根据之前路由匹配的组件与即将更新路由要匹配的组件，得出要更新和失活的组件
         const {
             updated,
             deactivated,
@@ -190,8 +194,10 @@ export class History {
             resolveAsyncComponents(activated)
         );
 
-        // 将当前路径对象设置为等待处理
+        // 将当前(将要跳转的)路径对象设置为等待处理
         this.pending = route;
+
+        // 定义调用hook的迭代器函数
         const iterator = (hook: NavigationGuard, next) => {
 
             // 如果又切换了路由则直接终止
@@ -315,11 +321,13 @@ function resolveQueue(
     activated: Array < RouteRecord > ,
     deactivated: Array < RouteRecord >
 } {
-    let i
-    const max = Math.max(current.length, next.length)
+    let i;
 
-    // 从最底层路由开始向父级寻找，直到找到第一个未变动的路由组件
-    // 那么我们只需要发生变动的组件即可
+    // 取两者中组件数量最多的
+    const max = Math.max(current.length, next.length);
+
+    // 从父级组件开始，依次对比，当发现第一个不同的组件时，
+    // 则说明从当前组件开始，组件发生了更新
     for (i = 0; i < max; i++) {
         if (current[i] !== next[i]) {
             break
@@ -327,7 +335,7 @@ function resolveQueue(
     }
     return {
 
-        // 未变动，但是需要提醒更新的组件
+        // 未变动的组件，但是需要提醒更新的组件
         updated: next.slice(0, i),
 
         // 新激活的组件

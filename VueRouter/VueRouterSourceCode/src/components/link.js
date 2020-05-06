@@ -64,7 +64,9 @@ export default {
         const router = this.$router
 
         // 当前路径的路由记录对象
-        const current = this.$route
+        const current = this.$route;
+
+        // 生成该组件跳转的位置信息对象
         const {
             location,
             route,
@@ -132,7 +134,7 @@ export default {
             class: classes
         }
 
-        // 有插槽时，将属性传递给插槽元素
+        // 当具有作用域插槽时，将这些属性作为属性传递给插槽中的组件
         const scopedSlot = !this.$scopedSlots.$hasNormal &&
             this.$scopedSlots.default &&
             this.$scopedSlots.default({
@@ -149,7 +151,7 @@ export default {
             if (scopedSlot.length === 1) {
                 return scopedSlot[0];
 
-            // 插入了多个插槽元素
+            // 插入了多个插槽元素，将其用span元素包装在一个元素内
             } else if (scopedSlot.length > 1 || !scopedSlot.length) {
                 if (process.env.NODE_ENV !== 'production') {
                     warn(
@@ -214,6 +216,7 @@ export default {
 }
 
 function guardEvent(e) {
+
     // don't redirect with control keys
     if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return
     // don't redirect when preventDefault called

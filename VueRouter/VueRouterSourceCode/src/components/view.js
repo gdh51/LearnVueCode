@@ -30,13 +30,14 @@ export default {
         // directly use parent context's createElement() function
         // so that components rendered by router-view can resolve named slots
         // 这里我们使用父级上下文的渲染函数！以便组件可以通过name属性来进行渲染
+        // 使用父级的渲染函数，这样可以在父级Vue实例中收集依赖项
         const h = parent.$createElement
         const name = props.name
 
         // 获取当前的路由信息！
         const route = parent.$route
 
-        // 缓存使用过的组件！
+        // 获取之前缓存过的组件
         const cache = parent._routerViewCache || (parent._routerViewCache = {})
 
         // determine current view depth, also check to see if the tree
@@ -45,7 +46,8 @@ export default {
         let depth = 0;
         let inactive = false;
 
-        // 迭代查找直到挂载路由的根组件之间有几个router-view
+        // 迭代查找，直到挂载路由的根组件
+        // 标记这一过程中遇到router-view组件的数量
         while (parent && parent._routerRoot !== parent) {
             const vnodeData = parent.$vnode ? parent.$vnode.data : {}
             if (vnodeData.routerView) {
@@ -60,7 +62,7 @@ export default {
         }
 
         // 记录当前router-view所在的深度
-        data.routerViewDepth = depth
+        data.routerViewDepth = depth;
 
         // render previous view if the tree is inactive and kept-alive
         // 如果当前是激活的kept-alive组件，那么使用缓存中的组件
@@ -84,7 +86,7 @@ export default {
             }
         }
 
-        // 获取对应深度下的路径路径对象
+        // 获取对应深度下的匹配的路由对象
         const matched = route.matched[depth];
 
         // 如果指定路由名称，则直接获取对象组件
@@ -98,14 +100,15 @@ export default {
         }
 
         // cache component
-        // 缓存当前的组件
+        // 缓存当前的组件配置对象
         cache[name] = {
             component
-        }
+        };
 
         // attach instance registration hook
         // this will be called in the instance's injected lifecycle hooks
         // 将使用过的实例缓存在instance中
+        // 该函数会在插入dom时被调用
         data.registerRouteInstance = (vm, val) => {
 
             // val could be undefined for unregistration

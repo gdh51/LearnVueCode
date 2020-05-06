@@ -8,8 +8,14 @@ import {
 const trailingSlashRE = /\/?$/
 
 export function createRoute(
+
+    // 当前匹配到的路由信息对象
     record: ? RouteRecord,
+
+    // 即将要跳转的路由地址对象
     location : Location,
+
+    // 需要重定向的路由地址对象
     redirectedFrom ? : ? Location,
     router ? : VueRouter
 ): Route {
@@ -24,7 +30,7 @@ export function createRoute(
         query = clone(query)
     } catch (e) {}
 
-    // 记录当前地址的路由路径信息
+    // 生成以即将要跳转的路径为基础的路由信息对象
     const route: Route = {
         name: location.name || (record && record.name),
         meta: (record && record.meta) || {},
@@ -36,7 +42,7 @@ export function createRoute(
         // 返回完整的URL地址
         fullPath: getFullPath(location, stringifyQuery),
 
-        // 将当前路由及其所有父级路由按序添加到该数组
+        // 将当前路由及其所有父级路由按父->子的顺序添加到该数组
         matched: record ? formatMatch(record) : []
     }
 
@@ -45,7 +51,7 @@ export function createRoute(
         route.redirectedFrom = getFullPath(redirectedFrom, stringifyQuery)
     }
 
-    // 返回该当前路由信息的对象，并不允许修改
+    // 返回该当前路径生成的路径信息对象，并不允许修改
     return Object.freeze(route)
 }
 
@@ -70,11 +76,12 @@ export const START = createRoute(null, {
     path: '/'
 });
 
-// 将当前子路由的记录表，按子->父->根的顺序存放在该数组中
+// 将当前匹配到路由信息对象及其父路由一起提取出来
 function formatMatch(record: ? RouteRecord): Array < RouteRecord > {
     const res = [];
 
-    // 将此路径下所有的路由记录对象添加到res中
+    // 将此路径下所有的路由记录对象添加到res数组中
+    // 顺序按从父->子
     while (record) {
         res.unshift(record)
         record = record.parent

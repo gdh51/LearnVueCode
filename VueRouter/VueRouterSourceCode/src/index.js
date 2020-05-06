@@ -215,11 +215,14 @@ export default class VueRouter {
     }
 
     push(location: RawLocation, onComplete ? : Function, onAbort ? : Function) {
-        // $flow-disable-line
+
+        // 指定更新完成或中断的回调函数时，调用Promise进行更新
         if (!onComplete && !onAbort && typeof Promise !== 'undefined') {
             return new Promise((resolve, reject) => {
                 this.history.push(location, resolve, reject)
-            })
+            });
+
+        // 当通过link跳转时，调用对应的历史模式进行组件更新
         } else {
             this.history.push(location, onComplete, onAbort)
         }

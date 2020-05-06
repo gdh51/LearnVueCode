@@ -14,8 +14,14 @@ export const START = createRoute(null, {
 
 ```js
 function createRoute(
+
+    // 当前匹配到的路由信息对象
     record: ? RouteRecord,
+
+    // 即将要跳转的路由地址对象
     location : Location,
+
+    // 需要重定向的路由地址对象
     redirectedFrom ? : ? Location,
     router ? : VueRouter
 ): Route {
@@ -30,7 +36,7 @@ function createRoute(
         query = clone(query)
     } catch (e) {}
 
-    // 记录当前地址的路由路径信息
+    // 生成以即将要跳转的路径为基础的路由信息对象
     const route: Route = {
         name: location.name || (record && record.name),
         meta: (record && record.meta) || {},
@@ -42,7 +48,7 @@ function createRoute(
         // 返回完整的URL地址
         fullPath: getFullPath(location, stringifyQuery),
 
-        // 返回所有的路由信息对象添加至本次信息中
+        // 将当前路由及其所有父级路由按父->子的顺序添加到该数组
         matched: record ? formatMatch(record) : []
     }
 
@@ -51,12 +57,16 @@ function createRoute(
         route.redirectedFrom = getFullPath(redirectedFrom, stringifyQuery)
     }
 
-    // 返回该当前路由信息的对象，并不允许修改
+    // 返回该当前路径生成的路径信息对象，并不允许修改
     return Object.freeze(route)
 }
 ```
 
 这里我们可以直接从完整的函数看出，这就是一个根据当前**路由记录对象**与当前**页面的位置信息对象**生成的一个的一个当前路由位置的信息对象。所以上面的`START`表示的是最初的位置信息对象。
+
+## 路径信息对象的使用
+
+在具体的路由跳转时，会进行一个路由表的匹配，此时根据对应匹配到的路由信息就会最终产生一个该对象；即使没有匹配到时，也会产生一个空对象来进行代替。
 
 ## 使用到的工具方法
 
@@ -113,10 +123,12 @@ function getFullPath({
 该方法用于返回当前路径所以的匹配的所有记录对象，目前还不知其用途。
 
 ```js
+// 将当前匹配到路由信息对象及其父路由一起提取出来
 function formatMatch(record: ? RouteRecord): Array < RouteRecord > {
     const res = [];
 
-    // 将此路径下所有的路由记录对象添加到res中
+    // 将此路径下所有的路由记录对象添加到res数组中
+    // 顺序按从父->子
     while (record) {
         res.unshift(record)
         record = record.parent
