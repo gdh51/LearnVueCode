@@ -7,9 +7,10 @@ import {
 
 const trailingSlashRE = /\/?$/
 
+// 创建一个路由路径记录对象
 export function createRoute(
 
-    // 当前匹配到的路由信息对象
+    // 当前匹配到的路由表信息对象
     record: ? RouteRecord,
 
     // 即将要跳转的路由地址对象
@@ -24,13 +25,14 @@ export function createRoute(
     const stringifyQuery = router && router.options.stringifyQuery;
 
     // 提取当前地址的查询字符串对象
-    let query: any = location.query || {}
+    let query: any = location.query || {};
+
     try {
         // 深度克隆query对象
         query = clone(query)
     } catch (e) {}
 
-    // 生成以即将要跳转的路径为基础的路由信息对象
+    // 生成以即将要跳转的路径为基础的路由路径记录对象
     const route: Route = {
         name: location.name || (record && record.name),
         meta: (record && record.meta) || {},
@@ -39,7 +41,7 @@ export function createRoute(
         query,
         params: location.params || {},
 
-        // 返回完整的URL地址
+        // 返回完整的URL路径
         fullPath: getFullPath(location, stringifyQuery),
 
         // 将当前路由及其所有父级路由按父->子的顺序添加到该数组
@@ -71,7 +73,7 @@ function clone(value) {
 }
 
 // the starting route that represents the initial state
-// 标识初始状态的起始路径
+// 创建一个标志着初始化状态的路由记录对象
 export const START = createRoute(null, {
     path: '/'
 });
@@ -89,6 +91,7 @@ function formatMatch(record: ? RouteRecord): Array < RouteRecord > {
     return res;
 }
 
+// 获取完整的URL路径
 function getFullPath({
         path,
         query = {},
@@ -100,7 +103,7 @@ function getFullPath({
     // 优先使用用户定义的提取查询字符串函数，否则使用默认的
     const stringify = _stringifyQuery || stringifyQuery;
 
-    // 返回完整的URL地址
+    // 返回完整的URL路径
     return (path || '/') + stringify(query) + hash
 }
 

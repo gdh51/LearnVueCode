@@ -51,11 +51,11 @@ export class History {
         // 路由实例对象
         this.router = router
 
-        // 标准化baseURL
+        // 初始化、格式化路由根路径
         this.base = normalizeBase(base);
 
         // start with a route object that stands for "nowhere"
-        // 在初始化时，添加一个表示没有任何路径的，当前路由位置信息对象
+        // 在初始化时，添加一个表示没有任何路径的，当前路由路径记录对象
         this.current = START
         this.pending = null;
         this.ready = false;
@@ -281,9 +281,11 @@ export class History {
     }
 }
 
+// 初始化与格式化路由根路径，确保以/开头但不以/结尾
+// 如最终为 /path
 function normalizeBase(base: ? string): string {
 
-    // 未传入基础URL时
+    // 未传入根路径时，优先使用DOM元素中base中定义路径，其次是/
     if (!base) {
 
         // 在浏览器环境中，优先使用base元素中的地址，否则还是使用/
@@ -303,13 +305,13 @@ function normalizeBase(base: ? string): string {
     }
 
     // make sure there's the starting slash
-    // 确保基础路径以/开头，不然就补上
+    // 确保根路径以/开头，不然就补上
     if (base.charAt(0) !== '/') {
         base = '/' + base
     }
 
     // remove trailing slash
-    // 移除末尾的/
+    // 移除根路径末尾的/
     return base.replace(/\/$/, '')
 }
 
