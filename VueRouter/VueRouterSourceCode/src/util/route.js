@@ -10,7 +10,7 @@ const trailingSlashRE = /\/?$/
 // 创建一个路由路径记录对象
 export function createRoute(
 
-    // 当前匹配到的路由表信息对象
+    // 当前匹配到的Record对象，即我们创建在matcher中的
     record: ? RouteRecord,
 
     // 即将要跳转的路由地址对象
@@ -53,8 +53,8 @@ export function createRoute(
         route.redirectedFrom = getFullPath(redirectedFrom, stringifyQuery)
     }
 
-    // 返回该当前路径生成的路径信息对象，并不允许修改
-    return Object.freeze(route)
+    // 返回该当前路径生成的路由路径记录对象，并不允许修改
+    return Object.freeze(route);
 }
 
 // 处数组浅克隆外，其他的进行深克隆

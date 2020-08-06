@@ -28,6 +28,8 @@ export class HTML5History extends History {
 
         // 是否提供一个控制滚动条行为的方法
         const expectScroll = router.options.scrollBehavior;
+
+        // 探测当前运行环境是否支持滚动条行为，仅在h5模式下支持
         const supportsScroll = supportsPushState && expectScroll;
 
         // 如果支持控制滚动条且用户想控制，则记录当前页面信息
@@ -38,18 +40,19 @@ export class HTML5History extends History {
         // 获取完整的URL 路径 信息
         const initLocation = getLocation(this.base);
 
-        // 监听popstate事件，做出变化
+        // 监听popstate事件(即通过浏览器前进后退)，做出路由更新
         window.addEventListener('popstate', e => {
 
-            // 获取当前路径信息对象
-            const current = this.current
+            // 获取跳转前的路由路径信息对象
+            const current = this.current;
 
             // Avoiding first `popstate` event dispatched in some browsers but first
             // history route not updated since async guard at the same time.
-            // 避免第一次popstate事件触发时(在某些浏览器)history路由不进行更新
+            // 避免第一次popstate事件触发时，在某些浏览器中，
+            // 由于异步守卫的原因，路由路径记录对象还没有更新(还为初始化状态)
             const location = getLocation(this.base);
 
-            // 初始化路由时，则直接退出
+            // 所以当为初始化路由时且路径包括hash值都没有改变的情况下，直接退出
             if (this.current === START && location === initLocation) {
                 return
             }
