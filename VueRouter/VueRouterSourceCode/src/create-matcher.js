@@ -47,7 +47,7 @@ export function createMatcher(
         // 当前的路径字符串(包括hash)或一个路径信息的对象
         raw: RawLocation,
 
-        // 当前的路由地址的信息对象
+        // 当前的路由路径记录对象Route
         currentRoute ? : Route,
         redirectedFrom ? : Location
     ): Route {

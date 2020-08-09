@@ -61,13 +61,17 @@ export function install(Vue) {
     // 在原型链上定义$router、$route，方便直接查询路由
     Object.defineProperty(Vue.prototype, '$router', {
         get() {
+
+            // 返回挂在在根Vue实例的router实例
             return this._routerRoot._router
         }
     });
 
     Object.defineProperty(Vue.prototype, '$route', {
         get() {
-            return this._routerRoot._route
+
+            // 返回当前路由路径记录对象(Route)
+            return this._routerRoot._route;
         }
     });
 

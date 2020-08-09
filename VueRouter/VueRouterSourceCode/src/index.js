@@ -123,6 +123,8 @@ export default class VueRouter {
         current ? : Route,
         redirectedFrom ? : Location
     ): Route {
+
+        // 调用RouteRecord路由表内部接口查找匹配的路由路径
         return this.matcher.match(raw, current, redirectedFrom)
     }
 
@@ -172,7 +174,7 @@ export default class VueRouter {
         // 获取路由模式对象
         const history = this.history
 
-        // 在各种模式下加载当前路径的路由
+        // 在各种模式下，更新路由表
         if (history instanceof HTML5History) {
             history.transitionTo(history.getCurrentLocation())
         } else if (history instanceof HashHistory) {
@@ -188,10 +190,12 @@ export default class VueRouter {
 
         // 存储一个路由表更新函数
         history.listen(route => {
+
+            // 为每个挂在router实例的根Vue实例更新当前的路由表
             this.apps.forEach((app) => {
-                app._route = route
-            })
-        })
+                app._route = route;
+            });
+        });
     }
 
     beforeEach(fn: Function): Function {

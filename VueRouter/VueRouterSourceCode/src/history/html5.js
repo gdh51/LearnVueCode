@@ -57,10 +57,10 @@ export class HTML5History extends History {
                 return
             }
 
-            // 其余时执行路由跳转时页面高度发生变化时的滚动
+            // 进行路由跳转
             this.transitionTo(location, route => {
 
-                // 跳转到对应的位置
+                // 跳转完成时，处理当前页面的滚动条高度
                 if (supportsScroll) {
                     handleScroll(router, route, current, true)
                 }
@@ -106,8 +106,9 @@ export class HTML5History extends History {
         }
     }
 
+    // 获取当前的完整路径信息
     getCurrentLocation(): string {
-        return getLocation(this.base)
+        return getLocation(this.base);
     }
 }
 

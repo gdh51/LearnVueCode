@@ -85,7 +85,7 @@ export class History {
 
     transitionTo(
 
-        // 当前的位置信息对象
+        // 未处理的当前位置信息对象
         location: RawLocation,
 
         // 路由切换完成时调用的函数
@@ -97,6 +97,7 @@ export class History {
 
         // 获取匹配当前位置信息对象而产生的新的当前路径信息对象
         const route = this.router.match(location, this.current);
+
         this.confirmTransition(
             route,
             () => {
