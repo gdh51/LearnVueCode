@@ -85,7 +85,7 @@ export class History {
 
     transitionTo(
 
-        // 未处理的当前位置信息对象
+        // 未处理的当前位置信息(比如路径字符串)
         location: RawLocation,
 
         // 路由切换完成时调用的函数

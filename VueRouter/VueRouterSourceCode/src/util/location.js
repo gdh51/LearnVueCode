@@ -24,10 +24,10 @@ export function normalizeLocation(
     // 当前的路径字符串或其当前router-link指定的to对象
     raw: RawLocation,
 
-    // 当前地址对应的路径地址对象（这里指未跳转前的）
+    // 当前的路由路径记录对象Route（这里指未跳转前的）
     current: ? Route,
 
-    // 是否添加到最后
+    // 是否添加到路径最后
     append : ? boolean,
 
     // 路由实例
@@ -47,7 +47,9 @@ export function normalizeLocation(
     // 如果跳转的为命名路由，则复制(某种意义上是深复制)其属性后直接返回
     } else if (next.name) {
         next = extend({}, raw);
-        const params = next.params
+        const params = next.params;
+
+        // 仅在传入对象形式的路径参数时复制并重写(防止修改原参数)
         if (params && typeof params === 'object') {
             next.params = extend({}, params);
         }
@@ -55,26 +57,27 @@ export function normalizeLocation(
     }
 
     // relative params
-    // 当无路径字符串但具有路径对象时，将其处理为当前路径下的子路径(即视为相对路径)
+    // 当无路径字符串但具有路径参数时(肯定也不存在name)，
+    // 将其处理为当前路径下的子路径(即视为相对路径)
     if (!next.path && next.params && current) {
         next = extend({}, next);
 
-        // 将其标记为已初始化
+        // 将其标记为已标准化
         next._normalized = true;
 
-        // 复制并合并当前路由信息中的路径信息与要跳转的路径信息参数
-        // 优先保留要跳转的路径信息
+        // 复制合并之前路由与即将跳转的路径参数
+        // 优先保留即将跳转的路径信息
         const params: any = extend(extend({}, current.params), next.params);
 
-        // 如果当前路径对象具有命名组件，那么直接复用并更新子路径信息
+        // 如果跳转前Route为命名路由，则直接复用，并传入路径参数
         if (current.name) {
             next.name = current.name;
             next.params = params;
 
-        // 没有具有路由名称时，则从匹配的路由中寻找
+        // 不为具名路由时，则从匹配的路由中寻找
         } else if (current.matched.length) {
 
-            // 优先取最后一个路径地址
+            // 从最后一个路径地址开始匹配
             const rawPath = current.matched[current.matched.length - 1].path;
 
             // 获取跳转地址的url字符串

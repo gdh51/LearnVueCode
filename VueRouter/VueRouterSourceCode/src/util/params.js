@@ -11,8 +11,14 @@ const regexpCompileCache: {
 } = Object.create(null)
 
 export function fillParams(
+
+    // 定义在RouteRecord中的path
     path: string,
+
+    // 路径参数
     params: ? Object,
+
+    // 报错信息
     routeMsg : string
 ): string {
 
@@ -22,19 +28,18 @@ export function fillParams(
     try {
 
         // 优先获取缓存，之后在考虑对当前地址进行合法的转换
-        // 这里是逆向将reg转化为string
+        // 将RouteRecord中的path转化为Reg表达式
         const filler =
             regexpCompileCache[path] ||
             (regexpCompileCache[path] = Regexp.compile(path))
 
         // Fix #2505 resolving asterisk routes { name: 'not-found', params: { pathMatch: '/not-found' }}
-        // 添加通配符匹配的信息
         if (params.pathMatch) params[0] = params.pathMatch
 
-        // 将当前路径转化为编码字符串
+        // 合并路径参数转化为完整路径
         return filler(params, {
             pretty: true
-        })
+        });
     } catch (e) {
         if (process.env.NODE_ENV !== 'production') {
             // Fix #3072 no warn if `pathMatch` is string

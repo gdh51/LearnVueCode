@@ -182,6 +182,8 @@ export default class VueRouter {
                 history.setupListeners()
             }
             history.transitionTo(
+
+                // 获取当前完整的路径(包括查询字符串等等)
                 history.getCurrentLocation(),
                 setupHashListener,
                 setupHashListener
