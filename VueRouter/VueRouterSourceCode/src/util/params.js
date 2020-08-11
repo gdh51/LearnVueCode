@@ -28,16 +28,20 @@ export function fillParams(
     try {
 
         // 优先获取缓存，之后在考虑对当前地址进行合法的转换
-        // 将RouteRecord中的path转化为Reg表达式
+        // 将RouteRecord中的path转化为函数，这样就支持/path/:id这种写法的匹配
         const filler =
             regexpCompileCache[path] ||
             (regexpCompileCache[path] = Regexp.compile(path))
 
         // Fix #2505 resolving asterisk routes { name: 'not-found', params: { pathMatch: '/not-found' }}
+        // 解决通配符路由问题
         if (params.pathMatch) params[0] = params.pathMatch
 
         // 合并路径参数转化为完整路径
         return filler(params, {
+
+            // 该参数表示把转化的最终路径中特殊的符号不进转移
+            // 比如/path/:id 传入{ id: ':'}, 不加pretty为/path/%3A 加了为/path/:
             pretty: true
         });
     } catch (e) {

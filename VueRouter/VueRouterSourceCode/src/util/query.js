@@ -18,8 +18,14 @@ const encode = str => encodeURIComponent(str)
 const decode = decodeURIComponent
 
 export function resolveQuery(
+
+    // 路径自带的query
     query: ? string,
+
+    // 跳转路由携带的query
     extraQuery : Dictionary < string > = {},
+
+    // 自定义解析方法
     _parseQuery: ? Function
 ): Dictionary < string > {
 
@@ -35,7 +41,7 @@ export function resolveQuery(
         parsedQuery = {}
     }
 
-    // 将额外的查询字符串覆盖至原查询字符串中
+    // 合并query，冲突时优先保留跳转的query
     for (const key in extraQuery) {
         parsedQuery[key] = extraQuery[key]
     }

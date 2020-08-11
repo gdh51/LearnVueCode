@@ -52,7 +52,7 @@ export function createMatcher(
         redirectedFrom ? : Location
     ): Route {
 
-        // 结合当前路径对象与将来的路径对象参数生成将来的路径对象
+        // 结合当前路径对象与将来的路径对象参数生成将来的Location
         const location = normalizeLocation(raw, currentRoute, false, router);
         const {
             name
