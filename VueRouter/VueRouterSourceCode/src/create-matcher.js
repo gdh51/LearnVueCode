@@ -47,28 +47,31 @@ export function createMatcher(
         // 当前的路径字符串(包括hash)或一个路径信息的对象
         raw: RawLocation,
 
-        // 当前的路由路径记录对象Route
+        // 当前的路由路径记录对象Route（也即跳转前的）
         currentRoute ? : Route,
         redirectedFrom ? : Location
     ): Route {
 
         // 结合当前路径对象与将来的路径对象参数生成将来的Location
         const location = normalizeLocation(raw, currentRoute, false, router);
+
+        // 优先查看Location是否制定命名路由
         const {
             name
         } = location;
 
-        // 如果将来的路径对象指定了组件名称
         if (name) {
 
-            // 取出指定路径下的路由信息对象
+            // 取出指定命名路由的RouteRecord
             const record = nameMap[name];
             if (process.env.NODE_ENV !== 'production') {
                 warn(record, `Route with name '${name}' does not exist`)
             }
 
-            // 如果没有该组件，则返回一个空路径信息对象
+            // 如果没有该组件，则返回一个空路由路径记录对象Route
             if (!record) return _createRoute(null, location);
+
+            // 返回动态参数的名称组成的数组
             const paramNames = record.regex.keys
                 .filter(key => !key.optional)
                 .map(key => key.name)
@@ -77,10 +80,17 @@ export function createMatcher(
                 location.params = {}
             }
 
-            // 将剩余的路径参数复制进location中
+            // 填充Location对象缺失的动态路径参数值
+            // 如果之前的Route存在路径参数
             if (currentRoute && typeof currentRoute.params === 'object') {
+
+                // 则遍历它的对象字段
                 for (const key in currentRoute.params) {
+
+                    // 前路由路径参数字段不存在当前跳转路径中时且该参数为路径必须的动态参数时
                     if (!(key in location.params) && paramNames.indexOf(key) > -1) {
+
+                        // 将跳转路径继承上一个路由的Route的字段值
                         location.params[key] = currentRoute.params[key]
                     }
                 }
@@ -95,14 +105,17 @@ export function createMatcher(
         // 当指定了跳转的路径时
         } else if (location.path) {
 
-            // 返回匹配路径的路由对象
-            location.params = {}
+            location.params = {};
+
+            // 遍历路径列表查找于路径匹配的RouteRecord
             for (let i = 0; i < pathList.length; i++) {
                 const path = pathList[i];
                 const record = pathMap[path];
 
-                // 查询匹配到的路由，同name一样创建一个路径信息对象返回
+                // 查询匹配到的路由，并填充其路径中的动态参数
                 if (matchRoute(record.regex, location.path, location.params)) {
+
+                    // 为即将跳转路径填充params参数
                     return _createRoute(record, location, redirectedFrom)
                 }
             }
@@ -205,7 +218,7 @@ export function createMatcher(
 
     function _createRoute(
 
-        // 当前匹配到的路由信息对象
+        // 当前匹配到的RouteRecord
         record: ? RouteRecord,
 
         // 当前的路径信息对象
@@ -236,8 +249,14 @@ export function createMatcher(
 }
 
 function matchRoute(
+
+    // RouteRecord的path的RegExp表达式
     regex: RouteRegExp,
+
+    // 跳转的路径
     path: string,
+
+    // 跳转的路径参数
     params: Object
 ): boolean {
 
@@ -253,9 +272,10 @@ function matchRoute(
         return true
     }
 
-    // 如果具有其他路径参数时，解决一个BUG
+    // 如果具有其他路径参数时，填充路径中动态参数值
     for (let i = 1, len = m.length; i < len; ++i) {
 
+        // 获取动态参数的key名
         const key = regex.keys[i - 1]
         const val = typeof m[i] === 'string' ? decodeURIComponent(m[i]) : m[i]
         if (key) {

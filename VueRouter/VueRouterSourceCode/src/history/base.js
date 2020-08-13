@@ -95,9 +95,10 @@ export class History {
         onAbort ? : Function
     ) {
 
-        // 获取匹配当前位置信息对象而产生的新的当前路径信息对象
+        // 获取匹配当前位置信息对象而产生的新的Route
         const route = this.router.match(location, this.current);
 
+        // 提交路由Route更新
         this.confirmTransition(
             route,
             () => {
@@ -131,9 +132,10 @@ export class History {
         )
     }
 
+    // 提交路由更新
     confirmTransition(route: Route, onComplete: Function, onAbort ? : Function) {
 
-        // 保存跳转前路径信息对象
+        // 保存跳转前Route
         const current = this.current;
 
         // 定义中断函数，错误回调仅在主动调用push/replace时触发

@@ -107,9 +107,10 @@ function getFullPath({
     return (path || '/') + stringify(query) + hash
 }
 
+// 对比跳转前Route和即将跳转Route是否相同
 export function isSameRoute(a: Route, b: ? Route): boolean {
 
-    // 为初始化路由则直接返回
+    // 为初始化路由则直接返回true
     if (b === START) {
         return a === b;
 
