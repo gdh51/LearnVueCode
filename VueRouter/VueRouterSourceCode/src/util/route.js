@@ -78,7 +78,7 @@ export const START = createRoute(null, {
     path: '/'
 });
 
-// 将当前匹配到路由信息对象及其父路由一起提取出来
+// 将当前匹配的RouteRecord中上下游的组件添加到数组中
 function formatMatch(record: ? RouteRecord): Array < RouteRecord > {
     const res = [];
 

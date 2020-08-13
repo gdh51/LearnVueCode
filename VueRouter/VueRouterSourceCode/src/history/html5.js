@@ -99,9 +99,13 @@ export class HTML5History extends History {
 
     ensureURL(push ? : boolean) {
 
-        // 如果具有其他的信息参数(如查询字符串)，则调用history api更新
+        // 确认当前路径和当前Route中路径是否不相同
         if (getLocation(this.base) !== this.current.fullPath) {
-            const current = cleanPath(this.base + this.current.fullPath)
+
+            // 返回完整路径进行浏览器地址更新
+            const current = cleanPath(this.base + this.current.fullPath);
+
+            // 正式更新浏览器地址
             push ? pushState(current) : replaceState(current)
         }
     }

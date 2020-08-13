@@ -94,7 +94,7 @@ export function parsePath(path: string): {
     }
 }
 
-// 清空全部 //
+// 将//替换为/(转义)
 export function cleanPath(path: string): string {
     return path.replace(/\/\//g, '/');
 }

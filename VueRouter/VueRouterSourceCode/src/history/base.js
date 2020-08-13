@@ -162,16 +162,16 @@ export class History {
             isSameRoute(route, current) &&
 
             // in the case the route map has been dynamically appended to
-            // 且匹配的路由中的组件数量也相同
+            // 如果匹配的组件也相同，那么说明route是动态添加的
             route.matched.length === current.matched.length
         ) {
 
             // 根据当前URL情况看是否加载URL
-            this.ensureURL()
+            this.ensureURL();
             return abort(new NavigationDuplicated(route))
         }
 
-        // 根据之前路由匹配的组件与即将更新路由要匹配的组件，得出要更新和失活的组件
+        // 根据当前Route与之前的Route，计算出要销毁的组件与新创建的组件
         const {
             updated,
             deactivated,
