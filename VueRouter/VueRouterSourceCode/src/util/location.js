@@ -18,7 +18,8 @@ import {
     extend
 } from './misc'
 
-// 该函数用于处理当前路由跳转的参数信息
+// 该方法用于完整化Location对象(该对象指我们定义Router-link 中to的那些路径的补全)
+// 除命名路由外，其他跳转Location都会标准化
 export function normalizeLocation(
 
     // 当前的路径字符串或其当前router-link指定的to对象
@@ -80,15 +81,17 @@ export function normalizeLocation(
             // 从最后一个路径地址开始匹配
             const rawPath = current.matched[current.matched.length - 1].path;
 
-            // 获取跳转地址的url字符串
+            // 将路径补全
             next.path = fillParams(rawPath, params, `path ${current.path}`)
         } else if (process.env.NODE_ENV !== 'production') {
             warn(false, `relative params navigation requires a current route.`)
         }
-        return next
+        return next;
     }
 
-    // 提出url中各个参数的信息(hash/query/path)
+    // 进入此处说明仅有path或无path且无params
+
+    // 提出path中各个参数的信息(hash/query/path)
     const parsedPath = parsePath(next.path || '');
 
     // 获取跳转前路径的字符串
@@ -97,16 +100,20 @@ export function normalizeLocation(
     // 要跳转的路由是否给定了路径，如果给定了则进行合并
     const path = parsedPath.path ?
 
-        // 处理路径为最终路径
+        // 将相对路径转化为绝对路径(不包括查询字符串)(要跳转的路径支持../形式)
         resolvePath(parsedPath.path, basePath, append || next.append) :
 
-        // 否则返回上一个路由的路径
+        // 无path则返回上一路径路径或基础路径
         basePath;
 
     // 解析查询合并查询字符串
     const query = resolveQuery(
         parsedPath.query,
+
+        // 该参数存在时，只能说明用户定义在路由中存在该参数
         next.query,
+
+        // 用户定义解析Query的方法
         router && router.options.parseQuery
     )
 

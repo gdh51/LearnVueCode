@@ -2,13 +2,13 @@
 
 export function resolvePath(
 
-    // 相对路径（也有可能是一个完整的路径）
+    // 相对路径（也有可能是一个完整的路径）(这也是即将要跳转的路径)
     relative: string,
 
-    // 相对路径的基础路径
+    // 无相对路径时提供的基础相对路径(也是跳转前路径)
     base: string,
 
-    // 是否直接添加在基础路径后
+    // 作为相对路径直接添加在最后
     append ? : boolean
 ): string {
 
@@ -33,22 +33,23 @@ export function resolvePath(
     // - not appending
     // - 不在末尾进行添加
     // - appending to trailing slash (last segment is empty)
-    // - 或路径以/结尾时，要将其删除
+    // - 或路径以/结尾时，要将其删除最后的空格(以/结尾时调用split方法会产生一个空格)
     if (!append || !stack[stack.length - 1]) {
         stack.pop()
     }
 
     // resolve relative path
-    // 解析相对路径字符串
+    // 解析相对路径字符串，移除首位/(这个没用，如果首位为/则以作为绝对路径返回了)
+    // 分割路径参数
     const segments = relative.replace(/^\//, '').split('/');
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
 
-        // 如果当前路径为..则移除
+        // 如果当前路径为..则base路径倒退一级
         if (segment === '..') {
             stack.pop();
 
-        // 其他情况时加入到最终路径栈中
+        // 其他情况时加入到最终路径栈中(.表示当前路径，没用)
         } else if (segment !== '.') {
             stack.push(segment);
         }
@@ -57,11 +58,11 @@ export function resolvePath(
     // ensure leading slash
     // 确保路径以/开头
     if (stack[0] !== '') {
-        stack.unshift('')
+        stack.unshift('');
     }
 
     // 返回最终路径
-    return stack.join('/')
+    return stack.join('/');
 }
 
 // 解析URL，转换为参数形式
@@ -93,7 +94,7 @@ export function parsePath(path: string): {
     }
 }
 
-// 清空全部 //
+// 将//替换为/(转义)
 export function cleanPath(path: string): string {
     return path.replace(/\/\//g, '/');
 }

@@ -95,9 +95,10 @@ export class History {
         onAbort ? : Function
     ) {
 
-        // 获取匹配当前位置信息对象而产生的新的当前路径信息对象
+        // 获取匹配当前位置信息对象而产生的新的Route
         const route = this.router.match(location, this.current);
 
+        // 提交路由Route更新
         this.confirmTransition(
             route,
             () => {
@@ -131,9 +132,10 @@ export class History {
         )
     }
 
+    // 提交路由更新
     confirmTransition(route: Route, onComplete: Function, onAbort ? : Function) {
 
-        // 保存跳转前路径信息对象
+        // 保存跳转前Route
         const current = this.current;
 
         // 定义中断函数，错误回调仅在主动调用push/replace时触发
@@ -160,16 +162,16 @@ export class History {
             isSameRoute(route, current) &&
 
             // in the case the route map has been dynamically appended to
-            // 且匹配的路由中的组件数量也相同
+            // 如果匹配的组件也相同，那么说明route是动态添加的
             route.matched.length === current.matched.length
         ) {
 
             // 根据当前URL情况看是否加载URL
-            this.ensureURL()
+            this.ensureURL();
             return abort(new NavigationDuplicated(route))
         }
 
-        // 根据之前路由匹配的组件与即将更新路由要匹配的组件，得出要更新和激活/失活的组件
+        // 根据当前Route与之前的Route，计算出要销毁的组件与新创建的组件
         const {
             updated,
             deactivated,

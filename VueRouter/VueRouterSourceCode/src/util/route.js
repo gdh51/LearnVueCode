@@ -78,7 +78,7 @@ export const START = createRoute(null, {
     path: '/'
 });
 
-// 将当前匹配到路由信息对象及其父路由一起提取出来
+// 将当前匹配的RouteRecord中上下游的组件添加到数组中
 function formatMatch(record: ? RouteRecord): Array < RouteRecord > {
     const res = [];
 
@@ -107,9 +107,10 @@ function getFullPath({
     return (path || '/') + stringify(query) + hash
 }
 
+// 对比跳转前Route和即将跳转Route是否相同
 export function isSameRoute(a: Route, b: ? Route): boolean {
 
-    // 为初始化路由则直接返回
+    // 为初始化路由则直接返回true
     if (b === START) {
         return a === b;
 
