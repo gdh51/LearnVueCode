@@ -169,7 +169,7 @@ export class History {
             return abort(new NavigationDuplicated(route))
         }
 
-        // 根据之前路由匹配的组件与即将更新路由要匹配的组件，得出要更新和失活的组件
+        // 根据之前路由匹配的组件与即将更新路由要匹配的组件，得出要更新和激活/失活的组件
         const {
             updated,
             deactivated,
@@ -316,6 +316,7 @@ function normalizeBase(base: ? string): string {
     return base.replace(/\/$/, '')
 }
 
+// 计算上一个Route与下一个Route产生的变化组件
 function resolveQueue(
     current: Array < RouteRecord > ,
     next: Array < RouteRecord >
@@ -326,7 +327,7 @@ function resolveQueue(
 } {
     let i;
 
-    // 取两者中组件数量最多的
+    // 取两者中组件数量最多的进行遍历
     const max = Math.max(current.length, next.length);
 
     // 从父级组件开始，依次对比，当发现第一个不同的组件时，
@@ -344,7 +345,7 @@ function resolveQueue(
         // 新激活的组件
         activated: next.slice(i),
 
-        // 变更的组件
+        // 失活的组件
         deactivated: current.slice(i)
     }
 }
