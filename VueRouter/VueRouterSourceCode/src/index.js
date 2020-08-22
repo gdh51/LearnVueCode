@@ -174,7 +174,7 @@ export default class VueRouter {
         // 获取路由模式对象
         const history = this.history
 
-        // 在各种模式下，更新路由表
+        // 在各种模式下，加载路由，更新Route
         if (history instanceof HTML5History) {
             history.transitionTo(history.getCurrentLocation())
         } else if (history instanceof HashHistory) {
@@ -190,10 +190,10 @@ export default class VueRouter {
             )
         }
 
-        // 存储一个路由表更新函数
+        // 存储一个更新根Rote的函数(该函数在路由变更成功后调用)
         history.listen(route => {
 
-            // 为每个挂在router实例的根Vue实例更新当前的路由表
+            // 为每个挂在router实例的根Vue实例更新当前的Route
             this.apps.forEach((app) => {
                 app._route = route;
             });

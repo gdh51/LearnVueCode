@@ -103,14 +103,17 @@ export class History {
             route,
             () => {
 
-                // 更新当前路径信息对象
-                this.updateRoute(route)
-                onComplete && onComplete(route)
+                // 更新当前的Route
+                this.updateRoute(route);
+
+                // 初始化时该函数为空
+                onComplete && onComplete(route);
 
                 // 进行URL的跳转
-                this.ensureURL()
+                this.ensureURL();
 
                 // fire ready cbs once
+                // 调用初始化onReady函数(仅调用一次)
                 if (!this.ready) {
                     this.ready = true
                     this.readyCbs.forEach(cb => {
@@ -280,7 +283,9 @@ export class History {
 
                 // 加载完毕，清空加载中的路由·
                 this.pending = null
-                onComplete(route)
+                onComplete(route);
+
+                // 在新的组件实例更新完毕后，调用beforeRouteEnter函数中传入next中的函数
                 if (this.router.app) {
                     this.router.app.$nextTick(() => {
                         postEnterCbs.forEach(cb => {
@@ -299,10 +304,14 @@ export class History {
 
         // 更新变更后Route
         this.current = route;
+
+        // 执行History实例监听的函数，为每个挂在router的实例更新Route
         this.cb && this.cb(route);
 
-        // 调用全局的after函数
+        // 调用全局的afterEach函数
         this.router.afterHooks.forEach(hook => {
+
+            // 传入新、旧Route作为参数
             hook && hook(route, prev)
         })
     }
