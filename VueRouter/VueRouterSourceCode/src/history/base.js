@@ -185,22 +185,32 @@ export class History {
         // 添加更新顺序的队列，按不活跃函数的路由守卫-> 触发 beforeEach钩子 -> 触发update函数 ->
         // 触发活跃组件的beforeEnter -> 触发异步组件的
         const queue: Array < ? NavigationGuard > = [].concat(
+
             // in-component leave guards
+            // 获取要离开的路由组件的beforeRouteLeave函数（父->子顺序）
             extractLeaveGuards(deactivated),
+
             // global before hooks
+            // 获取全局的beforeEach导航守卫
             this.router.beforeHooks,
+
             // in-component update hooks
+            // 获取未变更组件的beforeRouteUpdate函数(子->父)
             extractUpdateHooks(updated),
+
             // in-config enter guards
+            // 获取新增的RouteRecord中的beforeEnter函数
             activated.map(m => m.beforeEnter),
+
             // async components
+            // 获取加载异步路由(或普通路由的函数)
             resolveAsyncComponents(activated)
         );
 
-        // 将当前(将要跳转的)路径对象设置为等待处理
+        // 将当前(将要跳转的)Route设置为等待处理
         this.pending = route;
 
-        // 定义调用hook的迭代器函数
+        // 重写hook函数，允许用户中断路由变更
         const iterator = (hook: NavigationGuard, next) => {
 
             // 如果又切换了路由则直接终止
@@ -209,14 +219,15 @@ export class History {
             }
             try {
 
-                // 分别传入to和from路由信息
+                // 为每个hook分别传入to和from路由信息，以及一个next函数
                 hook(route, current, (to: any) => {
 
-                    // 如果传入false则停止路由跳转，并切换为跳转前URL
+                    // 如果传入false则停止路由跳转，并跳转至上一个URL
                     if (to === false || isError(to)) {
+
                         // next(false) -> abort navigation, ensure current URL
-                        this.ensureURL(true)
-                        abort(to)
+                        this.ensureURL(true);
+                        abort(to);
 
                     // 重定向到其他URL
                     } else if (
@@ -234,7 +245,7 @@ export class History {
                     } else {
 
                         // confirm transition and pass on the value
-                        // 继续执行下一个路由守卫
+                        // 无内鬼，继续执行下一个路由守卫
                         next(to)
                     }
                 })
@@ -243,22 +254,31 @@ export class History {
             }
         }
 
-        // 依次执行queue队列，并调用iterator函数，并在最后调用最后的回调函数
+        // 执行第一个批queue，执行完毕后调用下面的回调
         runQueue(queue, iterator, () => {
-            const postEnterCbs = []
+
+            // 后进回调函数，待路由提交，组件实例创建后调用
+            const postEnterCbs = [];
+
+            // 检测当前Route是否变更为即将跳转的路由
             const isValid = () => this.current === route
 
             // wait until async components are resolved before
             // extracting in-component enter guards
-            // 等待异步组件加载完毕，将beforeRouteEnter和beforeResolve加入队列进行执行
-            const enterGuards = extractEnterGuards(activated, postEnterCbs, isValid)
-            const queue = enterGuards.concat(this.router.resolveHooks)
+            // 等待异步组件加载完毕，再将beforeRouteEnter和beforeResolve
+            // 作为hooks加入一个单独的执行队列中
+            const enterGuards = extractEnterGuards(activated, postEnterCbs, isValid);
+            const queue = enterGuards.concat(this.router.resolveHooks);
 
-            // 那么此时在来执行
+            // 执行beforeRouteEnter和beforeResolve的hooks
             runQueue(queue, iterator, () => {
+
+                // 如果目标路由发现变化，则终止
                 if (this.pending !== route) {
                     return abort()
                 }
+
+                // 清空pending
                 this.pending = null
                 onComplete(route)
                 if (this.router.app) {
@@ -352,6 +372,7 @@ function resolveQueue(
     }
 }
 
+//
 function extractGuards(
 
     // 路由记录对象的数组
@@ -359,26 +380,39 @@ function extractGuards(
 
     // 路由导航守卫名称
     name: string,
+
+    //
     bind: Function,
+
+    // 是否反顺序出发hook函数
     reverse ? : boolean
 ): Array < ? Function > {
 
-    // 对records数组调用forEach方法，整理其传入的这个回调函数
+    /**
+     * @description 获取当前RouteRecord中名为name的导航守卫(从components中取)(不会递归子路由)
+     * @param {Object} def 对应的组件配置对象
+     * @param {Object} instance 对应组件的实例对象
+     * @param {Object} matchc 此组件的RouteRecord
+     * @param {String} key 命名视图下的对应组件名称(无命名视图时为default)
+     */
     const guards = flatMapComponents(records, (def, instance, match, key) => {
 
-        // 获取用户定义的路由守卫
+        // 获取该组件中名为name的导航守卫
         const guard = extractGuard(def, name);
 
         // 如果存在，则依次返回这些导航守卫函数
         if (guard) {
+            // 可以用数组命名多个导航守卫
             return Array.isArray(guard) ?
+
+                // 将导航守卫的this绑定至组件，并传入当前RouteReord与组件视图名称key
                 guard.map(guard => bind(guard, instance, match, key)) :
                 bind(guard, instance, match, key)
         }
     });
 
-    // 返回守卫们触发后的返回值数组(在leave类型的守卫触发时，要倒叙返回返回值，
-    // 即从父->子)
+    // 最后将守卫hook扁平化为扁平数组
+    // (在leave类型的守卫触发时，要倒叙返回返回值， 即从父->子)
     return flatten(reverse ? guards.reverse() : guards)
 }
 
@@ -386,11 +420,15 @@ function extractGuard(
     def: Object | Function,
     key: string
 ): NavigationGuard | Array < NavigationGuard > {
+
+    // 将组件配置对象注册为Vue实例构造函数
     if (typeof def !== 'function') {
         // extend now so that global mixins are applied.
         def = _Vue.extend(def)
     }
-    return def.options[key]
+
+    // 取其原始配置中名为key的路由守卫
+    return def.options[key];
 }
 
 function extractLeaveGuards(deactivated: Array < RouteRecord > ): Array < ? Function > {
@@ -417,6 +455,8 @@ function extractEnterGuards(
     return extractGuards(
         activated,
         'beforeRouteEnter',
+
+        // 参数为 守卫，组件实例(此时还没有) 匹配的RouteRecord 组件命名视图名称
         (guard, _, match, key) => {
             return bindEnterGuard(guard, match, key, cbs, isValid)
         }
@@ -428,10 +468,17 @@ function bindEnterGuard(
     match: RouteRecord,
     key: string,
     cbs: Array < Function > ,
+
+    // 当前Route是否变更为将要跳转的路由
     isValid: () => boolean
 ): NavigationGuard {
     return function routeEnterGuard(to, from, next) {
+
+        // 重写原导航守卫，让其自动执行next函数
         return guard(to, from, cb => {
+
+            // beforeRouteEnter的next参数，支持函数作为参数，
+            // 参入函数时，该函数会加入cbs回调数组中，待此组件实例创建后调用
             if (typeof cb === 'function') {
                 cbs.push(() => {
                     // #750
@@ -440,24 +487,35 @@ function bindEnterGuard(
                     // we will need to poll for registration until current route
                     // is no longer valid.
                     poll(cb, match.instances, key, isValid)
-                })
+                });
             }
             next(cb)
-        })
+        });
     }
 }
 
+// 立即或延迟执行cb，主要为了解决上面的#750这个问题
 function poll(
+
+    // 我们在next中传入的回调函数
     cb: any, // somehow flow cannot infer this is a function
+
+    // 当前命名视图创建的组件实例对象map表
     instances: Object,
+
+    // 组件在命名视图中的名称
     key: string,
     isValid: () => boolean
 ) {
+
+    // 正常情况下直接调用回调，并传入当前组件的实例作为参数
     if (
         instances[key] &&
         !instances[key]._isBeingDestroyed // do not reuse being destroyed instance
     ) {
-        cb(instances[key])
+        cb(instances[key]);
+
+    // 如果组件还未创建，则待到下一个宏任务阶段执行
     } else if (isValid()) {
         setTimeout(() => {
             poll(cb, instances, key, isValid)
