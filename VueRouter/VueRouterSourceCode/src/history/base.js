@@ -278,7 +278,7 @@ export class History {
                     return abort()
                 }
 
-                // 清空pending
+                // 加载完毕，清空加载中的路由·
                 this.pending = null
                 onComplete(route)
                 if (this.router.app) {
@@ -294,10 +294,14 @@ export class History {
 
     updateRoute(route: Route) {
 
-        // 更新current路由
+        // 暂存变更URL前Route
         const prev = this.current
-        this.current = route
-        this.cb && this.cb(route)
+
+        // 更新变更后Route
+        this.current = route;
+        this.cb && this.cb(route);
+
+        // 调用全局的after函数
         this.router.afterHooks.forEach(hook => {
             hook && hook(route, prev)
         })
