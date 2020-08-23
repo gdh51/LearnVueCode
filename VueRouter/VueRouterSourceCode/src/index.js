@@ -69,16 +69,16 @@ export default class VueRouter {
         // 原始的路由配置
         this.options = options;
 
-        // 全局路由前置守卫
+        // 全局路由前置守卫beforeEach
         this.beforeHooks = [];
 
-        // 全局解析守卫
+        // 全局解析守卫beforeResolve
         this.resolveHooks = [];
 
-        // 全局后置守卫
+        // 全局后置守卫afterEach
         this.afterHooks = [];
 
-        // 根据路由配置创建3个不同类型的路由表
+        // 根据路由配置创建3个不同类型的RouteRecordd
         this.matcher = createMatcher(options.routes || [], this)
 
         // 默认为hash模式
@@ -190,7 +190,9 @@ export default class VueRouter {
             )
         }
 
-        // 存储一个更新根Rote的函数(该函数在路由变更成功后调用)
+        // 存储一个更新根Route的函数(该函数在路由变更成功后调用)
+        // 这里在最后在调用，原因是我们还未在根实例响应式定义_route，
+        // 而在history.transitionTo完成时，会调用history.listen监听的函数
         history.listen(route => {
 
             // 为每个挂在router实例的根Vue实例更新当前的Route

@@ -42,7 +42,7 @@ export function install(Vue) {
                 // 初始化路由位置信息
                 this._router.init(this);
 
-                // 在根vm实例上定义_route用来访问直接访问当前的路径信息
+                // 在根vm实例上定义_route用来访问直接访问当前的Route
                 Vue.util.defineReactive(this, '_route', this._router.history.current)
 
             // 组件vm实例

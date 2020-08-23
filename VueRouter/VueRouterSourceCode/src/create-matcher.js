@@ -31,10 +31,16 @@ export function createMatcher(
     router: VueRouter
 ): Matcher {
     const {
+
+        // 按定义顺序标准化好的RouteRecords
         pathList,
+
+        // 按路由地址path->RouteRecord的Map
         pathMap,
+
+        // 按路由名称name->RouteRecord的Map
         nameMap
-    } = createRouteMap(routes)
+    } = createRouteMap(routes);
 
     function addRoutes(routes) {
 

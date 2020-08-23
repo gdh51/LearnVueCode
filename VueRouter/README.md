@@ -1,78 +1,37 @@
-# Vue-Router源码学习
+# Vue-Router@3.1.5源码学习
 
-众所周知，`Vue-Router`库有两种模式，并基于两个组件（`router-link`/`router-view`）组成的，那么话不多说，先走起，那么首先和`Vuex`一样，`VueRouter`是根据`install`函数进行安装的。如果我们直接引入那么其会直接帮我们进行安装(通过模块引入则需要手动安装)。
+众所周知，`Vue-Router`库有两种模式，并基于两个组件（`router-link`/`router-view`）组成的。和`Vuex`一样，`VueRouter`是根据`install`函数进行安装的。如果我们直接引入那么其会直接帮我们进行安装(通过模块引入则需要手动安装)。
 
-`Vue-Router`的整体由两部分控制，它会有一个随时记录当前路由情况的`current`对象，这里我们暂时称它为当前路由记录。
+##　学习路线
 
-现在我们首先从它的实例化代码开始：
+本文将从`Vue-Router` **注入**，与**实例化**，到在**各个组件中具体起作用**，按照其**生命周期**进行详细的学习和梳理，**尽量保证具体到每个变量都解释清楚其含义**。最后涉及到该组件库中提供的两个组件，在做详细的流程梳理。
 
-```js
-class VueRouter {
-    constructor(options: RouterOptions = {}) {
+## 目录
 
-        // 当前挂载的根Vue实例
-        this.app = null;
+那么按学习路线分，目录结构就清晰了：
 
-        // 路由作为挂载的根Vue实例数量
-        this.apps = [];
+1. [`Router`的初始化注入](./Router的初始化注入/README.md)(`Vue.use(VueRouter)`)
+2. [`Router`的实例化](./Router的实例化/README.md)
+   1. `RouteRecord`初始化
+   2. 路由模式加载
+3. 生命周期：
+   1. `Router`实例初始化加载
+   2. `Router`实例更新加载
+4. `Router`附带的组件
+   1. `router-link`组件
+   2. `router-view`组件
 
-        // 原始的路由配置
-        this.options = options;
+## 文中部分变量含义声明
 
-        // 全局路由前置守卫
-        this.beforeHooks = [];
+在整个学习过程中，涉及到一些变量，为了区分其含义，这里用英文名称指代(其实也在官网的`Class`名称)
 
-        // 全局解析守卫
-        this.resolveHooks = [];
+>建议源码学习从各个独立模块串联起来学习，由于模块的编写遵循flow(类似TS)，在每个变量或参数后方会有其具体的类别。配合其阅读能够增进理解。
 
-        // 全局后置守卫
-        this.afterHooks = [];
+- `Location`：表示当前的一个路径位置信息对象，包含一些`URL`信息，具体在我们编码时表现为，例如，`router-link`中`to`属性绑定的值，被标准化后就为一个`Location`对象。
+- `RouteConfig`：表示我们最初定义在`routes`数组中的各个路由配置对象。
+- `RouteRecord`：表示路径记录表，即我们定义在`router.routes`中的那些配置标准化后的结果，每一个都表示一个对于路径下的组件信息、`URL`信息等等。
+- `Route`：表示一个根据`Location`对象生成的一个路径信息对象，其已做好了初步计算，计算好了当前`Location`匹配的`RouteRecord`等等信息，具体体现在我们在`Vue`实例中访问的`this.$route`，它表示的就是当前的`Route`。
 
-        // 根据路由配置创建3个不同类型的路由表
-        this.matcher = createMatcher(options.routes || [], this)
+## 后续
 
-        // 默认为hash模式
-        let mode = options.mode || 'hash';
-
-        // 是否在不兼容时自动降级
-        // 判断变量为如果history模式，但不支持该API则且不主动关闭fallback模式
-        this.fallback = mode === 'history' && !supportsPushState && options.fallback !== false
-        if (this.fallback) {
-
-            // 兼容模式下使用hash路由
-            mode = 'hash'
-        }
-
-        // 非浏览器中时，取抽象模式
-        if (!inBrowser) {
-            mode = 'abstract'
-        }
-
-        this.mode = mode;
-
-        // 根据模式初始化对应的路由模式
-        switch (mode) {
-            case 'history':
-                this.history = new HTML5History(this, options.base)
-                break
-            case 'hash':
-                this.history = new HashHistory(this, options.base, this.fallback)
-                break
-            case 'abstract':
-                this.history = new AbstractHistory(this, options.base)
-                break
-            default:
-                if (process.env.NODE_ENV !== 'production') {
-                    assert(false, `invalid mode: ${mode}`)
-                }
-        }
-    }
-}
-```
-
-初始化`VueRouter`的逻辑比较简单，可以简单概括为两个主要部分：
-
-1. [初始化路由表](./路由表/README.md)(即我们定义的`routes`)
-2. [初始化路由模式](./路由模式/README.md)(两种模式`history`与`hash`)
-
-我们将在详细的章节中进行详细的学习。
+如果有问题或不同提议可以提`issue`，我会及时更新的。

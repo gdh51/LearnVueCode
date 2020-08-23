@@ -1,42 +1,86 @@
-# 路由表
+# RouteRecord——路由表
 
-在`VueRouter`中，我们为什么能根据我们定义在`routes`中的各个地址来渲染对应的组件，具体的原理就是在初始化`Router`时，其会将我们定义的`routes`中的一个个路由信息转化为一张路由表，并且会根据我们定义路由的顺序，影响路由表渲染组件优先级的权重。
+在`VueRouter`中，为什么它能根据当前的`URL Path`来加载不同的组件，其原理就是在初始化`Router`时，其会将我们定义的`routes`中的一个个路由信息(`RouteConfig`)转化为一张路由表(`RouteRecord`)，并且会根据我们定义路由的顺序，影响路由表渲染组件优先级的权重。
 
-整个路由表由`createMatcher()`函数通过``routes`创建：
+整个路由表(`RouteRecord`)由`createMatcher()`函数通过传入`routes`创建：
 
 ```js
-// 根据路由配置创建路由适配表
-this.matcher = createMatcher(options.routes || [], this)
+// 根据路由配置创建3个不同类型的RouteRecord
+this.matcher = createMatcher(options.routes || [], this);
 ```
 
-该函数会创建三个不同形式的路由表(实际上为一个，另外两个方面进行查询)，这些表不会向外部暴露，会存储在闭包中，仅暴露两个接口来进行路由地址的查询，其具体的函数为：
+该函数会创建三个不同形式的路由表(实际上为一个，另外两个为一个查询`Map`)，这些表不会向外部暴露，会存储在闭包中，仅暴露两个接口来进行`RouteRecord`的查询，其具体的函数为：
 
 ```js
-function createMatcher(
+function createRouteMap(
+
+    // 原始的路由配置对象(option.routes)
     routes: Array < RouteConfig > ,
-    router: VueRouter
-): Matcher {
-    const {
 
-        // 按定义顺序转化好的路由地址表
-        pathList,
+    // 以下三个参数为之前该函数输出结果，
+    // 主要用于addRoutes函数添加新的路由信息
+    oldPathList ? : Array < string > ,
+    oldPathMap ? : Dictionary < RouteRecord > ,
+    oldNameMap ? : Dictionary < RouteRecord >
+): {
+    pathList: Array < string > ,
+    pathMap: Dictionary < RouteRecord > ,
+    nameMap: Dictionary < RouteRecord >
+} {
+    // the path list is used to control path matching priority
+    // 一个具有匹配权重的RouteRecords表
+    const pathList: Array < string > = oldPathList || [];
 
-        // 按路由地址到对应路由对象的查询表
-        pathMap,
+    // 按路由地址path->RouteRecord的Map
+    const pathMap: Dictionary < RouteRecord > = oldPathMap || Object.create(null);
 
-        // 按路由名称到对应路由对象的查询表
-        nameMap
-    } = createRouteMap(routes);
+    // 按路由名称name->RouteRecord的Map
+    const nameMap: Dictionary < RouteRecord > = oldNameMap || Object.create(null);
 
-    // 返回两个接口，一个用于添加新的路由地址，一个用户查询已存在的路由地址
+    // 遍历，将RouteConfig中的路由信息添加到三个表中
+    routes.forEach(route => {
+        addRouteRecord(pathList, pathMap, nameMap, route);
+    });
+
+    // ensure wildcard routes are always at the end
+    // 确保通配符路径永远在权重表的最后
+    for (let i = 0, l = pathList.length; i < l; i++) {
+
+        // 找到通配符路径将其添加到路径表数组
+        if (pathList[i] === '*') {
+            pathList.push(pathList.splice(i, 1)[0]);
+            l--;
+            i--;
+        }
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+
+        // warn if routes do not include leading slashes
+        // 每个RouteConfig的path都必须在首部以/开头
+        const found = pathList
+            // check for missing leading slash
+            .filter(path => path && path.charAt(0) !== '*' && path.charAt(0) !== '/')
+
+        // 否则警告
+        if (found.length > 0) {
+            const pathNames = found.map(path => `- ${path}`).join('\n')
+            warn(false, `Non-nested routes must include a leading slash character. Fix the following routes: \n${pathNames}`)
+        }
+    }
+
+    // 返回三个记录路由情况的对象
     return {
-        match,
-        addRoutes
+        pathList,
+        pathMap,
+        nameMap
     };
 }
 ```
 
-我们可以从上述函数中看出，该函数的主要目的是构成一个闭包，来存储路由表，具体的创建过程由`createRouteMap()`函数来创建。该函数的主要作用就是递归调用`addRouteRecord()`函数来向三种路由表中添加新的路由，该函数的主要逻辑为：
+我们可以从上述函数中看出，该函数通过一个闭包，来存储`RouteRecord`，如何通过接口的`match`函数来匹配`RouteRecord`创建`Route`。(这个之后在单独说)
+
+具体的创建过程由`createRouteMap()`函数来创建。该函数的主要作用就是递归调用`addRouteRecord()`函数来向三种路由表中添加`RouteRecord`，该函数的主要逻辑为：
 
 ```js
 function createRouteMap(

@@ -51,16 +51,26 @@ export class History {
         // 路由实例对象
         this.router = router
 
-        // 初始化、格式化路由根路径
+        // 标准化基准path
         this.base = normalizeBase(base);
 
         // start with a route object that stands for "nowhere"
         // 在初始化时，添加一个表示没有任何路径的，当前路由路径记录对象
-        this.current = START
+        this.current = START;
+
+        // 更新Route时，等待更新Route存放的地方
         this.pending = null;
+
+        // Route是否更新完毕
         this.ready = false;
+
+        // onReady函数的success处理函数，在初始化时成功时调用
         this.readyCbs = [];
+
+        // onReady函数的error处理函数，在初始化时出错时调用
         this.readyErrorCbs = [];
+
+        // onError函数，在除第一次加载外触发错误时调用
         this.errorCbs = [];
     }
 
@@ -143,20 +153,29 @@ export class History {
 
         // 定义中断函数，错误回调仅在主动调用push/replace时触发
         const abort = err => {
+
             // after merging https://github.com/vuejs/vue-router/pull/2771 we
             // When the user navigates through history through back/forward buttons
             // we do not want to throw the error. We only throw it if directly calling
             // push/replace. That's why it's not included in isError
+            // 我们仅在用户直接通过History API调用push/replace时报错
+            // 确保错误类型不为内部错误，为其他Error类的错误
             if (!isExtendedError(NavigationDuplicated, err) && isError(err)) {
+
+                // 调用onError回调
                 if (this.errorCbs.length) {
                     this.errorCbs.forEach(cb => {
                         cb(err)
                     })
                 } else {
+
+                    // 未捕获时报错
                     warn(false, 'uncaught error during route navigation:')
                     console.error(err)
                 }
             }
+
+            // 直接调用最终的终止函数
             onAbort && onAbort(err)
         }
 

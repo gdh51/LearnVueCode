@@ -14,7 +14,8 @@ export function createRouteMap(
     // 原始的路由配置对象(option.routes)
     routes: Array < RouteConfig > ,
 
-    // 以下三个参数为之前该函数输出结果，用于添加新的路由信息
+    // 以下三个参数为之前该函数输出结果，
+    // 主要用于addRoutes函数添加新的路由信息
     oldPathList ? : Array < string > ,
     oldPathMap ? : Dictionary < RouteRecord > ,
     oldNameMap ? : Dictionary < RouteRecord >
@@ -24,22 +25,22 @@ export function createRouteMap(
     nameMap: Dictionary < RouteRecord >
 } {
     // the path list is used to control path matching priority
-    // 一个用于匹配路径的路径表
+    // 一个具有匹配权重的RouteRecords表
     const pathList: Array < string > = oldPathList || [];
 
-    // 路径到对应路由信息的映射表
+    // 按路由地址path->RouteRecord的Map
     const pathMap: Dictionary < RouteRecord > = oldPathMap || Object.create(null);
 
-    // 命名路由到路由信息的映射表
+    // 按路由名称name->RouteRecord的Map
     const nameMap: Dictionary < RouteRecord > = oldNameMap || Object.create(null);
 
-    // 遍历，将原始路由中的路由信息添加到三个表中
+    // 遍历，将RouteConfig中的路由信息添加到三个表中
     routes.forEach(route => {
         addRouteRecord(pathList, pathMap, nameMap, route);
     });
 
     // ensure wildcard routes are always at the end
-    // 确保通配符路径永远在转化后路由表数组的最后
+    // 确保通配符路径永远在权重表的最后
     for (let i = 0, l = pathList.length; i < l; i++) {
 
         // 找到通配符路径将其添加到路径表数组
@@ -53,7 +54,7 @@ export function createRouteMap(
     if (process.env.NODE_ENV === 'development') {
 
         // warn if routes do not include leading slashes
-        // 每个路由地址都必须在首部以/开头
+        // 每个RouteConfig的path都必须在首部以/开头
         const found = pathList
             // check for missing leading slash
             .filter(path => path && path.charAt(0) !== '*' && path.charAt(0) !== '/')
@@ -70,7 +71,7 @@ export function createRouteMap(
         pathList,
         pathMap,
         nameMap
-    }
+    };
 }
 
 function addRouteRecord(
