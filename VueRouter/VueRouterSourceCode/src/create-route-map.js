@@ -90,6 +90,8 @@ function addRouteRecord(
 
     // 子路由的父路由
     parent ? : RouteRecord,
+
+    // 别名路径
     matchAs ? : string
 ) {
 
@@ -144,6 +146,8 @@ function addRouteRecord(
 
         // 父级路由地址
         parent,
+
+        // 路由别名
         matchAs,
 
         // 路由重定向路径
@@ -154,25 +158,26 @@ function addRouteRecord(
         meta: route.meta || {},
 
         // 是否将组件参数信息设置为组件实例属性
-        props: route.props == null ?
+        props: route.props == null
 
             // 未定义传入组件的参数时，初始化为空对象
-            {} :
+            ? {}
 
-            // 是否定义有子组件视图
-            route.components ?
+            // 是否定义有命名视图
+            : (route.components
 
-            // 当定义有命名视图时，则使用原定义
-            route.props :
+                // 当定义有命名视图时，则使用原定义
+                ? route.props
 
-            // 未有命名视图时，则存放在默认位置中
-            {
-                default: route.props
-            }
-    }
+                // 未有命名视图时，则存放在默认位置中
+                : {
+                    default: route.props
+                })
+    };
 
     // 如果设置了嵌套路由，则将其作为子路由加入当前路由中
     if (route.children) {
+
         // Warn if route is named, does not redirect and has a default child route.
         // If users navigate to this route by name, the default child will
         // not be rendered (GH Issue #629)
@@ -204,14 +209,14 @@ function addRouteRecord(
         // 遍历子路由数组，将其添加到记录中
         route.children.forEach(child => {
 
-            // 当前路由为别名路由时，将其路由匹配规则定义为导向前路由
+            // 当前路由具有别名路径时，创建子别名路径
             const childMatchAs = matchAs ?
                 cleanPath(`${matchAs}/${child.path}`) :
                 undefined;
 
             // 递归调用该方法添加子路由
             addRouteRecord(pathList, pathMap, nameMap, child, record, childMatchAs)
-        })
+        });
     }
 
     // 如果Map中不存在该地址，则分别存入pathList与pathMap
@@ -293,19 +298,19 @@ function compileRouteRegex(
 function normalizePath(
     path: string,
 
-    // 父级路由记录对象
+    // 父级RouteRecord
     parent ? : RouteRecord,
     strict ? : boolean
 ): string {
 
     // 严格模式下，保留path末尾的 /
-    if (!strict) path = path.replace(/\/$/, '')
+    if (!strict) path = path.replace(/\/$/, '');
 
-    // 如果以/开头，则说明为相对路径，直接返回
-    if (path[0] === '/') return path
+    // 如果以/开头，则说明为绝对路径，直接返回
+    if (path[0] === '/') return path;
 
-    // 初始化时，直接返回地址
-    if (parent == null) return path
+    // 根URL，直接返回
+    if (parent == null) return path;
 
     // 清空全部 //，并返回完整的路径信息(如为子路由则还要包含父路由)
     return cleanPath(`${parent.path}/${path}`)

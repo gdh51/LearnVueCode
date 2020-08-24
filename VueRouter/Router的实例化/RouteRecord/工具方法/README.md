@@ -7,32 +7,37 @@
 
 ## normalizePath()——标准化路由路径
 
-该方法用于标准化路径字符串，其中严格模式下，不允许路径以`/`结尾；对于绝对路径的地址，直接返回；非严格模式初始化时，直接返回原地址；其他情况清空其中的`//`后返回。
+该方法用于标准化路径字符串，其中严格模式下，允许路径以`/`结尾；对于绝对路径的地址，直接返回；对于根路径，直接返回其`Path`；在具有子`RouteRecord`时，会在与父级路由拼接后格式化其`//`为`/`。
 
 ```js
 function normalizePath(
     path: string,
+
+    // 父级RouteRecord
     parent ? : RouteRecord,
     strict ? : boolean
 ): string {
 
-    // 严格模式下，保留path末尾的 /
-    if (!strict) path = path.replace(/\/$/, '')
+    // 严格模式下，保留path末尾的 /，不对其做清除
+    if (!strict) path = path.replace(/\/$/, '');
 
-    // 如果以/开头，则说明为相对路径，直接返回
-    if (path[0] === '/') return path
+    // 如果以/开头，则说明为绝对路径，直接返回
+    if (path[0] === '/') return path;
 
-    // 初始化时，直接返回地址
-    if (parent == null) return path
+    // 根URL，直接返回
+    if (parent == null) return path;
 
-    // 清空全部 //
-    return cleanPath(`${parent.path}/${path}`)
+    // 清空全部 //，并返回完整的路径信息(如为子路由则还要包含父路由)
+    // 其实这里相对于为严格模式下的父子组合路径清理了//
+    return cleanPath(`${parent.path}/${path}`);
 }
 ```
 
+所以当我们定义父`Path: /a`时，子`Path`一定要定义为`Path: b`(无斜线)，不然子`Path`会被认为为绝对路径，返回`/b`;
+
 ## cleanPath()——清除路径中的//
 
-该方法非常简单，就是清除传入其中值中的`//`
+该方法非常简单，就是清除传入其中值中的`//`，该方法主要作用是在严格模式下，清理父子路径间的`/`，比如我们定义父`Path: /a/`，子`Path: b`，注意，子路径无论如何都不能以`/`起始。
 
 ```js
 // 清空全部 //

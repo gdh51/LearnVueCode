@@ -110,7 +110,38 @@ class VueRouter {
 }
 ```
 
-上述代码中，需要关注的即：
+上述代码中，需要关注的有其中的`fallback`变量，该变量主要为了防止用户定义的路由`mode`在实际环境中无法使用，而是否进行降级兼容；当然，当用户制定不能降级时，也是不会降级的(头铁)。
+
+```js
+// 是否支持history API 的pushState()方法
+const supportsPushState = inBrowser &&
+    (function () {
+        const ua = window.navigator.userAgent
+
+        // 浏览器版本判断
+        if (
+            (ua.indexOf('Android 2.') !== -1 || ua.indexOf('Android 4.0') !== -1) &&
+            ua.indexOf('Mobile Safari') !== -1 &&
+            ua.indexOf('Chrome') === -1 &&
+            ua.indexOf('Windows Phone') === -1
+        ) {
+            return false;
+        }
+
+        // api支持程度判断
+        return window.history && 'pushState' in window.history
+    })();
+
+this.fallback = mode === 'history' && !supportsPushState && options.fallback !== false;
+
+if (this.fallback) {
+
+    // 兼容模式下使用hash路由
+    mode = 'hash'
+}
+```
+
+其次还需要关注的是：
 
 ```js
 this.matcher = createMatcher(options.routes || [], this);

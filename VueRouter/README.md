@@ -30,7 +30,7 @@
 - `Location`：表示当前的一个路径位置信息对象，包含一些`URL`信息，具体在我们编码时表现为，例如，`router-link`中`to`属性绑定的值，被标准化后就为一个`Location`对象。
 - `RouteConfig`：表示我们最初定义在`routes`数组中的各个路由配置对象。
 - `RouteRecord`：表示路径记录表，即我们定义在`router.routes`中的那些配置标准化后的结果，每一个都表示一个对于路径下的组件信息、`URL`信息等等。
-- `Route`：表示一个根据`Location`对象生成的一个路径信息对象，其已做好了初步计算，计算好了当前`Location`匹配的`RouteRecord`等等信息，具体体现在我们在`Vue`实例中访问的`this.$route`，它表示的就是当前的`Route`。
+- `Route`：表示一个根据`Location`对象生成的一个当前路径信息对象，其已做好了初步计算，计算好了当前`Location`匹配的`RouteRecord`等等信息，具体体现在我们在`Vue`实例中访问的`this.$route`，它表示的就是当前的`Route`。
 
 ## 后续
 
