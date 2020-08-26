@@ -69,3 +69,5 @@ class History {
 ```js
 this.current = START;
 ```
+
+现在让我们来[仔细了解下一个`Route`](../../../Route-当前路径对象/README.md)具有什么，是根据什么生成的。

@@ -7,7 +7,7 @@ import {
 
 const trailingSlashRE = /\/?$/
 
-// 创建一个路由路径记录对象
+// 创建一个Route路由路径记录对象
 export function createRoute(
 
     // 当前匹配到的Record对象，即我们创建在matcher中的
@@ -104,7 +104,7 @@ function getFullPath({
     const stringify = _stringifyQuery || stringifyQuery;
 
     // 返回完整的URL路径
-    return (path || '/') + stringify(query) + hash
+    return (path || '/') + stringify(query) + hash;
 }
 
 // 对比跳转前Route和即将跳转Route是否相同
