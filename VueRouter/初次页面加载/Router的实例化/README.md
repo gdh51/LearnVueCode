@@ -148,5 +148,5 @@ this.matcher = createMatcher(options.routes || [], this);
 this.history = new HTML5History(this, options.base);
 ```
 
-- [生成`RouteRecord`表](./RouteRecord/README.md)
-- [决定和使用某个路由模式](./路由模式/README.md)(`mode`)
+- [生成`RouteRecord`表](../../RouteRecord/README.md)
+- [决定和使用某个路由模式](../../路由模式/README.md)(`mode`)

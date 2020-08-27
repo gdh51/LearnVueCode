@@ -76,4 +76,4 @@ function createRoute(
 
 >在这其中，有关于[`getFullPath()`](./工具方法/README.md#getfullpath返回完整的url路径)、[`formatMatch`](./工具方法/README.md#formatmatch返回匹配的routerecord)两个方法，请点击查看其具体解析。
 
-现在我们已经了解了`START Route`的真面目了，现在我们继续回到[初始化`base history`](../Router的实例化/路由模式/base基础模式/README.md#thiscurrent当前route)中。
+现在我们已经了解了`START Route`的真面目了，现在我们继续回到[初始化`base history`](../Router的实例化/路由模式/base基础模式/README.md#阅读完毕返回锚点)中。

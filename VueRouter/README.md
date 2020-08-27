@@ -10,18 +10,18 @@
 
 那么按学习路线分，目录结构就清晰了：
 
-1. [`Router`的初始化注入](./Router的初始化注入/README.md)(`Vue.use(VueRouter)`)
-2. [`Router`的实例化](./Router的实例化/README.md)
-   1. `RouteRecord`初始化
-   2. 路由模式加载
+1. [`Router`的初始化注入](./初次页面加载/Router的初始化注入/README.md)(`Vue.use(VueRouter)`)
+2. [`Router`的实例化](./初次页面加载/Router的实例化/README.md)
+   1. [`RouteRecord`初始化](./RouteRecord/README.md)
+   2. [路由模式加载](./路由模式/README.md)
 3. 生命周期：
-   1. `Router`实例初始化加载
-   2. `Router`实例更新加载
+   1. [`Vue`实例化，`Router`实例初始化加载](./初次页面加载/Vue实例化/README.md)
+   2. `Route`更新，`Router`实例更新加载
 4. `Router`附带的组件
    1. `router-link`组件
    2. `router-view`组件
 
-## 文中部分变量含义声明
+## 文中部分变量含义声明(非常重要)
 
 在整个学习过程中，涉及到一些变量，为了区分其含义，这里用英文名称指代(其实也在官网的`Class`名称)
 

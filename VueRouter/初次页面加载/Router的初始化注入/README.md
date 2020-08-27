@@ -32,6 +32,7 @@ function install(Vue) {
         },
     });
 
+    // 代理挂在router的Vue实例的_route属性
     Object.defineProperty(Vue.prototype, '$route', {
         get() {
             // 返回当前路由路径记录对象(Route)
