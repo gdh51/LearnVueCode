@@ -119,6 +119,7 @@ export default class VueRouter {
     }
 
     match(
+        // 未处理的路径信息对象
         raw: RawLocation,
         current ? : Route,
         redirectedFrom ? : Location

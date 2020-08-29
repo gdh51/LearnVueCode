@@ -78,10 +78,10 @@ export function normalizeLocation(
         // 不为具名路由时，则从匹配的路由中寻找
         } else if (current.matched.length) {
 
-            // 从最后一个路径地址开始匹配
+            // 从最后一个RouteRecord(即上一个的全路径匹配Record)开始匹配
             const rawPath = current.matched[current.matched.length - 1].path;
 
-            // 将路径补全
+            // 将路径补全,按相对路径的标准来(仅在path定义了动态参数有效)
             next.path = fillParams(rawPath, params, `path ${current.path}`)
         } else if (process.env.NODE_ENV !== 'production') {
             warn(false, `relative params navigation requires a current route.`)
@@ -91,7 +91,7 @@ export function normalizeLocation(
 
     // 进入此处说明仅有path或无path且无params
 
-    // 提出path中各个参数的信息(hash/query/path)
+    // 提出即将跳转path中各个参数的信息(hash/query/path)
     const parsedPath = parsePath(next.path || '');
 
     // 获取跳转前路径的字符串

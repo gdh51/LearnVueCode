@@ -142,4 +142,33 @@ history.listen(route => {
 });
 ```
 
-这里先给大家看一下，该段代码会在`Route`更新完毕后调用，但是在第一次`Route`加载(初始化)不会调用。
+这里先给大家看一下，该段代码会在`Route`更新完毕后调用，但是在第一次`Route`加载(初始化)不会调用，等会我们会看看该函数具体的作用，但是在此之前，先看看第一个`Route`的切换。
+
+### 第一个Route的加载
+
+首先，所有`Route`的更新和加载都是通过`history.transitionTo()`方法进行的，从该方法开始，具体的加载过程都具有普遍适用性，除非其为某个`Class`的独特的接口。
+
+```js
+// 获取路由模式对象
+const history = this.history
+
+// 在各种模式下，加载路由，更新Route
+if (history instanceof HTML5History) {
+    history.transitionTo(history.getCurrentLocation())
+} else if (history instanceof HashHistory) {
+    const setupHashListener = () => {
+        history.setupListeners()
+    }
+    history.transitionTo(
+
+        // 获取当前完整的路径(包括查询字符串等等)
+        history.getCurrentLocation(),
+        setupHashListener,
+        setupHashListener
+    )
+}
+```
+
+按代码执行顺序，我们优先学习[`history.getCurrentLocation()`](../../../路由模式/base基础模式/实例方法/README.md#获取完整路径信息historygetcurrentlocation)的具体含义。由于不同路由模式下，路由路径所处于的`URL`位置是不一样的，所以该方法是其子类的一个独立接口，这里我们只学习`h5 history`模式下的该接口。
+
+在学习完毕后，那么其通过[`history.transitionTo()`](../../../路由模式/base基础模式/实例方法/README.md)来进行一个`Route`加载的启动过渡，该方法实际也为`base history`的一个实例方法。

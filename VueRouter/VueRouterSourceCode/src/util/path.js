@@ -42,6 +42,8 @@ export function resolvePath(
     // 解析相对路径字符串，移除首位/(这个没用，如果首位为/则以作为绝对路径返回了)
     // 分割路径参数
     const segments = relative.replace(/^\//, '').split('/');
+
+    // 处理../这种相对路径
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
 
