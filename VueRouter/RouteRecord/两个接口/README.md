@@ -118,7 +118,7 @@ const location = normalizeLocation(raw, currentRoute, false, router);
 
 #### 具有name的Location对象
 
-在具有`name`的`Location`的情况下比较暴力，直接取对应的剧名`RouteRecord`就行，之后在补全`path`、`params`等参数：
+在具有`name`的`Location`的情况下比较暴力，直接取对应的剧名`RouteRecord`就行，之后通过`params`补全`path`上的动态参数：
 
 ```js
 if (name) {
@@ -134,6 +134,8 @@ if (name) {
 
     // 返回动态参数的名称组成的数组
     const paramNames = record.regex.keys
+
+        // 过滤掉可选的动态参数
         .filter(key => !key.optional)
         .map(key => key.name)
 
@@ -157,7 +159,7 @@ if (name) {
         }
     }
 
-    // 将参数与当前路径合并为完成的路径
+    // 填充动态参数至RouteRecord.path
     location.path = fillParams(record.path, location.params, `named route "${name}"`)
 
     // 创建新的路径对象返回
@@ -166,3 +168,171 @@ if (name) {
 ```
 
 #### 具有path的Location对象
+
+对于`path`的情况，比较简单，就是在`pathList`中按`RouteConfig`定义的优先级顺序一个一个的对比，知道完全匹配这个`path`，匹配则创建`Route`并返回，不匹配则返回空`Route`。
+
+```js
+if (location.path) {
+
+    location.params = {};
+
+    // 遍历路径列表查找于路径匹配的RouteRecord
+    for (let i = 0; i < pathList.length; i++) {
+        const path = pathList[i];
+        const record = pathMap[path];
+
+        // 查询匹配到的路由，将path中的动态参数填充到params中
+        if (matchRoute(record.regex, location.path, location.params)) {
+
+            // 为即将跳转路径填充params参数
+            return _createRoute(record, location, redirectedFrom)
+        }
+    }
+}
+```
+
+其中[`matchRoute()`](../工具方法/README.md#查找与path匹配的routerecordmatchroute)的含义实际为看`RouteRecord`的`path`正则表达式是否匹配当前要跳转的`Location`对象的`path`，如果匹配则提取`RouteRecord`的动态参数作为键值对，存放入`Location.params`中。
+
+____
+那么无论是哪种方式，最终都是通过`_createRoute()`来创建`Route`。而`_createRoute()`是对`createRoute()`的封装。我们知道`createRoute()`用于创建`Route`，而`_createRoute()`主要是对重定向、别名路径跳转这些特殊跳转的处理。
+
+```js
+function _createRoute(
+
+    // 当前匹配到(即将要跳转)的RouteRecord
+    record: ? RouteRecord,
+
+    // 当前(即将要跳转)的路径信息对象
+    location : Location,
+
+    // 重定向的地址的路径信息对象
+    redirectedFrom ? : Location
+): Route {
+
+    // 如果该路径定义有重定向，则进行重定向
+    if (record && record.redirect) {
+        return redirect(record, redirectedFrom || location)
+    }
+
+    // 如果RouteRecord存在别名，优先进行别名路径查询
+    if (record && record.matchAs) {
+        return alias(record, location, record.matchAs)
+    }
+
+    // 其余情况则创建一个新的路径信息对象返回
+    return createRoute(record, location, redirectedFrom, router)
+}
+```
+
+## 重定向RouteRecord——redirect()
+
+当我们遇到一个重定向的`RouteRecord`时，则会在其基础之上进行重定向，具体的重定向行为看其`redirect`字段的返回值。同样有两种情况：
+
+- 返回的`Raw Location`对象具有`name`字段
+- 返回的`Raw Location`对象具有`path`字段
+
+在`name`字段的情况下，拥有绝对的优先级，直接取对于`name`下的`RouteRecord`重新进行`match()`流程；对于`path`情况，重定向的`path`可以为相对路径，它会基于重定向前的`path`进行跳转(相对路径行为为`append`)。
+
+```js
+function redirect(
+
+    // 即将要跳转的RouteRecord
+    record: RouteRecord,
+
+    // 即将要跳转的Location
+    location: Location
+): Route {
+
+    // 获取重定向地址
+    const originalRedirect = record.redirect
+
+    // 如果定义的重定向地址为函数，则创建一个即将跳转的Route传入后调用
+    let redirect = typeof originalRedirect === 'function' ?
+        originalRedirect(createRoute(record, location, null, router)) :
+        originalRedirect
+
+    // 重新获取重定向后的Raw Location对象
+    if (typeof redirect === 'string') {
+        redirect = {
+            path: redirect
+        }
+    }
+
+    // 返回的Raw Location对象非对象或字符串时，报错
+    if (!redirect || typeof redirect !== 'object') {
+        if (process.env.NODE_ENV !== 'production') {
+            warn(
+                false, `invalid redirect option: ${JSON.stringify(redirect)}`
+            )
+        }
+        return _createRoute(null, location)
+    }
+
+    // 获取重定向的Raw Location对象
+    const re: Object = redirect;
+    const {
+        name,
+        path
+    } = re;
+
+    // 为其填充query/hash/params等参数
+    let {
+        query,
+        hash,
+        params
+    } = location;
+    query = re.hasOwnProperty('query') ? re.query : query;
+    hash = re.hasOwnProperty('hash') ? re.hash : hash;
+    params = re.hasOwnProperty('params') ? re.params : params;
+
+    // 如果返回的Raw Location对象为命名路由
+    if (name) {
+        // resolved named direct
+        const targetRecord = nameMap[name]
+        if (process.env.NODE_ENV !== 'production') {
+            assert(targetRecord, `redirect failed: named route "${name}" not found.`)
+        }
+
+        // 直接创建标准化的Location对象重新走match流程
+        return match({
+            _normalized: true,
+            name,
+            query,
+            hash,
+            params
+        }, undefined, location);
+
+    // 如果重定向Raw Location为path类型
+    } else if (path) {
+
+        // 1. resolve relative redirect
+        // 1. 重定向的path可以以重定向前path进行相对跳转
+        const rawPath = resolveRecordPath(path, record);
+
+        // 2. resolve params
+        // 2. 填充动态参值
+        const resolvedPath = fillParams(rawPath, params, `redirect route with path "${rawPath}"`)
+
+        // 3. rematch with existing query and hash
+        // 3. 重新调用match匹配重定向后的RouteRecord
+        return match({
+            _normalized: true,
+            path: resolvedPath,
+            query,
+            hash
+        }, undefined, location);
+
+    // 剩余情况就报错
+    } else {
+        if (process.env.NODE_ENV !== 'production') {
+            warn(false, `invalid redirect option: ${JSON.stringify(redirect)}`)
+        }
+        return _createRoute(null, location)
+    }
+}
+```
+
+在它们的重新`match()`过程，传入的`Loaction`对象为已标准化的对象，可以直接进行`name/path`的匹配。
+
+## 别名跳转——alias()
+

@@ -102,7 +102,7 @@ export function createMatcher(
                 }
             }
 
-            // 将参数与当前路径合并为完成的路径
+            // 填充动态参数至RouteRecord.path
             location.path = fillParams(record.path, location.params, `named route "${name}"`)
 
             // 创建新的路径对象返回
@@ -118,7 +118,7 @@ export function createMatcher(
                 const path = pathList[i];
                 const record = pathMap[path];
 
-                // 查询匹配到的路由，并填充其路径中的动态参数
+                // 查询匹配到的路由，将path中的动态参数填充到params中
                 if (matchRoute(record.regex, location.path, location.params)) {
 
                     // 为即将跳转路径填充params参数
@@ -133,20 +133,30 @@ export function createMatcher(
     }
 
     function redirect(
+
+        // 即将要跳转的RouteRecord
         record: RouteRecord,
+
+        // 即将要跳转的Location
         location: Location
     ): Route {
+
+        // 获取重定向地址
         const originalRedirect = record.redirect
+
+        // 如果定义的重定向地址为函数，则创建一个即将跳转的Route传入后调用
         let redirect = typeof originalRedirect === 'function' ?
             originalRedirect(createRoute(record, location, null, router)) :
             originalRedirect
 
+        // 重新获取重定向后的Raw Location对象
         if (typeof redirect === 'string') {
             redirect = {
                 path: redirect
             }
         }
 
+        // 返回的Raw Location对象非对象或字符串时，报错
         if (!redirect || typeof redirect !== 'object') {
             if (process.env.NODE_ENV !== 'production') {
                 warn(
@@ -156,45 +166,61 @@ export function createMatcher(
             return _createRoute(null, location)
         }
 
-        const re: Object = redirect
+        // 获取重定向的Raw Location对象
+        const re: Object = redirect;
         const {
             name,
             path
-        } = re
+        } = re;
+
+        // 为其填充query/hash/params等参数
         let {
             query,
             hash,
             params
-        } = location
-        query = re.hasOwnProperty('query') ? re.query : query
-        hash = re.hasOwnProperty('hash') ? re.hash : hash
-        params = re.hasOwnProperty('params') ? re.params : params
+        } = location;
+        query = re.hasOwnProperty('query') ? re.query : query;
+        hash = re.hasOwnProperty('hash') ? re.hash : hash;
+        params = re.hasOwnProperty('params') ? re.params : params;
 
+        // 如果返回的Raw Location对象为命名路由
         if (name) {
             // resolved named direct
             const targetRecord = nameMap[name]
             if (process.env.NODE_ENV !== 'production') {
                 assert(targetRecord, `redirect failed: named route "${name}" not found.`)
             }
+
+            // 直接创建标准化的Location对象重新走match流程
             return match({
                 _normalized: true,
                 name,
                 query,
                 hash,
                 params
-            }, undefined, location)
+            }, undefined, location);
+
+        // 如果重定向Raw Location为path类型
         } else if (path) {
+
             // 1. resolve relative redirect
-            const rawPath = resolveRecordPath(path, record)
+            // 1. 重定向的path可以以重定向前path进行相对跳转
+            const rawPath = resolveRecordPath(path, record);
+
             // 2. resolve params
+            // 2. 填充动态参值
             const resolvedPath = fillParams(rawPath, params, `redirect route with path "${rawPath}"`)
+
             // 3. rematch with existing query and hash
+            // 3. 重新调用match匹配重定向后的RouteRecord
             return match({
                 _normalized: true,
                 path: resolvedPath,
                 query,
                 hash
-            }, undefined, location)
+            }, undefined, location);
+
+        // 剩余情况就报错
         } else {
             if (process.env.NODE_ENV !== 'production') {
                 warn(false, `invalid redirect option: ${JSON.stringify(redirect)}`)
@@ -204,10 +230,18 @@ export function createMatcher(
     }
 
     function alias(
+
+        // 别名跳转前的RouteRecord（即别名跳转的RouteRecord）
         record: RouteRecord,
+
+        // 别名跳转奇拿的Location对象
         location: Location,
+
+        // 别名path
         matchAs: string
     ): Route {
+
+        // 填充别名path中的动态参数
         const aliasedPath = fillParams(matchAs, location.params, `aliased route with path "${matchAs}"`)
         const aliasedMatch = match({
             _normalized: true,
@@ -234,12 +268,12 @@ export function createMatcher(
         redirectedFrom ? : Location
     ): Route {
 
-        // 优先进行重定向
+        // 如果该路径定义有重定向，则进行重定向
         if (record && record.redirect) {
             return redirect(record, redirectedFrom || location)
         }
 
-        // 其次进行别名跳转
+        // 如果RouteRecord存在别名，优先进行别名路径查询
         if (record && record.matchAs) {
             return alias(record, location, record.matchAs)
         }
@@ -282,8 +316,12 @@ function matchRoute(
     for (let i = 1, len = m.length; i < len; ++i) {
 
         // 获取动态参数的key名
-        const key = regex.keys[i - 1]
+        const key = regex.keys[i - 1];
+
+        // 获取对于动态参数的值
         const val = typeof m[i] === 'string' ? decodeURIComponent(m[i]) : m[i]
+
+        // 将该参数值赋值上去
         if (key) {
             // Fix #1994: using * with props: true generates a param named 0
             params[key.name || 'pathMatch'] = val
@@ -293,6 +331,8 @@ function matchRoute(
     return true
 }
 
+// 将重定向的path和重定向前的RouteRecord的上一级path来进行合并
+// 即我们可以在重定向前的path上进行相对跳转(append行为)
 function resolveRecordPath(path: string, record: RouteRecord): string {
     return resolvePath(path, record.parent ? record.parent.path : '/', true)
 }

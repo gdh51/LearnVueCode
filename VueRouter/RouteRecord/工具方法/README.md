@@ -541,3 +541,52 @@ function resolveQuery(
     return parsedQuery
 }
 ```
+
+## 查找与path匹配的RouteRecord——matchRoute()
+
+该方法用于查找与`path`匹配的`RouteRecord`，查找完毕后会将`path`中的动态参数填充至`Location.params`中。
+
+```js
+function matchRoute(
+
+    // RouteRecord的path的RegExp表达式
+    regex: RouteRegExp,
+
+    // 跳转的路径
+    path: string,
+
+    // 跳转的路径参数
+    params: Object
+): boolean {
+
+    // 是否匹配当前路径？
+    const m = path.match(regex);
+
+    // 不匹配时，直接返回false
+    if (!m) {
+        return false;
+
+    // 匹配时，如果没有其他路径参数，则直接返回true
+    } else if (!params) {
+        return true
+    }
+
+    // 如果具有其他路径参数时，填充路径中动态参数值
+    for (let i = 1, len = m.length; i < len; ++i) {
+
+        // 获取动态参数的key名
+        const key = regex.keys[i - 1];
+
+        // 获取对于动态参数的值
+        const val = typeof m[i] === 'string' ? decodeURIComponent(m[i]) : m[i]
+
+        // 将该参数值赋值上去
+        if (key) {
+            // Fix #1994: using * with props: true generates a param named 0
+            params[key.name || 'pathMatch'] = val
+        }
+    }
+
+    return true
+}
+```
