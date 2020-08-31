@@ -224,6 +224,13 @@ function _createRoute(
 }
 ```
 
+普通的`RouteRecord`就会直接创建`Route`来结束掉整个创建流程。而如果当前`RouteRecord`存在重定向属性，或为别名创建的`RouteRecord`，那么会调用[`redirect()`](#重定向routerecordredirect)与[`alias()`](#别名跳转alias)方法来重定向和生成别名`Route`，这里就不细说了，具体自行查看。
+
+>如果你忘记[`createRoute()`](../../Route-当前路径对象/README.md#创建route的流程)里面有什么了，可以在看看。
+
+____
+创建完`Route`后，让我们继续回到[提交`Route`](../../路由模式/base基础模式/实例方法/README.md#提交route进行切换historyconfirmtransition)。
+
 ## 重定向RouteRecord——redirect()
 
 当我们遇到一个重定向的`RouteRecord`时，则会在其基础之上进行重定向，具体的重定向行为看其`redirect`字段的返回值。同样有两种情况：
@@ -336,3 +343,45 @@ function redirect(
 
 ## 别名跳转——alias()
 
+在我们要跳转的`RouteRecord`为`alias`别名生成的`RouteRecord`，我们就要通过该方法来进行别名跳转。之后其会将别名`RouteRecord`重定向为真实`RouteRecord`，并结合重定向`Location`对象来生成最终的`Route`。如果别名的真实`RouteRecord`存在重定向等配置，那么也会正常重定向。
+
+```js
+function alias(
+
+    // 别名跳转的RouteRecord（即别名跳转的RouteRecord）
+    record: RouteRecord,
+
+    // 别名跳转的Location对象
+    location: Location,
+
+    // 别名对应的真实路径
+    matchAs: string
+): Route {
+
+    // 填充真实path中的动态参数
+    const aliasedPath = fillParams(matchAs, location.params, `aliased route with path "${matchAs}"`)
+
+    // 重新走match匹配，获取真实的Route
+    const aliasedMatch = match({
+        _normalized: true,
+        path: aliasedPath
+    });
+
+    // 如果获取到了Route
+    if (aliasedMatch) {
+
+        // 获取其匹配的RouteRecords
+        const matched = aliasedMatch.matched;
+
+        // 取精准匹配的那个RouteRecord
+        const aliasedRecord = matched[matched.length - 1];
+
+        // 创建新的Route，利用真实的RouteRecord和别名的Location
+        location.params = aliasedMatch.params;
+        return _createRoute(aliasedRecord, location);
+    }
+
+    // 未匹配时，生成空的Record
+    return _createRoute(null, location)
+}
+```

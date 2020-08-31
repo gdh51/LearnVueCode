@@ -231,28 +231,40 @@ export function createMatcher(
 
     function alias(
 
-        // 别名跳转前的RouteRecord（即别名跳转的RouteRecord）
+        // 别名跳转的RouteRecord（即别名跳转的RouteRecord）
         record: RouteRecord,
 
-        // 别名跳转奇拿的Location对象
+        // 别名跳转的Location对象
         location: Location,
 
-        // 别名path
+        // 别名对应的真实路径
         matchAs: string
     ): Route {
 
-        // 填充别名path中的动态参数
+        // 填充真实path中的动态参数
         const aliasedPath = fillParams(matchAs, location.params, `aliased route with path "${matchAs}"`)
+
+        // 重新走match匹配，获取真实的Route
         const aliasedMatch = match({
             _normalized: true,
             path: aliasedPath
-        })
+        });
+
+        // 如果获取到了Route
         if (aliasedMatch) {
-            const matched = aliasedMatch.matched
-            const aliasedRecord = matched[matched.length - 1]
-            location.params = aliasedMatch.params
-            return _createRoute(aliasedRecord, location)
+
+            // 获取其匹配的RouteRecords
+            const matched = aliasedMatch.matched;
+
+            // 取精准匹配的那个RouteRecord
+            const aliasedRecord = matched[matched.length - 1];
+
+            // 创建新的Route，利用真实的RouteRecord和别名的Location
+            location.params = aliasedMatch.params;
+            return _createRoute(aliasedRecord, location);
         }
+
+        // 未匹配时，生成空的Record
         return _createRoute(null, location)
     }
 
