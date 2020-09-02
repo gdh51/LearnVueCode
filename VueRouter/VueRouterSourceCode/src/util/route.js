@@ -110,11 +110,11 @@ function getFullPath({
 // 对比跳转前Route和即将跳转Route是否相同
 export function isSameRoute(a: Route, b: ? Route): boolean {
 
-    // 为初始化路由则直接返回true
+    // 为初始化Route则直接返回true
     if (b === START) {
         return a === b;
 
-    // 无路由时直接返回false
+    // 无Route时直接返回false
     } else if (!b) {
         return false
 
@@ -147,14 +147,19 @@ export function isSameRoute(a: Route, b: ? Route): boolean {
     }
 }
 
+
 function isObjectEqual(a = {}, b = {}): boolean {
     // handle null value #1566
     if (!a || !b) return a === b
+
+    // 首先确保字段数目一样，不一样就说明不等，没有进一步比的可比性
     const aKeys = Object.keys(a)
     const bKeys = Object.keys(b)
     if (aKeys.length !== bKeys.length) {
         return false
     }
+
+    // 遍历全部字段的值，只要有一个不等则不等
     return aKeys.every(key => {
         const aVal = a[key]
         const bVal = b[key]

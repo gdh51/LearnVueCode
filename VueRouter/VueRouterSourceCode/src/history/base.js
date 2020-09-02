@@ -184,7 +184,7 @@ export class History {
             isSameRoute(route, current) &&
 
             // in the case the route map has been dynamically appended to
-            // 如果匹配的组件也相同，那么说明route是动态添加的
+            // 防止动态的添加RouteRecord
             route.matched.length === current.matched.length
         ) {
 

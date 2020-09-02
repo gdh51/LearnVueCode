@@ -272,3 +272,35 @@ confirmTransition(route: Route, onComplete: Function, onAbort ? : Function) {
     })
 }
 ```
+
+总结：太长了，不是人看的。
+
+好的言归正传，其实该方法按流程大致可以分为：
+
+1. 确认是否需要进行新的`Route`加载(对比旧的)
+2. 提取`Route`正式确认前的`hooks`，依次调度这些`hooks`
+3. 提取`Route`确认后的`hooks`并调度
+
+那么就按这些流程进行学习：
+
+### 确认是否需要进行新的`Route`加载
+
+并非生成了新的`Route`就会进行路由`Route`的更新，首先我们要确定跳转前的`Route`和即将跳转的`Route`，只要它们转化的完整`URL`(包括`hash/query`)，存在丝毫的不同，那么我们就认为其为一个不同的`Route`。
+
+```js
+// 跳转前后的路径信息对象是否相同？(即转化为URL后全等)
+if (
+    isSameRoute(route, current) &&
+
+    // in the case the route map has been dynamically appended to
+    // 防止动态的添加RouteRecord
+    route.matched.length === current.matched.length
+) {
+
+    // 根据当前URL情况看是否加载URL
+    this.ensureURL();
+    return abort(new NavigationDuplicated(route))
+}
+```
+
+两个`Route`的对比是通过`isSameRoute()`来实现的
