@@ -303,4 +303,4 @@ if (
 }
 ```
 
-两个`Route`的对比是通过`isSameRoute()`来实现的
+两个`Route`的对比是通过[`isSameRoute()`](../工具方法/REAMDE.md#两个route是否完全相同issameroute)来实现的，具体请点击链接查看。
