@@ -3,6 +3,7 @@
 以下为`H5 History`模式下的实例方法，其实例方法主要是承接`Base`模式的阙漏处，对`H5`模式下一些独特的特性进行针对性的处理。
 
 - [获取完整路径信息——history.getCurrentLocation()](#获取完整路径信息historygetcurrentlocation)
+- [切换浏览器URL——history.ensureURL()](#切换浏览器urlhistoryensureurl)
 
 ## 获取完整路径信息——history.getCurrentLocation()
 
@@ -30,3 +31,24 @@ function getLocation(base: string): string {
     return (path || '/') + window.location.search + window.location.hash
 }
 ```
+
+## 切换浏览器URL——history.ensureURL()
+
+该方法会对比前后的完整`path`，在变更后就会调用`h5 api`进行新的`URL`加载。
+
+```js
+history.ensureURL(push ? : boolean) {
+
+    // 确认当前路径和当前Route中路径(包含hash/query)是否不相同
+    if (getLocation(this.base) !== this.current.fullPath) {
+
+        // 返回完整路径进行浏览器地址更新
+        const current = cleanPath(this.base + this.current.fullPath);
+
+        // 正式更新浏览器地址
+        push ? pushState(current) : replaceState(current)
+    }
+}
+```
+
+其中`pushState()/replaceState()`为对原`h5 api`进行封装，进行了滚动条相关的处理。

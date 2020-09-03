@@ -304,3 +304,67 @@ if (
 ```
 
 两个`Route`的对比是通过[`isSameRoute()`](../工具方法/REAMDE.md#两个route是否完全相同issameroute)来实现的，具体请点击链接查看。
+
+除此之外，还要保证在这前后，该`Route`下的`RouteRecord`未变更，如果变更了，就说明当前路由的组件等信息又更新了。
+
+#### Route无变化
+
+当上面的条件满足时，就表示完整的`URL`路径无变化，此时还会通过[`.ensureURL()`](../../history模式/实例方法/README.md#切换浏览器urlhistoryensureurl)方法进行二次`URL`路径确认，如果没有变更则不做任何处理；变更了则调用`h5 api`进行浏览器`URL`切换。
+
+当然这里就不会做任何处理，最后调用`confirmTransition()`闭包内的`abort()`方法停止新`Route`的提交。
+
+### 提取Route正式确认前的hooks并调度
+
+首先，其对比出前后`Route`中匹配的`RouteRecord`的差值，对比出那些即将移除和新增的`RouteRecord`，计算出它们其中的组件，哪些需要新加载，哪些需要销毁，哪些需要更新：
+
+```js
+// 根据当前Route与之前的Route，计算出要销毁的组件与新创建的组件
+const {
+    updated,
+    deactivated,
+    activated
+} = resolveQueue(
+    this.current.matched,
+    route.matched
+);
+```
+
+其中`resolveQueue()`方法，就是不断的对比两者。由于我们知道`Route`中`RouteRecord`的顺序是从父到子的，那么从父组件开始对比，只要同一位置的两者有差异，则说明从当前位置开始的`RouteRecord`发生了变化。此时，取旧`Route`后的`RouteRecord`，它们需要销毁；新`Route`后的`RouteRecord`，它们需要新生实例；而之前的只需要更新即可：
+
+>这里为什么从父组件开始等位对比就可以得出，原因是因为`RouteRecord`是一个树状结构，尽早的从对比树根就能知道下分支的变化。
+
+```js
+// 计算上一个Route与下一个Route产生的变化组件
+function resolveQueue(
+    current: Array < RouteRecord > ,
+    next: Array < RouteRecord >
+): {
+    updated: Array < RouteRecord > ,
+    activated: Array < RouteRecord > ,
+    deactivated: Array < RouteRecord >
+} {
+    let i;
+
+    // 取两者中组件数量最多的进行遍历
+    const max = Math.max(current.length, next.length);
+
+    // 从父级组件开始，依次对比，当发现第一个不同的组件时，
+    // 则说明从当前组件开始，组件发生了更新
+    for (i = 0; i < max; i++) {
+        if (current[i] !== next[i]) {
+            break
+        }
+    }
+    return {
+
+        // 未变动的组件，但是需要提醒更新的组件
+        updated: next.slice(0, i),
+
+        // 新激活的组件
+        activated: next.slice(i),
+
+        // 失活的组件
+        deactivated: current.slice(i)
+    }
+}
+```

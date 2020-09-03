@@ -99,7 +99,7 @@ export class HTML5History extends History {
 
     ensureURL(push ? : boolean) {
 
-        // 确认当前路径和当前Route中路径是否不相同
+        // 确认当前路径和当前Route中路径(包含hash/query)是否不相同
         if (getLocation(this.base) !== this.current.fullPath) {
 
             // 返回完整路径进行浏览器地址更新

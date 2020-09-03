@@ -5,6 +5,8 @@
 **目录：**
 
 - [normalizeBase()——格式化基础路由路径](#normalizebase%e6%a0%bc%e5%bc%8f%e5%8c%96%e5%9f%ba%e7%a1%80%e8%b7%af%e7%94%b1%e8%b7%af%e5%be%84)
+- [两个Route是否完全相同——isSameRoute()](#两个route是否完全相同issameroute)
+- [对象的字段与值完全匹配——isObjectEqual](#对象的字段与值完全匹配isobjectequal)
 
 ## normalizeBase()——格式化基础路由路径
 
