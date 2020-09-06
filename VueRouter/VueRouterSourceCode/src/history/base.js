@@ -404,7 +404,6 @@ function resolveQueue(
     }
 }
 
-//
 function extractGuards(
 
     // 路由记录对象的数组
@@ -413,10 +412,10 @@ function extractGuards(
     // 路由导航守卫名称
     name: string,
 
-    //
+    // 为hooks绑定上下文
     bind: Function,
 
-    // 是否反顺序出发hook函数
+    // 是否反顺序出发hook函数，这里要对于组件的创建销毁顺序
     reverse ? : boolean
 ): Array < ? Function > {
 

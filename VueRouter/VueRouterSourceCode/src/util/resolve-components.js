@@ -34,6 +34,8 @@ export function resolveAsyncComponents(matched: Array < RouteRecord > ): Functio
                 pending++
 
                 const resolve = once(resolvedDef => {
+
+                    // import引入
                     if (isESModule(resolvedDef)) {
                         resolvedDef = resolvedDef.default
                     }

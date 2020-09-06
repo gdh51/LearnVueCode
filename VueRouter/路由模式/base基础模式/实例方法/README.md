@@ -331,7 +331,7 @@ const {
 
 其中`resolveQueue()`方法，就是不断的对比两者。由于我们知道`Route`中`RouteRecord`的顺序是从父到子的，那么从父组件开始对比，只要同一位置的两者有差异，则说明从当前位置开始的`RouteRecord`发生了变化。此时，取旧`Route`后的`RouteRecord`，它们需要销毁；新`Route`后的`RouteRecord`，它们需要新生实例；而之前的只需要更新即可：
 
->这里为什么从父组件开始等位对比就可以得出，原因是因为`RouteRecord`是一个树状结构，尽早的从对比树根就能知道下分支的变化。
+>这里为什么从父组件开始等位对比就可以得出，原因是因为`RouteRecord`是一个树状结构(对于渲染`router-view`组件)，尽早的从对比树根就能知道下分支的变化。
 
 ```js
 // 计算上一个Route与下一个Route产生的变化组件
@@ -366,5 +366,194 @@ function resolveQueue(
         // 失活的组件
         deactivated: current.slice(i)
     }
+}
+```
+
+之后就是提取这些`RouteRecords`的路由守卫：
+
+```js
+const queue: Array < ? NavigationGuard > = [].concat(
+
+    // in-component leave guards
+    // 获取要离开的路由组件的beforeRouteLeave函数（父->子顺序）
+    extractLeaveGuards(deactivated),
+
+    // global before hooks
+    // 获取全局的beforeEach导航守卫
+    this.router.beforeHooks,
+
+    // in-component update hooks
+    // 获取未变更组件的beforeRouteUpdate函数(子->父)
+    extractUpdateHooks(updated),
+
+    // in-config enter guards
+    // 获取新增的RouteRecord中的beforeEnter函数
+    activated.map(m => m.beforeEnter),
+
+    // async components
+    // 获取加载异步路由(或普通路由的函数)
+    resolveAsyncComponents(activated)
+);
+```
+
+当前提取的路由守卫只为路由确认前的，它们会在`Route`进行确认时，按序调用，具体每个函数的提取在这里[查看](../hooks的提取/README.md)。
+
+#### Route确认前hooks的调用
+
+那么随机就是调用刚刚获取的全部`hooks`，通过`runQueue()`这个函数：
+
+```js
+// 将当前(将要跳转的)Route设置为等待处理
+this.pending = route;
+
+runQueue(queue, iterator, () => {
+
+    // 后进回调函数，待路由提交，组件实例创建后调用
+    const postEnterCbs = [];
+
+    // 检测当前Route是否变更为即将跳转的路由
+    const isValid = () => this.current === route
+
+    // wait until async components are resolved before
+    // extracting in-component enter guards
+    // 等待异步组件加载完毕，再将beforeRouteEnter和beforeResolve
+    // 作为hooks加入一个单独的执行队列中
+    const enterGuards = extractEnterGuards(activated, postEnterCbs, isValid);
+    const queue = enterGuards.concat(this.router.resolveHooks);
+
+    // Route正式确定要更新后的hooks触发
+    runQueue(...)
+})
+```
+
+该函数接受三个参数，**第一个为要调用的队列，第二个为每次调用时执行的函数，第三个为全部执行完毕后执行的成功回调**。该方法主要是确保异步执行的顺序：
+
+```js
+function runQueue(queue: Array < ? NavigationGuard > , fn : Function, cb: Function) {
+    const step = index => {
+
+        // 当下标超过或等于队列时，则说明更新完毕，调用回调函数
+        if (index >= queue.length) {
+            cb();
+
+        // 未执行完毕时，则依次调用
+        } else {
+            if (queue[index]) {
+                fn(queue[index], () => {
+                    step(index + 1)
+                });
+
+            // 不存在时跳过
+            } else {
+                step(index + 1)
+            }
+        }
+    }
+    step(0)
+}
+```
+
+对该函数解构，可以看出该函数的运行逻辑：
+
+1. 定义一个`step()`函数，该函数会在`i`未超过队列长度时，反复执行。
+2. 执行全局的迭代函数，传入当前下标`i`的队列中的`hooks`与`step()`函数，必须要迭代器在合适的时机调用`step()`函数菜会继续向下执行。
+3. 重复`2`过程，知道`i`超过或等于队列长度，此时执行`4`。
+4. 调用传入的完成回调`cb()`。
+
+那么根据以上逻辑，就是一个反复执行`iterator()`函数的过程，该函数主要是重写了`hook`函数，来统一处理`hooks`们的行为，因为我们可以在这些路由守卫的执行过程中随时重定向，会终止路由的继续跳转等等：
+
+```js
+// 重写hook函数，允许用户中断路由变更
+const iterator = (hook: NavigationGuard, next) => {
+
+    // 如果又切换了路由则直接终止
+    if (this.pending !== route) {
+        return abort()
+    }
+    try {
+
+        // 为每个hook分别传入to和from路由信息，以及一个next函数
+        hook(route, current, (to: any) => {
+
+            // 如果传入false则停止路由跳转，并跳转至上一个URL
+            if (to === false || isError(to)) {
+
+                // next(false) -> abort navigation, ensure current URL
+                this.ensureURL(true);
+                abort(to);
+
+            // 重定向到其他URL
+            } else if (
+                typeof to === 'string' ||
+                (typeof to === 'object' &&
+                    (typeof to.path === 'string' || typeof to.name === 'string'))
+            ) {
+                // next('/') or next({ path: '/' }) -> redirect
+                abort()
+                if (typeof to === 'object' && to.replace) {
+                    this.replace(to)
+                } else {
+                    this.push(to)
+                }
+            } else {
+
+                // confirm transition and pass on the value
+                // 无内鬼，继续执行下一个路由守卫
+                next(to)
+            }
+        })
+    } catch (e) {
+        abort(e)
+    }
+}
+```
+
+该函数较为简单，就不细致讲解了，看注释就`OK`。具体就像`VueRouter`文档说的那样：
+
+- 返回`false`或一个错误类型就终止跳转
+- 返回`Raw Location`对象就重新进行`Route`切换
+- 什么都没返回，那么默认是同意继续跳转
+
+### Route确认，激活组件
+
+如果所有的`hooks`顺利进行，那么我们就会顺利执行其成功的回调函数，此时我们准备执行新激活组件的`beforeRouteEnter()`函数和全局的`beforeResolve()`函数：
+
+```js
+() => {
+
+    // 后进回调函数，待路由提交，组件实例创建后调用
+    const postEnterCbs = [];
+
+    // 检测当前Route是否变更为即将跳转的路由
+    const isValid = () => this.current === route
+
+    // wait until async components are resolved before
+    // extracting in-component enter guards
+    // 等待异步组件加载完毕，再将beforeRouteEnter和beforeResolve
+    // 作为hooks加入一个单独的执行队列中
+    const enterGuards = extractEnterGuards(activated, postEnterCbs, isValid);
+    const queue = enterGuards.concat(this.router.resolveHooks);
+
+    // 执行beforeRouteEnter和beforeResolve的hooks
+    runQueue(queue, iterator, () => {
+
+        // 如果目标路由发现变化，则终止
+        if (this.pending !== route) {
+            return abort()
+        }
+
+        // 加载完毕，清空加载中的路由·
+        this.pending = null
+        onComplete(route);
+
+        // 在新的组件实例更新完毕后，调用beforeRouteEnter函数中传入next中的函数
+        if (this.router.app) {
+            this.router.app.$nextTick(() => {
+                postEnterCbs.forEach(cb => {
+                    cb()
+                })
+            })
+        }
+    })
 }
 ```
