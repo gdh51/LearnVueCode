@@ -1,17 +1,19 @@
 # hooks的提取
 
-关于`hooks`(路由守卫)的提取，一共分为两个阶段，它们的划分是按`Route`的提交时间确定的。
+在`Route`确认前，关于`hooks`(路由守卫)的提取，一共分为两个阶段，它们的划分是按新激活组件的异步加载是否获取来划分的。
 
-- [Route确认前的hooks](#route确认前的hooks)
-- [Route确认后的hooks](#route确认后的hooks)
+- [未获取异步组件配置的hooks](#未获取异步组件配置的hooks)
+- [已获取异步组件配置的hooks](#已获取异步组件配置的hooks)
 
-## Route确认前的hooks
+在`Route`确认后
+
+## 未获取异步组件配置的hooks
 
 确认前的`hooks`的提取主要是通过这三个函数：
 
-- extractLeaveGuards()
-- extractUpdateHooks()
-- resolveAsyncComponents()
+- `extractLeaveGuards()`
+- `extractUpdateHooks()`
+- `resolveAsyncComponents()`
 
 我们可以明显看出，第三个有明显却别于其他的两个。确实，它提取的不是`hooks`而是异步加载的组件，这个我们等会会提到，先浏览整个`hooks`队列。
 
@@ -424,4 +426,127 @@ if (pending <= 0) {
 ____
 那么到目前为止，我们就拿到了全部`Route`确认前要调用的`hooks`了。让我们回到[调用它的阶段前](../实例方法/README.md#route确认前hooks的调用)。
 
-## Route确认后的hooks
+## 已获取异步组件配置的hooks
+
+为什么这些`hooks`不能跟前面的一起提取？原因很简单，因为`beforeRouteEnter()`函数是组件内的函数，在前面的阶段我们知道，仅在异步加载完毕组件配置对象后才能提取到它们。
+
+### beforeRouteEnter的提取
+
+`VueRouter`通过`extractEnterGuards(activated, postEnterCbs, isValid)`函数提取`beforeRouteEnter()`函数。该函数和我们之前的流程不一样，可以看到其还传入了一个`postEnterCbs`数组，一看就知道不简单。
+
+>`postEnterCbs`实际为一个后置调用数组，它会在组件实例创建后调用。
+
+当然我们还是要看看这个函数滴：
+
+```js
+// 后进回调函数，待路由提交，组件实例创建后调用
+const postEnterCbs = [];
+
+// 检测当前Route是否变更为即将跳转的路由
+const isValid = () => this.current === route
+
+extractEnterGuards(activated, postEnterCbs, isValid);
+
+function extractEnterGuards(
+    activated: Array < RouteRecord > ,
+    cbs: Array < Function > ,
+    isValid: () => boolean
+) : Array < ? Function > {
+    return extractGuards(
+        activated,
+        'beforeRouteEnter',
+
+        // 参数为 守卫，组件实例(此时还没有) 匹配的RouteRecord 组件命名视图名称
+        (guard, _, match, key) => {
+            return bindEnterGuard(guard, match, key, cbs, isValid)
+        }
+    )
+}
+```
+
+这里帮大家回忆以下`extractGuards()`干了什么，简单的说它将即将`activated`的`RouteRecords`们的组件的`beforeRouteEnter`提取出来，然后作为上面传入的回调函数的第一个参数调用。
+
+总之`extractGuards()`的结果就是返回`bindEnterGuard(guard, match, key, cbs, isValid)`的调用返回值。`bindEnterGuard()`函数又如下：
+
+```js
+function bindEnterGuard(
+    guard: NavigationGuard,
+    match: RouteRecord,
+    key: string,
+    cbs: Array < Function > ,
+
+    // 当前Route是否变更为将要跳转的路由
+    isValid: () => boolean
+): NavigationGuard {
+    return function routeEnterGuard(to, from, next) {
+
+        // 重写原导航守卫，让其自动执行next函数
+        return guard(to, from, cb => {
+
+            // beforeRouteEnter的next参数，支持函数作为参数，
+            // 参入函数时，该函数会加入cbs回调数组中，待此组件实例创建后调用
+            if (typeof cb === 'function') {
+                cbs.push(() => {
+                    // #750
+                    // if a router-view is wrapped with an out-in transition,
+                    // the instance may not have been registered at this time.
+                    // we will need to poll for registration until current route
+                    // is no longer valid.
+                    poll(cb, match.instances, key, isValid)
+                });
+            }
+            next(cb)
+        });
+    }
+}
+```
+
+可见得，完整的`beforeRouteEnter()`函数实际就为`routeEnterGuard()`，当其调用时，会调用`beforeRouteEnter hook`，并传入`to Route`与`from Route`作为参数，并且还有一个封装了`next()`函数的函数。这个函数咋一看，比较陌生，但是你和`beforeRouteEnter()`这个`api`联想起来，你就懂了。
+
+>在使用`beforeRouteEnter()`时，可以调用`next(vm => vm)`，并传入一个函数，该函数会在组件实例创建后调用，并传入该实例作为参数。
+
+那么很明显了，当我们在使用`beforeRouteEnter() api`时，向其`next()`中传入一个函数，那么就会加入到`postEnterCbs`数组中，待实例创建后调用。
+
+其中，它使用`poll()`函数封装，该函数用于确保组件实例已经生成，不然会无限的向下一个事件流推迟执行。
+
+```js
+// 立即或延迟执行cb，主要为了解决上面的#750这个问题
+function poll(
+
+    // 我们在next中传入的回调函数
+    cb: any, // somehow flow cannot infer this is a function
+
+    // 当前命名视图创建的组件实例对象map表
+    instances: Object,
+
+    // 组件在命名视图中的名称
+    key: string,
+    isValid: () => boolean
+) {
+
+    // 正常情况下直接调用回调，并传入当前组件的实例作为参数
+    if (
+        instances[key] &&
+        !instances[key]._isBeingDestroyed // do not reuse being destroyed instance
+    ) {
+        cb(instances[key]);
+
+    // 如果组件还未创建，则待到下一个宏任务阶段执行
+    } else if (isValid()) {
+        setTimeout(() => {
+            poll(cb, instances, key, isValid)
+        }, 16)
+    }
+}
+```
+
+### beforeResolve函数的提取
+
+这个也没什么好说的：
+
+```js
+const queue = enterGuards.concat(this.router.resolveHooks);
+```
+
+____
+提取了`Route`确认前的所有`hooks`那么我们先回到[这些`hooks`的调用](../实例方法/README.md#激活组件hooks的调用)。

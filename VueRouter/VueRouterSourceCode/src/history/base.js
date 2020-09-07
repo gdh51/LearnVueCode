@@ -287,8 +287,7 @@ export class History {
 
             // wait until async components are resolved before
             // extracting in-component enter guards
-            // 等待异步组件加载完毕，再将beforeRouteEnter和beforeResolve
-            // 作为hooks加入一个单独的执行队列中
+            // 等异步组件加载完毕后，才能处理这些组件内的hook
             const enterGuards = extractEnterGuards(activated, postEnterCbs, isValid);
             const queue = enterGuards.concat(this.router.resolveHooks);
 

@@ -398,7 +398,7 @@ const queue: Array < ? NavigationGuard > = [].concat(
 
 当前提取的路由守卫只为路由确认前的，它们会在`Route`进行确认时，按序调用，具体每个函数的提取在这里[查看](../hooks的提取/README.md)。
 
-#### Route确认前hooks的调用
+#### Route确认前hooks的调用——阶段1
 
 那么随机就是调用刚刚获取的全部`hooks`，通过`runQueue()`这个函数：
 
@@ -514,9 +514,9 @@ const iterator = (hook: NavigationGuard, next) => {
 - 返回`Raw Location`对象就重新进行`Route`切换
 - 什么都没返回，那么默认是同意继续跳转
 
-### Route确认，激活组件
+#### Route确认前，激活组件的hooks提取——阶段2
 
-如果所有的`hooks`顺利进行，那么我们就会顺利执行其成功的回调函数，此时我们准备执行新激活组件的`beforeRouteEnter()`函数和全局的`beforeResolve()`函数：
+如果一阶段的`hooks`顺利提取与调用进行，那么我们就会顺利执行其成功的回调函数，此时我们准备执行新激活组件的`beforeRouteEnter()`函数和全局的`beforeResolve()`函数：
 
 ```js
 () => {
@@ -529,8 +529,7 @@ const iterator = (hook: NavigationGuard, next) => {
 
     // wait until async components are resolved before
     // extracting in-component enter guards
-    // 等待异步组件加载完毕，再将beforeRouteEnter和beforeResolve
-    // 作为hooks加入一个单独的执行队列中
+    // 等异步组件加载完毕后，才能处理这些组件内的hook
     const enterGuards = extractEnterGuards(activated, postEnterCbs, isValid);
     const queue = enterGuards.concat(this.router.resolveHooks);
 
@@ -555,5 +554,129 @@ const iterator = (hook: NavigationGuard, next) => {
             })
         }
     })
+}
+```
+
+具体两个`hooks`的提取流程，还是请[自行查看](../hooks的提取/README.md#route确认后的hooks)。
+
+### Route正式确认，更新全局Route
+
+那么就向之前的`hooks`调用一样，通过`runQueue()`来进行，这里就不用多说了。我们就直接来到执行最终的成功回调函数：
+
+```js
+() => {
+
+    // 如果目标路由发现变化，则终止
+    if (this.pending !== route) {
+        return abort()
+    }
+
+    // 加载完毕，清空加载中的路由·
+    this.pending = null
+    onComplete(route);
+
+    // 在新的组件实例更新完毕后，调用beforeRouteEnter函数中传入next中的函数
+    if (this.router.app) {
+        this.router.app.$nextTick(() => {
+            postEnterCbs.forEach(cb => {
+                cb()
+            })
+        })
+    }
+}
+```
+
+其中`pending`中存储的是即将跳转的`Route`，那么一切完毕，就调用`history.confirmTransition()`的成功回调，则即`history.transitionTo()`中传入的函数：
+
+```js
+() => {
+
+    // 更新当前的Route
+    this.updateRoute(route);
+
+    // 初始化时该函数为空
+    onComplete && onComplete(route);
+
+    // 进行URL的跳转
+    this.ensureURL();
+
+    // fire ready cbs once
+    // 调用初始化onReady函数(仅调用一次)
+    if (!this.ready) {
+        this.ready = true
+        this.readyCbs.forEach(cb => {
+            cb(route)
+        })
+    }
+}
+```
+
+那么首先是调用[`history.updateRoute()`](#更新route调用aftereach-hookhistoryupdateroute)函数更新`router.current`上的`Route`为最新的，如何调用`afterEach()`函数。
+
+之后是执行`onComplete && onComplete(route);`函数，在`h5`模式的初始化中，该函数为`undefined`。
+
+此时调用[`this.ensureURL()`](../../history模式/实例方法/README.md#切换浏览器urlhistoryensureurl)，调用对应模式下的路由切换`api`，正式提交`URL`到浏览器。此时在调用一次性的`onReady`函数。
+
+最后的最后，还记得我们之前的`postEnterCbs`数组吗，在挂在`router`的根`Vue`实例的加载完毕后，就逐一调用这些函数，此时你就理解为什么我们能访问到其上下文`Vue`实例了。
+
+```js
+// 在新的组件实例更新完毕后，调用beforeRouteEnter函数中传入next中的函数
+if (this.router.app) {
+    this.router.app.$nextTick(() => {
+        postEnterCbs.forEach(cb => {
+            cb()
+        })
+    })
+}
+```
+
+现在让我们再次回调[`router.init()`的最后阶段](../../../初次页面加载/Router的实例化/Router实例方法/README.md#route确定完毕添加vue实例更新route函数)。
+
+## 更新Route，调用afterEach hook——history.updateRoute
+
+该函数的作用就和名字一样，更新`router`实例上的`Route`，更新全部`Vue`根实例上的`Route($route)`和调用`afterEach()`函数。
+
+```js
+history.updateRoute(route: Route) {
+
+    // 暂存变更URL前Route
+    const prev = this.current
+
+    // 更新变更后Route
+    this.current = route;
+
+    // 执行History实例监听的函数，为每个挂在router的实例更新Route
+    this.cb && this.cb(route);
+
+    // 调用全局的afterEach函数
+    this.router.afterHooks.forEach(hook => {
+
+        // 传入新、旧Route作为参数
+        hook && hook(route, prev)
+    })
+}
+```
+
+注意，这里的`this.cb && this.cb(route);`。在第一次调用时，是不存在`this.cb`的，那么`this.cb`从哪里来呢？还记得最开始的`router.init()`方法中的以下代码吗？
+
+```js
+history.listen(route => {
+
+    // 为每个挂在router实例的根Vue实例更新当前的Route
+    this.apps.forEach((app) => {
+        app._route = route;
+    });
+});
+```
+
+该方法实际为[将传入的回调函数作为`this.cb`](#route确认成功时的回调函数historylisten)，但是该方法是在第一次`history.transitionTo()`结束后调用的，所以说，在初始化`START Route`时，是不会调用的，仅在之后调用。
+
+该监听函数就是为每个`Vue`根实例上的`Route($route)`更新。
+
+## Route确认成功时的回调函数——history.listen
+
+```js
+history.listen(cb: Function) {
+    this.cb = cb
 }
 ```

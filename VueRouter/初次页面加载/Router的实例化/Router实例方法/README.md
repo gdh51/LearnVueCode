@@ -172,3 +172,21 @@ if (history instanceof HTML5History) {
 按代码执行顺序，我们优先学习[`history.getCurrentLocation()`](../../../路由模式/base基础模式/实例方法/README.md#获取完整路径信息historygetcurrentlocation)的具体含义。由于不同路由模式下，路由路径所处于的`URL`位置是不一样的，所以该方法是其子类的一个独立接口，这里我们只学习`h5 history`模式下的该接口。
 
 在学习完毕后，那么其通过[`history.transitionTo()`](../../../路由模式/base基础模式/实例方法/README.md)来进行一个`Route`加载的启动过渡，该方法实际也为`base history`的一个实例方法。
+
+### Route确定完毕，添加Vue实例更新Route函数
+
+调用完`history.transitionTo()`函数后，就该添加更新`Vue`根实例`$route`的函数了：
+
+```js
+history.listen(route => {
+
+    // 为每个挂在router实例的根Vue实例更新当前的Route
+    this.apps.forEach((app) => {
+        app._route = route;
+    });
+});
+```
+
+该函数就会在之后`Route`更新成功时，为它们更新`$route`。
+
+那么到此为止，第一个`Route`的加载就完毕了。
