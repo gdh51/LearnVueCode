@@ -2,9 +2,8 @@
 
 函数式跳转主要调用 5 个 api：
 
-- [函数式路由跳转](#函数式路由跳转)
-  - [router.push——push 式跳转](#routerpushpush-式跳转)
-  - [router.replace——replace 式跳转](#routerreplacereplace-式跳转)
+- [router.push——push 式跳转](#routerpushpush-式跳转)
+- [router.replace——replace 式跳转](#routerreplacereplace-式跳转)
 
 那么这里就按常用的顺序来进行学习。
 
