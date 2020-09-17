@@ -74,14 +74,20 @@ export class HTML5History extends History {
 
     push(location: RawLocation, onComplete ? : Function, onAbort ? : Function) {
 
-        // 获取当前(跳转前)的位置信息对象
+        // 获取当前(跳转前)的Route
         const {
             current: fromRoute
         } = this;
 
         this.transitionTo(location, route => {
+
+            // 调用pushState()进行浏览器跳转
             pushState(cleanPath(this.base + route.fullPath))
+
+            // 查看滚动条行为
             handleScroll(this.router, route, fromRoute, false)
+
+            // 执行自定义的完成函数
             onComplete && onComplete(route)
         }, onAbort)
     }
