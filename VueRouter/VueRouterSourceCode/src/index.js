@@ -176,19 +176,17 @@ export default class VueRouter {
         const history = this.history
 
         // 在各种模式下，加载路由，更新Route
-        if (history instanceof HTML5History) {
-            history.transitionTo(history.getCurrentLocation())
-        } else if (history instanceof HashHistory) {
-            const setupHashListener = () => {
-                history.setupListeners()
-            }
+        if (history instanceof HTML5History || history instanceof HashHistory) {
+            const setupListeners = () => {
+                history.setupListeners();
+            };
+            
+            // 跳转完成后监听浏览器路由事件
             history.transitionTo(
-
-                // 获取当前完整的路径(包括查询字符串等等)
                 history.getCurrentLocation(),
-                setupHashListener,
-                setupHashListener
-            )
+              setupListeners,
+              setupListeners
+            );
         }
 
         // 存储一个更新根Route的函数(该函数在路由变更成功后调用)
@@ -260,20 +258,24 @@ export default class VueRouter {
         this.go(1)
     }
 
-    getMatchedComponents(to ? : RawLocation | Route): Array < any > {
-        const route: any = to ?
-            to.matched ?
-            to :
-            this.resolve(to).route : this.currentRoute
+    getMatchedComponents(to?: RawLocation | Route): Array<any> {
+        const route: any = to
+            ? to.matched
+                ? to
+                : this.resolve(to).route
+            : this.currentRoute;
         if (!route) {
-            return []
+            return [];
         }
-        return [].concat.apply([], route.matched.map(m => {
-            return Object.keys(m.components).map(key => {
-                return m.components[key]
+        return [].concat.apply(
+            [],
+            route.matched.map((m) => {
+                return Object.keys(m.components).map((key) => {
+                    return m.components[key];
+                });
             })
-        }))
-    }
+        );
+      }
 
     resolve(
         to: RawLocation,

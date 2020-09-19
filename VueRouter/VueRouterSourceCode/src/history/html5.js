@@ -21,51 +21,50 @@ import {
 } from '../util/push-state'
 
 export class HTML5History extends History {
-    constructor(router: Router, base: ? string) {
 
-        // 继承基础路由信息
-        super(router, base);
+    constructor (router: Router, base: ?string) {
 
-        // 是否提供一个控制滚动条行为的方法
-        const expectScroll = router.options.scrollBehavior;
+        // 继承基础路由行为
+        super(router, base)
 
-        // 探测当前运行环境是否支持滚动条行为，仅在h5模式下支持
-        const supportsScroll = supportsPushState && expectScroll;
+        // 获取初始化Location(完整的URL的path，包括查询字符串)
+        this._startLocation = getLocation(this.base)
+    }
 
-        // 如果支持控制滚动条且用户想控制，则记录当前页面信息
-        if (supportsScroll) {
-            setupScroll();
+    setupListeners () {
+        if (this.listeners.length > 0) {
+          return
         }
-
-        // 获取完整的URL 路径 信息
-        const initLocation = getLocation(this.base);
-
-        // 监听popstate事件(即通过浏览器前进后退)，做出路由更新
-        window.addEventListener('popstate', e => {
-
-            // 获取跳转前的路由路径信息对象
-            const current = this.current;
-
+    
+        const router = this.router
+        const expectScroll = router.options.scrollBehavior
+        const supportsScroll = supportsPushState && expectScroll
+    
+        if (supportsScroll) {
+            this.listeners.push(setupScroll())
+        }
+    
+        const handleRoutingEvent = () => {
+            const current = this.current
+    
             // Avoiding first `popstate` event dispatched in some browsers but first
             // history route not updated since async guard at the same time.
-            // 避免第一次popstate事件触发时，在某些浏览器中，
-            // 由于异步守卫的原因，路由路径记录对象还没有更新(还为初始化状态)
-            const location = getLocation(this.base);
-
-            // 所以当为初始化路由时且路径包括hash值都没有改变的情况下，直接退出
-            if (this.current === START && location === initLocation) {
+            const location = getLocation(this.base)
+            if (this.current === START && location === this._startLocation) {
                 return
             }
-
-            // 进行路由跳转
+    
             this.transitionTo(location, route => {
-
-                // 跳转完成时，处理当前页面的滚动条高度
                 if (supportsScroll) {
                     handleScroll(router, route, current, true)
                 }
-            });
-        });
+            })
+        }
+        
+        window.addEventListener('popstate', handleRoutingEvent)
+        this.listeners.push(() => {
+            window.removeEventListener('popstate', handleRoutingEvent)
+        })
     }
 
     go(n: number) {

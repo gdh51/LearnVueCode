@@ -1,31 +1,22 @@
 /* @flow */
 
-import {
-    _Vue
-} from '../install'
+import { _Vue } from '../install'
 import type Router from '../index'
-import {
-    inBrowser
-} from '../util/dom'
-import {
-    runQueue
-} from '../util/async'
-import {
-    warn,
-    isError,
-    isExtendedError
-} from '../util/warn'
-import {
-    START,
-    isSameRoute
-} from '../util/route'
+import { inBrowser } from '../util/dom'
+import { runQueue } from '../util/async'
+import { warn, isError, isRouterError } from '../util/warn'
+import { START, isSameRoute } from '../util/route'
 import {
     flatten,
     flatMapComponents,
     resolveAsyncComponents
 } from '../util/resolve-components'
 import {
-    NavigationDuplicated
+    createNavigationDuplicatedError,
+    createNavigationCancelledError,
+    createNavigationRedirectedError,
+    createNavigationAbortedError,
+    NavigationFailureType
 } from './errors'
 
 export class History {
@@ -72,6 +63,9 @@ export class History {
 
         // onError函数，在除第一次加载外触发错误时调用
         this.errorCbs = [];
+    
+        // 路由事件监听器
+        this.listeners = [];
     }
 
     listen(cb: Function) {
@@ -113,6 +107,9 @@ export class History {
             route,
             () => {
 
+                // 跳转前路由
+                const prev = this.current
+
                 // 更新当前的Route
                 this.updateRoute(route);
 
@@ -121,6 +118,11 @@ export class History {
 
                 // 进行URL的跳转
                 this.ensureURL();
+
+                // 调用afterEach hooks
+                this.router.afterHooks.forEach(hook => {
+                    hook && hook(route, prev)
+                })
 
                 // fire ready cbs once
                 // 调用初始化onReady函数(仅调用一次)
@@ -137,9 +139,17 @@ export class History {
                 }
                 if (err && !this.ready) {
                     this.ready = true
-                    this.readyErrorCbs.forEach(cb => {
-                        cb(err)
-                    })
+                    // Initial redirection should still trigger the onReady onSuccess
+                    // https://github.com/vuejs/vue-router/issues/3225
+                    if (!isRouterError(err, NavigationFailureType.redirected)) {
+                        this.readyErrorCbs.forEach(cb => {
+                            cb(err)
+                        })
+                    } else {
+                        this.readyCbs.forEach(cb => {
+                            cb(route)
+                        })
+                    }
                 }
             }
         )
@@ -153,44 +163,40 @@ export class History {
 
         // 定义中断函数，错误回调仅在主动调用push/replace时触发
         const abort = err => {
-
-            // after merging https://github.com/vuejs/vue-router/pull/2771 we
-            // When the user navigates through history through back/forward buttons
-            // we do not want to throw the error. We only throw it if directly calling
-            // push/replace. That's why it's not included in isError
-            // 我们仅在用户直接通过History API调用push/replace时报错
-            // 确保错误类型不为内部错误，为其他Error类的错误
-            if (!isExtendedError(NavigationDuplicated, err) && isError(err)) {
-
-                // 调用onError回调
+            // changed after adding errors with
+            // https://github.com/vuejs/vue-router/pull/3047 before that change,
+            // redirect and aborted navigation would produce an err == null
+            if (!isRouterError(err) && isError(err)) {
                 if (this.errorCbs.length) {
                     this.errorCbs.forEach(cb => {
                         cb(err)
                     })
                 } else {
-
-                    // 未捕获时报错
                     warn(false, 'uncaught error during route navigation:')
                     console.error(err)
                 }
             }
-
-            // 直接调用最终的终止函数
             onAbort && onAbort(err)
         }
+        
+        //  即将跳转的最后一个Route
+        const lastRouteIndex = route.matched.length - 1
+    
+        // 跳转前中最后一个Route
+        const lastCurrentIndex = current.matched.length - 1
 
         // 跳转前后的路径信息对象是否相同？(即转化为URL后全等)
         if (
             isSameRoute(route, current) &&
-
             // in the case the route map has been dynamically appended to
             // 防止动态的添加RouteRecord
-            route.matched.length === current.matched.length
+            lastRouteIndex === lastCurrentIndex &&
+            route.matched[lastRouteIndex] === current.matched[lastCurrentIndex]
         ) {
 
             // 根据当前URL情况看是否加载URL
-            this.ensureURL();
-            return abort(new NavigationDuplicated(route))
+            this.ensureURL()
+            return abort(createNavigationDuplicatedError(current, route))
         }
 
         // 根据当前Route与之前的Route，计算出要销毁的组件与新创建的组件
@@ -237,7 +243,7 @@ export class History {
 
             // 如果又切换了路由则直接终止
             if (this.pending !== route) {
-                return abort()
+                return abort(createNavigationCancelledError(current, route))
             }
             try {
 
@@ -249,16 +255,19 @@ export class History {
 
                         // next(false) -> abort navigation, ensure current URL
                         this.ensureURL(true);
-                        abort(to);
+                        abort(createNavigationAbortedError(current, route));
 
                     // 重定向到其他URL
-                    } else if (
+                    } else if (isError(to)) {
+                        this.ensureURL(true)
+                        abort(to)
+                    }else if (
                         typeof to === 'string' ||
                         (typeof to === 'object' &&
                             (typeof to.path === 'string' || typeof to.name === 'string'))
                     ) {
                         // next('/') or next({ path: '/' }) -> redirect
-                        abort()
+                        abort(createNavigationRedirectedError(current, route))
                         if (typeof to === 'object' && to.replace) {
                             this.replace(to)
                         } else {
@@ -296,7 +305,7 @@ export class History {
 
                 // 如果目标路由发现变化，则终止
                 if (this.pending !== route) {
-                    return abort()
+                    return abort(createNavigationCancelledError(current, route))
                 }
 
                 // 加载完毕，清空加载中的路由·
@@ -316,23 +325,24 @@ export class History {
     }
 
     updateRoute(route: Route) {
-
-        // 暂存变更URL前Route
-        const prev = this.current
-
+    
         // 更新变更后Route
-        this.current = route;
-
+        this.current = route
+    
         // 执行History实例监听的函数，为每个挂在router的实例更新Route
-        this.cb && this.cb(route);
-
-        // 调用全局的afterEach函数
-        this.router.afterHooks.forEach(hook => {
-
-            // 传入新、旧Route作为参数
-            hook && hook(route, prev)
-        })
+        this.cb && this.cb(route)
     }
+    
+    setupListeners () {
+        // Default implementation is empty
+    }
+    
+    teardownListeners () {
+        this.listeners.forEach(cleanupListener => {
+        cleanupListener()
+    })
+        this.listeners = []
+    } 
 }
 
 // 初始化与格式化路由根路径，确保以/开头但不以/结尾

@@ -12,7 +12,7 @@ const routes = [{
     {
         path: '/info',
         name: 'Info',
-        component: Info
+        component: resolve => setTimeout(resolve, 10000, Info)
     },
     {
         path: '/about',

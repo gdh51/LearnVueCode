@@ -1,9 +1,15 @@
 # 函数式路由跳转
 
-函数式跳转主要调用 5 个 api：
+函数式跳转主要调用 `5` 个 `api`：
 
 - [router.push——push 式跳转](#routerpushpush-式跳转)
 - [router.replace——replace 式跳转](#routerreplacereplace-式跳转)
+
+后三个函数实则都为`router.go()`的封装调用
+
+- [router.go——浏览器前进后退](#routergo浏览器前进后退c)
+  - [router.back](#routerback--routerforward)
+  - [router.forward](#routerback--routerforward)
 
 那么这里就按常用的顺序来进行学习。
 
@@ -108,3 +114,32 @@ function replaceState(url?: string) {
 ```
 
 那么`router.replace()`模式也到此为止。
+
+## router.go——浏览器前进后退
+
+该方法其实调用的是浏览器的前进后退功能，同我们点击浏览器按钮时的效果一样。
+具体关于浏览器跳转，请另辟[蹊径](../浏览器跳转/README.md)。
+
+```js
+router.go(n: number) {
+    this.history.go(n)
+}
+
+history.go(n: number) {
+    window.history.go(n)
+}
+```
+
+### router.back() && router.forward()
+
+同样的，这两个方法其实就是对`router.go()`的封装调用。
+
+```js
+router.back() {
+    this.go(-1)
+}
+
+router.forward() {
+    this.go(1)
+}
+```

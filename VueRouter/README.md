@@ -12,26 +12,28 @@
 
 1. [`Router`的初始化注入](./初次页面加载/Router的初始化注入/README.md)(`Vue.use(VueRouter)`)
 2. [`Router`的实例化](./初次页面加载/Router的实例化/README.md)
-   1. [`RouteRecord`初始化](./RouteRecord/README.md)
-   2. [路由模式加载](./路由模式/README.md)
+    1. [`RouteRecord`初始化](./RouteRecord/README.md)
+    2. [路由模式加载](./路由模式/README.md)
 3. 生命周期：
-   1. [`Vue`实例化，`Router`实例初始化加载](./初次页面加载/Vue实例化/README.md)
-   2. `Route`更新，`Router`实例更新加载
+    1. [`Vue`实例化，`Router`实例初始化加载](./初次页面加载/Vue实例化/README.md)
+    2. `Route`更新，`Router`实例更新加载
 4. `Router`附带的组件
-   1. `router-link`组件
-   2. `router-view`组件
+    1. `router-link`组件
+    2. `router-view`组件
 
 ## 文中部分变量含义声明(非常重要)
 
 在整个学习过程中，涉及到一些变量，为了区分其含义，这里用英文名称指代(其实也在官网的`Class`名称)
 
->建议源码学习从各个独立模块串联起来学习，由于模块的编写遵循flow(类似TS)，在每个变量或参数后方会有其具体的类别。配合其阅读能够增进理解。
+> 建议源码学习从各个独立模块串联起来学习，由于模块的编写遵循 flow(类似 TS)，在每个变量或参数后方会有其具体的类别。配合其阅读能够增进理解。
 
 - `Location`：表示当前的一个路径位置信息对象，包含一些`URL`信息，具体在我们编码时表现为，例如，`router-link`中`to`属性绑定的值，被标准化后就为一个`Location`对象。
 - `RouteConfig`：表示我们最初定义在`routes`数组中的各个路由配置对象。
 - `RouteRecord`：表示路径记录表，即我们定义在`router.routes`中的那些配置标准化后的结果，每一个都表示一个对于路径下的组件信息、`URL`信息等等。
 - `Route`：表示一个根据`Location`对象生成的一个当前路径信息对象，其已做好了初步计算，计算好了当前`Location`匹配的`RouteRecord`等等信息，具体体现在我们在`Vue`实例中访问的`this.$route`，它表示的就是当前的`Route`。
 
-## 后续
+## 后续 && 版本
+
+当前版本为**3.3.4**
 
 如果有问题或不同提议可以提`issue`，我会及时更新的。
