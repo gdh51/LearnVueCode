@@ -37,7 +37,7 @@
     "lodash.template": "^4.5.0",
     "lodash.uniq": "^4.5.0",
     "resolve": "^1.2.0",
-    "serialize-javascript": "^2.1.2",
+    "serialize-javascript": "^5.0.1",
     "source-map": "0.5.6"
   },
   "deprecated": false,
