@@ -57,19 +57,19 @@ init(app: any /* Vue component instance */ ) {
     const history = this.history
 
     // 在各种模式下，加载路由，更新Route
-    if (history instanceof HTML5History) {
-        history.transitionTo(history.getCurrentLocation())
-    } else if (history instanceof HashHistory) {
-        const setupHashListener = () => {
-            history.setupListeners()
-        }
-        history.transitionTo(
+    if (history instanceof HTML5History || history instanceof HashHistory) {
+        const setupListeners = () => {
+            history.setupListeners();
+        };
 
-            // 获取当前完整的路径(包括查询字符串等等)
+        // 跳转完成后监听浏览器路由事件
+        history.transitionTo(
             history.getCurrentLocation(),
-            setupHashListener,
-            setupHashListener
-        )
+
+            // 无论成功失败，安装路由事件监听器
+            setupListeners,
+            setupListeners
+        );
     }
 
     // 存储一个更新根Route的函数(该函数在路由变更成功后调用)
@@ -146,32 +146,43 @@ history.listen(route => {
 
 ### 第一个Route的加载
 
-首先，所有`Route`的更新和加载都是通过`history.transitionTo()`方法进行的，从该方法开始，具体的加载过程都具有普遍适用性，除非其为某个`Class`的独特的接口。
+首先，所有`Route`的更新和加载都是通过`history.transitionTo()`方法进行的，从该方法开始，具体的加载过程都具有普遍适用性，除非其为某个`History Class`的独特的接口。
 
 ```js
 // 获取路由模式对象
 const history = this.history
 
 // 在各种模式下，加载路由，更新Route
-if (history instanceof HTML5History) {
-    history.transitionTo(history.getCurrentLocation())
-} else if (history instanceof HashHistory) {
-    const setupHashListener = () => {
-        history.setupListeners()
-    }
-    history.transitionTo(
+if (history instanceof HTML5History || history instanceof HashHistory) {
+    const setupListeners = () => {
+        history.setupListeners();
+    };
 
-        // 获取当前完整的路径(包括查询字符串等等)
+    // 跳转完成后监听浏览器路由事件
+    history.transitionTo(
         history.getCurrentLocation(),
-        setupHashListener,
-        setupHashListener
-    )
+
+        // 无论成功失败，安装路由事件监听器
+        setupListeners,
+        setupListeners
+    );
 }
 ```
 
 按代码执行顺序，我们优先学习[`history.getCurrentLocation()`](../../../路由模式/base基础模式/实例方法/README.md#获取完整路径信息historygetcurrentlocation)的具体含义。由于不同路由模式下，路由路径所处于的`URL`位置是不一样的，所以该方法是其子类的一个独立接口，这里我们只学习`h5 history`模式下的该接口。
 
-在学习完毕后，那么其通过[`history.transitionTo()`](../../../路由模式/base基础模式/实例方法/README.md)来进行一个`Route`加载的启动过渡，该方法实际也为`base history`的一个实例方法。
+在学习完毕后，那么其通过[`history.transitionTo()`](../../../路由模式/base基础模式/实例方法/README.md)来进行一个`Route`加载的启动过渡，该方法实际也为`base Class`的一个实例方法。在`Route`切换完毕后，其会为全局绑定事件监听器，确保一些特殊行为路由切换可以执行：
+
+```js
+const setupListeners = () => {
+    history.setupListeners();
+};
+```
+
+具体的安装还是要看对于使用的路由模式，这里就不细说啦，要看自取：
+
+- [h5-history事件监听器安装historysetuplisteners](../../../路由模式/history模式/实例方法/README.md#h5-history事件监听器安装historysetuplisteners)
+- [hash事件监听器安装](../../../路由模式/hash模式/README.md#hash事件监听器安装)
 
 ### Route确定完毕，添加Vue实例更新Route函数
 

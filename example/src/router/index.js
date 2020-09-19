@@ -12,7 +12,7 @@ const routes = [{
     {
         path: '/info',
         name: 'Info',
-        component: resolve => setTimeout(resolve, 10000, Info)
+        component: Info
     },
     {
         path: '/about',
@@ -28,7 +28,7 @@ const routes = [{
 
 const router = new VueRouter({
     routes,
-    mode: 'history',
+    // mode: 'history',
     scrollBehavior(to, from, savePosition) {
         console.log(to, from, savePosition);
     }

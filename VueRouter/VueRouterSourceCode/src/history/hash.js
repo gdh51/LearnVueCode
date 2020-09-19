@@ -23,7 +23,10 @@ export class HashHistory extends History {
 
     // this is delayed until the app mounts
     // to avoid the hashchange listener being fired too early
+    // 你懂的，有些浏览器初始化加载时会意外触发popState
     setupListeners() {
+
+        // 用于注销路由事件监听器的队列，如果里面有函数，则说明已监听
         if (this.listeners.length > 0) {
             return;
         }
@@ -36,20 +39,33 @@ export class HashHistory extends History {
         }
 
         const handleRoutingEvent = () => {
+
+            // 获取跳转前Route
             const current = this.current;
+
+            // 确保hash模式下URL形式正确
             if (!ensureSlash()) {
                 return;
             }
-            this.transitionTo(getHash(), (route) => {
+
+            // 获取当前的完整path(包括查询字符串)
+            this.transitionTo(getHash(), route => {
+
+                // 是否处理滚动条
                 if (supportsScroll) {
                     handleScroll(this.router, route, current, true);
                 }
+
+                // 不支持浏览器history模式时，通过replaceHash替换路由
                 if (!supportsPushState) {
+
+                    // 直接重写hash值
                     replaceHash(route.fullPath);
                 }
             });
         };
 
+        // 优先通过浏览器history模式完成监听
         const eventType = supportsPushState ? "popstate" : "hashchange";
         window.addEventListener(eventType, handleRoutingEvent);
         this.listeners.push(() => {

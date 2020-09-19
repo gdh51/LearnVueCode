@@ -17,6 +17,7 @@ export function getStateKey() {
     return _key;
 }
 
+// 生成新的key值，提供给下一个路由跳转使用
 export function setStateKey(key: string) {
     return (_key = key);
 }

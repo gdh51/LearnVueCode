@@ -8,7 +8,9 @@ import { extend } from "./misc";
 const positionStore = Object.create(null);
 
 export function setupScroll() {
+
     // Prevent browser scroll behavior on History popstate
+    // 不实用浏览器自带的滚动条行为
     if ("scrollRestoration" in window.history) {
         window.history.scrollRestoration = "manual";
     }
@@ -17,14 +19,25 @@ export function setupScroll() {
     // Fix for #2774 Support for apps loaded from Windows file shares not mapped to network drives: replaced location.origin with
     // window.location.protocol + '//' + window.location.host
     // location.host contains the port and location.hostname doesn't
+    // 修bug，支持文件协议下的滚动条行为
     const protocolAndPath =
         window.location.protocol + "//" + window.location.host;
     const absolutePath = window.location.href.replace(protocolAndPath, "");
+    
     // preserve existing history state as it could be overriden by the user
+    // 保留当前已存在的state，确保其可以为用户修改
     const stateCopy = extend({}, window.history.state);
+
+    // 生成本次跳转滚动条的唯一key值
     stateCopy.key = getStateKey();
+    
+    // 重写当前路径的state
     window.history.replaceState(stateCopy, "", absolutePath);
+
+    // 安装保存滚动条高度的函数
     window.addEventListener("popstate", handlePopState);
+
+    // 返回一个注销函数
     return () => {
         window.removeEventListener("popstate", handlePopState);
     };
@@ -83,7 +96,11 @@ export function handleScroll(
 }
 
 export function saveScrollPosition() {
+
+    // 为当前的跳转路径生成唯一key值
     const key = getStateKey();
+
+    // 记录当前页面滚动条唯一
     if (key) {
         positionStore[key] = {
             x: window.pageXOffset,
@@ -92,6 +109,7 @@ export function saveScrollPosition() {
     }
 }
 
+// 每次出发pushState的时候，存储跳转前的滚动条位置
 function handlePopState(e) {
     saveScrollPosition();
     if (e.state && e.state.key) {

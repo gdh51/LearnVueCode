@@ -184,8 +184,10 @@ export default class VueRouter {
             // 跳转完成后监听浏览器路由事件
             history.transitionTo(
                 history.getCurrentLocation(),
-              setupListeners,
-              setupListeners
+
+                // 无论成功失败，安装路由事件监听器
+                setupListeners,
+                setupListeners
             );
         }
 

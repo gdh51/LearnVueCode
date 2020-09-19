@@ -52,3 +52,38 @@ history.ensureURL(push ? : boolean) {
 ```
 
 其中`pushState()/replaceState()`为对原`h5 api`进行封装，进行了滚动条相关的处理。
+
+## h5-history事件监听器安装——history.setupListeners
+
+监听函数非常简单，主要了解事件监听器处理函数中有些什么即可，无外乎就是：
+
+1. 防止重复监听
+2. 滚动条行为控制
+3. 正式的处理函数
+
+```js
+history.setupListeners() {
+    // 用于注销路由事件监听器的队列，如果里面有函数，则说明已监听
+    if (this.listeners.length > 0) {
+        return;
+    }
+
+    const router = this.router;
+
+    // 自定义的scrollBehavior函数
+    const expectScroll = router.options.scrollBehavior;
+
+    // 是否支持滚动条行为
+    const supportsScroll = supportsPushState && expectScroll;
+
+    // 支持时，安装滚动条行为监听函数
+    if (supportsScroll) {
+        this.listeners.push(setupScroll());
+     }
+
+    // 监听popstate事件(即通过浏览器前进后退)，做出路由更新
+    const handleRoutingEvent = () => { /* ....略*/ }
+}
+```
+
+了解[`handleRoutingEvent()`](../../../Route-当前路径对象/Route更新/函数跳转/README.md)

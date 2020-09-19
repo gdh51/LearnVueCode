@@ -72,3 +72,32 @@ function ensureSlash(): boolean {
 该方法主要是用来确保`hash`模式下的`URL`以`/`开始，规范`URL`。首先它使用[`getHash()`](./工具方法/REAMDE.md#geturl%e8%8e%b7%e5%8f%96%e5%ae%8c%e6%95%b4%e7%9a%84url%e5%9c%b0%e5%9d%80)方法来获取当前`URL`的`hash`值，如果当前的`hash`模式下路径规范不正确，那么就调用[`replaceHash()`](./工具方法/REAMDE.md#replacehash%e6%9b%b4%e6%96%b0%e5%bd%93%e5%89%8d%e7%9a%84hash%e8%b7%af%e5%be%84%e5%80%bc)方法来将其重新载入新的路径地址。
 ____
 那么到目前为止，`hash`模式下构造函数所做的时就这样，具体的作用还是要配合路由组件一起使用。
+
+## hash事件监听器安装
+
+`hash`模式下的安装和`history`模式基本上一样，区别在于事件监听的处理，其他的是一样的，有如下几个步骤：
+
+1. 防止重复监听
+2. 滚动条行为控制
+3. 正式的处理函数
+
+```js
+hash.setupListeners() {
+
+    // 用于注销路由事件监听器的队列，如果里面有函数，则说明已监听
+    if (this.listeners.length > 0) {
+        return;
+    }
+    const router = this.router;
+    const expectScroll = router.options.scrollBehavior;
+    const supportsScroll = supportsPushState && expectScroll;
+
+    if (supportsScroll) {
+        this.listeners.push(setupScroll());
+    }
+
+    const handleRoutingEvent = () => { /* 略 */ }
+}
+```
+
+了解[handleRoutingEvent](../../Route-当前路径对象/Route更新/浏览器跳转/README.md)
