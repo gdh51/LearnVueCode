@@ -11,8 +11,10 @@ export function genStateKey(): string {
     return Time.now().toFixed(3);
 }
 
+// 第一次的时候key值
 let _key: string = genStateKey();
 
+// 获取当前的key值
 export function getStateKey() {
     return _key;
 }

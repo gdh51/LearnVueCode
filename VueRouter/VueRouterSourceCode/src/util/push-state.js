@@ -51,6 +51,7 @@ export function pushState(url ? : string, replace ? : boolean) {
             const stateCopy = extend({}, history.state);
 
             // 获取当前的key值
+            // 这里因为是replace，所以不会生成新的key，因为我们认为你只想重写当前url的信息
             stateCopy.key = getStateKey();
 
             // 将当前URL地址替换进去
