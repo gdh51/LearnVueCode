@@ -57,12 +57,12 @@ export class HTML5History extends History {
                     handleScroll(router, route, current, true);
                 }
             });
-
-            window.addEventListener("popstate", handleRoutingEvent);
-            this.listeners.push(() => {
-                window.removeEventListener("popstate", handleRoutingEvent);
-            });
         };
+
+        window.addEventListener("popstate", handleRoutingEvent);
+        this.listeners.push(() => {
+            window.removeEventListener("popstate", handleRoutingEvent);
+        });
     }
 
     go(n: number) {
