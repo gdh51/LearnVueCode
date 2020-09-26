@@ -1,4 +1,4 @@
-# Vue-Router@3.1.5源码学习
+# Vue-Router@3.3.4源码学习
 
 众所周知，`Vue-Router`库有两种模式，并基于两个组件（`router-link`/`router-view`）组成的。和`Vuex`一样，`VueRouter`是根据`install`函数进行安装的。如果我们直接引入那么其会直接帮我们进行安装(通过模块引入则需要手动安装)。
 
