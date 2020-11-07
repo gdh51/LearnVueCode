@@ -27,3 +27,5 @@ function setStateKey(key: string) {
     return (_key = key);
 }
 ```
+
+在全局中，每次仅存在一个唯一值。

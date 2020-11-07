@@ -1,8 +1,8 @@
 # 路由切换滚动条行为的处理
 
-如果你使用过滚动条`scrollBehavior`这个属性，那么你应该知道，滚动条可以来做什么(保存跳转前的页面高度)，现在让我们来康康其原理。
+如果你使用过`Vue-Router`的`scrollBehavior`属性，那么你应该知道，它可以用来在进行路由跳转时，保留历史页面的页面滚动高度，现在让我们来康康其实现原理。
 
-## 位置信息的存放位置
+## 位置信息对象的存放
 
 首先页面高度位置信息存放在一个私有变量`positionStore`中：
 
@@ -10,11 +10,22 @@
 const positionStore = Object.create(null);
 ```
 
-这里简单说下，以防在下面的内容中不知道它是一个什么。
+每一个位置信息具有如下的格式：
 
-## 滚动条行为安装
+```js
+{
+    '对应的一个KEY值': {
+        x: '页面相对于文档在水平方向上的偏移量',
+        y: '页面相对于文档在垂直方向上的偏移量'
+    }
+}
+```
 
-滚动条行为是否安装还是要看我们是否定义，最开始它会随着安装路由事件监听器时，一同确认安装:
+> 这里简单说下，以防在下面的内容中不知道它是一个什么。
+
+## 初始化——滚动条行为安装
+
+滚动条行为是否安装还是要看我们是否定义`scrollBehavior`字段和是否支持`history api`，它会在第一次`Route`切换后进行安装：
 
 ```js
 // 自定义的scrollBehavior函数
@@ -55,10 +66,10 @@ function setupScroll() {
     // 保留当前已存在的state，确保其可以为用户修改
     const stateCopy = extend({}, window.history.state);
 
-    // 生成本次跳转滚动条的唯一key值
+    // 生成初始化key值
     stateCopy.key = getStateKey();
 
-    // 重写当前路径的state
+    // 重写当前路径的state，将第一个key值定义在当前的state中
     window.history.replaceState(stateCopy, "", absolutePath);
 
     // 安装保存滚动条高度的函数
@@ -75,7 +86,7 @@ function setupScroll() {
 
 **每次该`key`值会在跳转后生成准备好，并在页面跳转时将页面高度信息存入该`key`值，并生成新的`key`值预备下一次跳转，如此往复。**
 
-在第一次初始化时，我们可以明显的看见这样的操作：
+在第一次初始化时，我们可以明显的看见这样的操作，它就是为我们准备第一个`key`值：
 
 ```js
 const stateCopy = extend({}, window.history.state);
@@ -87,15 +98,33 @@ stateCopy.key = getStateKey();
 window.history.replaceState(stateCopy, "", absolutePath);
 ```
 
-在之前，我们来康康这个`key`的[整体结构](./页面高度映射key/README.md)。
+> 在看之后的内容之前，我们来康康这个`key`的[整体结构](./页面高度映射key/README.md)。
 
-之后便监听`popstate`事件在路由变更时做出页面高度的处理：
+之后便监听`popstate`事件在路由变更时存储跳转前页面高度，并视情况更新`key`值(现在先不对其具体了解)：
 
 ```js
 window.addEventListener("popstate", handlePopState);
 ```
 
-## 路由变更的处理
+---
+
+在调用了`setupScroll()`函数之后，还要进行以下事件的监听，该函数就是进行`Route`的更新，然后在更新完毕后执行滚动条行为：
+
+```js
+window.addEventListener("popstate", handleRoutingEvent);
+this.listeners.push(() => {
+    window.removeEventListener("popstate", handleRoutingEvent);
+});
+```
+
+咳咳，那么到目前为止，对于`popstate`事件的监听有两个事件处理函数，按顺序分别为：
+
+-   `handlePopState()`——存储之前的页面高度信息，更新`key`
+-   `handleRoutingEvent()`——`Route`提交，滚动行为处理
+
+`popstate`这个事件主要是对于通过浏览器空间进行跳转滚动条行为的处理，而对于函数式`api`调用的滚动条行为已经内置封装在里面，现在我们分别来看看。
+
+## 路由变更的处理 key 与页面高度信息的处理
 
 首先，我们要知道路由变更有两种方式：
 
@@ -104,9 +133,9 @@ window.addEventListener("popstate", handlePopState);
 
 所以对于路由变更的处理也要分为两种，首先是我们最常用的函数跳转：
 
-### 函数 api 跳转
+### 函数 api 跳转下 key 与位置信息的处理
 
-通过函数`api`进行跳转，对于页面高度的处理需要封装在具体的函数中，因为它不会触发`popstate`事件。在`html5`中，其逻辑被封装在`pushState()`中，会在调用`window.history.pushState()`前，先进行位置信息存储：
+通过函数`api`进行跳转，对于页面高度的处理需要封装在具体的函数中(因为它不会触发`popstate`事件)。在`html5`中，其逻辑被封装在`pushState()`中，会在调用`window.history.pushState()`前，先进行位置信息存储：
 
 ```js
 function pushState(url?: string, replace?: boolean) {
@@ -117,7 +146,7 @@ function pushState(url?: string, replace?: boolean) {
 }
 ```
 
-那么`saveScrollPosition()`就是将当前的(跳转前)页面高度位置信息对象，存入到对于的`key`值中：
+那么`saveScrollPosition()`就是将当前的(跳转前)页面高度位置信息对象，将当前的全局唯一`key`值为字段存入到`positionStore`信息存储对象中：
 
 ```js
 function saveScrollPosition() {
@@ -164,7 +193,7 @@ if (replace) {
 
 可以从上面看到，对于`replace`其会复用之前的`key`，因为`replace`在某种意义上表示重写当前的`url`信息；而`push`则会新生成一个`key`值，这个`key`会作为下一次跳转前存储位置信息使用。
 
-### 浏览器控件跳转
+### 浏览器控件跳转下 key 与位置信息的处理
 
 浏览器控件跳转就是通过`popstate`事件来完成，具体就是我们绑定的事件回调函数`handlePopState()`：
 
@@ -180,9 +209,15 @@ function handlePopState(e) {
 }
 ```
 
-非常简单，先调用`saveScrollPosition()`存储之前位置信息，然后在设置新的`key`值，**注意**，这个`key`值来自于之前跳转过的`url`的`state`。在`popstate`事件触发时，我们可以在`event.state`中访问到这个`url`历史的`state`。这个应该可以理解，因为通过浏览器控件进行跳转的是我们**已经经过**的`url`。
+非常简单，先调用`saveScrollPosition()`存储当前页面的位置信息，然后再设置新的`key`值。**注意**，这个新的`key`值来自于之前跳转过的`url`的`state`，在`popstate`事件触发时，我们可以在`event.state`中访问到这个`url`历史的`state`，那么通过这个旧的历史`state`的`key`，我们就能获取到当时跳转到新页面前时，上一个页面的高度。
 
-## 还原某次页面高度
+> 这个应该可以理解，因为通过浏览器控件进行跳转的是我们**已经经过**的`url`，其内部肯定在之前已经初始化过对于的`state.key`和相关的页面高度信息。
+
+---
+
+信息更新完毕后，我们此时就该看如果还原当前跳转的页面的历史高度。
+
+## 还原某次页面的历史高度
 
 上面基本的信息已经提到了，但是唯独没可以跳转后的页面高度还原。其实这部分逻辑存在于各种跳转方式的跳转成功回调中，所以还是老规矩，按两种方式来说明：
 
@@ -266,7 +301,7 @@ function handleScroll(
 
 其具体的函数逻辑为在挂载`Router`的根实例重新渲染完毕后，计算我们通过`scrollBehavior()`返回的滚动信息对象，得出滚动位置对于文档的相对位置，然后滚动过去。
 
-> 在上述逻辑中，默认通过函数`api`跳转时，不会传入之前路过的路由地址的位置信息对象，这很好理解，毕竟通过函数`api`跳转为一个新的查找行为，而不像通过浏览器进行前进后退跳转这种历史记录查找行为，所以不会传入一个具体的旧的位置信息对象。
+> 在上述逻辑中，通过函数`api`跳转时，不会传入历史页面的位置信息对象。这很好理解，毕竟通过函数`api`跳转为一个新路径的跳转，而不像通过浏览器进行前进后退跳转这种历史记录查找行为，所以不会传入一个具体的旧的位置信息对象。
 
 之后通过`scrollToPosition()`这个函数进行滚动还原，要想理解该函数你需要理解一些浏览器自带的`api`，比如`element.getBoundingClientRect()`，**它相当于调用元素相对于当前视窗左上角的偏移量**；`pageYOffset`相当于**当前视窗相当于文档元素左上角的偏移量**。具备这些知识后，我们先看看该函数的大体模样：
 
@@ -380,6 +415,8 @@ function getElementPosition(el: Element, offset: Object): Object {
 window.scrollTo(position.x, position.y);
 ```
 
+**注意**，在上面的操作中，如果我们返回的滚动行为对象会重写默认的一个跳转对象`position`，`position`中保存了该页面历史的高度。虽然它并没有在调用`scrollBehavior()`时提供给用户，但是其会在用户返回非法值(非`falsy`值)时作为向下兼容使用。
+
 ### 浏览器控件跳转页面高度的还原
 
 页面高度还原应该在使用浏览器控件时触发，因为这种使用方式才体现了回到历史的页面。而这种方式的触发必须通过`popstate`事件。在`history.init()`时，我们在路由切换的最后挂载了事件对其进行了监听：
@@ -429,3 +466,7 @@ scrollBehavior.call(
 ### 函数 API 形式
 
 ![函数API调用流程图](imgs/函数式API调用.png)
+
+### 浏览器控件形式
+
+![浏览器控件跳转](imgs/浏览器控件跳转.svg)
