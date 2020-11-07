@@ -1,94 +1,71 @@
 /* @flow */
 
-import {
-    install
-} from './install'
-import {
-    START
-} from './util/route'
-import {
-    assert
-} from './util/warn'
-import {
-    inBrowser
-} from './util/dom'
-import {
-    cleanPath
-} from './util/path'
-import {
-    createMatcher
-} from './create-matcher'
-import {
-    normalizeLocation
-} from './util/location'
-import {
-    supportsPushState
-} from './util/push-state'
+import { install } from './install'
+import { START } from './util/route'
+import { assert } from './util/warn'
+import { inBrowser } from './util/dom'
+import { cleanPath } from './util/path'
+import { createMatcher } from './create-matcher'
+import { normalizeLocation } from './util/location'
+import { supportsPushState } from './util/push-state'
 
-import {
-    HashHistory
-} from './history/hash'
-import {
-    HTML5History
-} from './history/html5'
-import {
-    AbstractHistory
-} from './history/abstract'
+import { HashHistory } from './history/hash'
+import { HTML5History } from './history/html5'
+import { AbstractHistory } from './history/abstract'
 
-import type {
-    Matcher
-} from './create-matcher'
+import type { Matcher } from './create-matcher'
 
 export default class VueRouter {
-    static install: () => void;
-    static version: string;
+    static install: () => void
+    static version: string
 
-    app: any;
-    apps: Array < any > ;
-    ready: boolean;
-    readyCbs: Array < Function > ;
-    options: RouterOptions;
+    app: any
+    apps: Array<any>
+    ready: boolean
+    readyCbs: Array<Function>
+    options: RouterOptions
 
     // 路由模式
-    mode: string;
-    history: HashHistory | HTML5History | AbstractHistory;
-    matcher: Matcher;
-    fallback: boolean;
-    beforeHooks: Array < ? NavigationGuard > ;
-    resolveHooks: Array < ? NavigationGuard > ;
-    afterHooks: Array < ? AfterNavigationHook > ;
+    mode: string
+    history: HashHistory | HTML5History | AbstractHistory
+    matcher: Matcher
+    fallback: boolean
+    beforeHooks: Array<?NavigationGuard>
+    resolveHooks: Array<?NavigationGuard>
+    afterHooks: Array<?AfterNavigationHook>
 
     constructor(options: RouterOptions = {}) {
-
         // 当前挂载的根Vue实例
-        this.app = null;
+        this.app = null
 
         // 路由作为挂载的根Vue实例数量
-        this.apps = [];
+        this.apps = []
 
         // 原始的路由配置
-        this.options = options;
+        this.options = options
 
         // 全局路由前置守卫beforeEach
-        this.beforeHooks = [];
+        this.beforeHooks = []
 
         // 全局解析守卫beforeResolve
-        this.resolveHooks = [];
+        this.resolveHooks = []
 
         // 全局后置守卫afterEach
-        this.afterHooks = [];
+        this.afterHooks = []
 
         // 根据路由配置创建3个不同类型的RouteRecordd
         this.matcher = createMatcher(options.routes || [], this)
 
         // 默认为hash模式
-        let mode = options.mode || 'hash';
+        let mode = options.mode || 'hash'
 
         // 是否在不兼容时自动降级
         // 判断变量为如果history模式，但不支持该API则且不主动关闭fallback模式
-        this.fallback = mode === 'history' && !supportsPushState && options.fallback !== false
+        this.fallback =
+            mode === 'history' &&
+            !supportsPushState &&
+            options.fallback !== false
         if (this.fallback) {
-
             // 兼容模式下使用hash路由
             mode = 'hash'
         }
@@ -98,7 +75,7 @@ export default class VueRouter {
             mode = 'abstract'
         }
 
-        this.mode = mode;
+        this.mode = mode
 
         // 根据模式初始化对应的路由模式
         switch (mode) {
@@ -106,7 +83,11 @@ export default class VueRouter {
                 this.history = new HTML5History(this, options.base)
                 break
             case 'hash':
-                this.history = new HashHistory(this, options.base, this.fallback)
+                this.history = new HashHistory(
+                    this,
+                    options.base,
+                    this.fallback
+                )
                 break
             case 'abstract':
                 this.history = new AbstractHistory(this, options.base)
@@ -121,45 +102,43 @@ export default class VueRouter {
     match(
         // 未处理的路径信息对象
         raw: RawLocation,
-        current ? : Route,
-        redirectedFrom ? : Location
+        current?: Route,
+        redirectedFrom?: Location
     ): Route {
-
         // 调用RouteRecord路由表内部接口查找匹配的路由路径
         return this.matcher.match(raw, current, redirectedFrom)
     }
 
-    get currentRoute(): ? Route {
+    get currentRoute(): ?Route {
         return this.history && this.history.current
     }
 
-    init(app: any /* Vue component instance */ ) {
-
+    init(app: any /* Vue component instance */) {
         // app为router挂载的根实例
-        process.env.NODE_ENV !== 'production' && assert(
-            install.installed,
-            `not installed. Make sure to call \`Vue.use(VueRouter)\` ` +
-            `before creating root instance.`
-        );
+        process.env.NODE_ENV !== 'production' &&
+            assert(
+                install.installed,
+                `not installed. Make sure to call \`Vue.use(VueRouter)\` ` +
+                    `before creating root instance.`
+            )
 
         // 将所有挂载了router的根vm实例，添加进apps中
-        this.apps.push(app);
+        this.apps.push(app)
 
         // set up app destroyed handler
         // https://github.com/vuejs/vue-router/issues/2639
         app.$once('hook:destroyed', () => {
-
             // clean out app from this.apps array once destroyed
             // 当该根vm实例销毁时，从apps中移除
-            const index = this.apps.indexOf(app);
-            if (index > -1) this.apps.splice(index, 1);
+            const index = this.apps.indexOf(app)
+            if (index > -1) this.apps.splice(index, 1)
 
             // ensure we still have a main app or null if no apps
             // we do not release the router so it can be reused
             // 确保仍有一个主要的根vm实例或没有vm实例
             // 我们不会移除router，以保证它可以在今后被复用
             // 更新当前的app变量指向
-            if (this.app === app) this.app = this.apps[0] || null;
+            if (this.app === app) this.app = this.apps[0] || null
         })
 
         // main app previously initialized
@@ -170,7 +149,7 @@ export default class VueRouter {
         }
 
         // 将当前的根vm实例挂载在app上
-        this.app = app;
+        this.app = app
 
         // 获取路由模式对象
         const history = this.history
@@ -178,9 +157,9 @@ export default class VueRouter {
         // 在各种模式下，加载路由，更新Route
         if (history instanceof HTML5History || history instanceof HashHistory) {
             const setupListeners = () => {
-                history.setupListeners();
-            };
-            
+                history.setupListeners()
+            }
+
             // 跳转完成后监听浏览器路由事件
             history.transitionTo(
                 history.getCurrentLocation(),
@@ -188,19 +167,18 @@ export default class VueRouter {
                 // 无论成功失败，安装路由事件监听器
                 setupListeners,
                 setupListeners
-            );
+            )
         }
 
         // 存储一个更新根Route的函数(该函数在路由变更成功后调用)
         // 这里在最后在调用，原因是我们还未在根实例响应式定义_route，
         // 而在history.transitionTo完成时，会调用history.listen监听的函数
         history.listen(route => {
-
             // 为每个挂在router实例的根Vue实例更新当前的Route
-            this.apps.forEach((app) => {
-                app._route = route;
-            });
-        });
+            this.apps.forEach(app => {
+                app._route = route
+            })
+        })
     }
 
     beforeEach(fn: Function): Function {
@@ -215,7 +193,7 @@ export default class VueRouter {
         return registerHook(this.afterHooks, fn)
     }
 
-    onReady(cb: Function, errorCb ? : Function) {
+    onReady(cb: Function, errorCb?: Function) {
         this.history.onReady(cb, errorCb)
     }
 
@@ -223,21 +201,20 @@ export default class VueRouter {
         this.history.onError(errorCb)
     }
 
-    push(location: RawLocation, onComplete ? : Function, onAbort ? : Function) {
-
+    push(location: RawLocation, onComplete?: Function, onAbort?: Function) {
         // 指定更新完成或中断的回调函数时，调用Promise进行更新
         if (!onComplete && !onAbort && typeof Promise !== 'undefined') {
             return new Promise((resolve, reject) => {
                 this.history.push(location, resolve, reject)
-            });
+            })
 
-        // 当通过link跳转时，调用对应的历史模式进行组件更新
+            // 当通过link跳转时，调用对应的历史模式进行组件更新
         } else {
             this.history.push(location, onComplete, onAbort)
         }
     }
 
-    replace(location: RawLocation, onComplete ? : Function, onAbort ? : Function) {
+    replace(location: RawLocation, onComplete?: Function, onAbort?: Function) {
         // $flow-disable-line
         if (!onComplete && !onAbort && typeof Promise !== 'undefined') {
             return new Promise((resolve, reject) => {
@@ -265,24 +242,29 @@ export default class VueRouter {
             ? to.matched
                 ? to
                 : this.resolve(to).route
-            : this.currentRoute;
+            : this.currentRoute
         if (!route) {
-            return [];
+            return []
         }
         return [].concat.apply(
             [],
-            route.matched.map((m) => {
-                return Object.keys(m.components).map((key) => {
-                    return m.components[key];
-                });
+            route.matched.map(m => {
+                return Object.keys(m.components).map(key => {
+                    return m.components[key]
+                })
             })
-        );
-      }
+        )
+    }
 
     resolve(
+        // 要跳转的Raw Location
         to: RawLocation,
-        current ? : Route,
-        append ? : boolean
+
+        // 当前路径下的Route
+        current?: Route,
+
+        // 是否将当前的Raw Location直接添加在当前所处路径后
+        append?: boolean
     ): {
         location: Location,
         route: Route,
@@ -292,12 +274,11 @@ export default class VueRouter {
         resolved: Route
     } {
         current = current || this.history.current
-        const location = normalizeLocation(
-            to,
-            current,
-            append,
-            this
-        )
+
+        // 处理两个Route与Raw Location将其转化为最终的Location
+        const location = normalizeLocation(to, current, append, this)
+
+        // 去查找对应该Location的RouteRecord
         const route = this.match(location, current)
         const fullPath = route.redirectedFrom || route.fullPath
         const base = this.history.base
@@ -312,7 +293,7 @@ export default class VueRouter {
         }
     }
 
-    addRoutes(routes: Array < RouteConfig > ) {
+    addRoutes(routes: Array<RouteConfig>) {
         this.matcher.addRoutes(routes)
         if (this.history.current !== START) {
             this.history.transitionTo(this.history.getCurrentLocation())
@@ -320,7 +301,7 @@ export default class VueRouter {
     }
 }
 
-function registerHook(list: Array < any > , fn: Function): Function {
+function registerHook(list: Array<any>, fn: Function): Function {
     list.push(fn)
     return () => {
         const i = list.indexOf(fn)

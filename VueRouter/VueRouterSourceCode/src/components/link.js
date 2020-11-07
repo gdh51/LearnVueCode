@@ -1,68 +1,83 @@
 /* @flow */
 
-import { createRoute, isSameRoute, isIncludedRoute } from "../util/route";
-import { extend } from "../util/misc";
-import { normalizeLocation } from "../util/location";
-import { warn } from "../util/warn";
+import { createRoute, isSameRoute, isIncludedRoute } from '../util/route'
+import { extend } from '../util/misc'
+import { normalizeLocation } from '../util/location'
+import { warn } from '../util/warn'
 
 // work around weird flow bug
-const toTypes: Array<Function> = [String, Object];
-const eventTypes: Array<Function> = [String, Array];
+const toTypes: Array<Function> = [String, Object]
+const eventTypes: Array<Function> = [String, Array]
 
-const noop = () => {};
+const noop = () => {}
 
 export default {
-    name: "RouterLink",
+    name: 'RouterLink',
     props: {
+        // 跳转的Raw Location
         to: {
             type: toTypes,
-            required: true,
+            required: true
         },
+
+        // 默认渲染的标签
         tag: {
             type: String,
-            default: "a",
+            default: 'a'
         },
+
+        // 当前路径是否精准匹配该Raw Location对象·？设置该属性时仅精准匹配时
+        // 才添加激活的class
         exact: Boolean,
+
+        // 是否将当前的to.path直接添加在路径后面
         append: Boolean,
+
+        // 浏览器切换路由的行为，是否采用replace行为
         replace: Boolean,
+
+        // 当前router-link的to被当前路径匹配时添加的class
         activeClass: String,
         exactActiveClass: String,
+
+        // 辅助功能，可以不关注
         ariaCurrentValue: {
             type: String,
-            default: "page",
+            default: 'page'
         },
+
+        // 触发导航的事件类型
         event: {
             type: eventTypes,
-            default: "click",
-        },
+            default: 'click'
+        }
     },
     render(h: Function) {
-        const router = this.$router;
-        const current = this.$route;
+        // 提取当前所在路径的Route
+        const router = this.$router
+        const current = this.$route
         const { location, route, href } = router.resolve(
             this.to,
             current,
             this.append
-        );
+        )
 
-        const classes = {};
-        const globalActiveClass = router.options.linkActiveClass;
-        const globalExactActiveClass = router.options.linkExactActiveClass;
+        const classes = {}
+        const globalActiveClass = router.options.linkActiveClass
+        const globalExactActiveClass = router.options.linkExactActiveClass
         // Support global empty active class
         const activeClassFallback =
-            globalActiveClass == null
-                ? "router-link-active"
-                : globalActiveClass;
+            globalActiveClass == null ? 'router-link-active' : globalActiveClass
         const exactActiveClassFallback =
             globalExactActiveClass == null
-                ? "router-link-exact-active"
-                : globalExactActiveClass;
+                ? 'router-link-exact-active'
+                : globalExactActiveClass
         const activeClass =
-            this.activeClass == null ? activeClassFallback : this.activeClass;
+            this.activeClass == null ? activeClassFallback : this.activeClass
         const exactActiveClass =
             this.exactActiveClass == null
                 ? exactActiveClassFallback
-                : this.exactActiveClass;
+                : this.exactActiveClass
 
         const compareTarget = route.redirectedFrom
             ? createRoute(
@@ -71,37 +86,37 @@ export default {
                   null,
                   router
               )
-            : route;
+            : route
 
-        classes[exactActiveClass] = isSameRoute(current, compareTarget);
+        classes[exactActiveClass] = isSameRoute(current, compareTarget)
         classes[activeClass] = this.exact
             ? classes[exactActiveClass]
-            : isIncludedRoute(current, compareTarget);
+            : isIncludedRoute(current, compareTarget)
 
         const ariaCurrentValue = classes[exactActiveClass]
             ? this.ariaCurrentValue
-            : null;
+            : null
 
-        const handler = (e) => {
+        const handler = e => {
             if (guardEvent(e)) {
                 if (this.replace) {
-                    router.replace(location, noop);
+                    router.replace(location, noop)
                 } else {
-                    router.push(location, noop);
+                    router.push(location, noop)
                 }
             }
-        };
-
-        const on = { click: guardEvent };
-        if (Array.isArray(this.event)) {
-            this.event.forEach((e) => {
-                on[e] = handler;
-            });
-        } else {
-            on[this.event] = handler;
         }
 
-        const data: any = { class: classes };
+        const on = { click: guardEvent }
+        if (Array.isArray(this.event)) {
+            this.event.forEach(e => {
+                on[e] = handler
+            })
+        } else {
+            on[this.event] = handler
+        }
+
+        const data: any = { class: classes }
 
         const scopedSlot =
             !this.$scopedSlots.$hasNormal &&
@@ -111,97 +126,95 @@ export default {
                 route,
                 navigate: handler,
                 isActive: classes[activeClass],
-                isExactActive: classes[exactActiveClass],
-            });
+                isExactActive: classes[exactActiveClass]
+            })
 
         if (scopedSlot) {
             if (scopedSlot.length === 1) {
-                return scopedSlot[0];
+                return scopedSlot[0]
             } else if (scopedSlot.length > 1 || !scopedSlot.length) {
-                if (process.env.NODE_ENV !== "production") {
+                if (process.env.NODE_ENV !== 'production') {
                     warn(
                         false,
                         `RouterLink with to="${this.to}" is trying to use a scoped slot but it didn't provide exactly one child. Wrapping the content with a span element.`
-                    );
+                    )
                 }
-                return scopedSlot.length === 0
-                    ? h()
-                    : h("span", {}, scopedSlot);
+                return scopedSlot.length === 0 ? h() : h('span', {}, scopedSlot)
             }
         }
 
-        if (this.tag === "a") {
-            data.on = on;
-            data.attrs = { href, "aria-current": ariaCurrentValue };
+        if (this.tag === 'a') {
+            data.on = on
+            data.attrs = { href, 'aria-current': ariaCurrentValue }
         } else {
             // find the first <a> child and apply listener and href
-            const a = findAnchor(this.$slots.default);
+            const a = findAnchor(this.$slots.default)
             if (a) {
                 // in case the <a> is a static node
-                a.isStatic = false;
-                const aData = (a.data = extend({}, a.data));
-                aData.on = aData.on || {};
+                a.isStatic = false
+                const aData = (a.data = extend({}, a.data))
+                aData.on = aData.on || {}
                 // transform existing events in both objects into arrays so we can push later
                 for (const event in aData.on) {
-                    const handler = aData.on[event];
+                    const handler = aData.on[event]
                     if (event in on) {
                         aData.on[event] = Array.isArray(handler)
                             ? handler
-                            : [handler];
+                            : [handler]
                     }
                 }
                 // append new listeners for router-link
                 for (const event in on) {
                     if (event in aData.on) {
                         // on[event] is always a function
-                        aData.on[event].push(on[event]);
+                        aData.on[event].push(on[event])
                     } else {
-                        aData.on[event] = handler;
+                        aData.on[event] = handler
                     }
                 }
 
-                const aAttrs = (a.data.attrs = extend({}, a.data.attrs));
-                aAttrs.href = href;
-                aAttrs["aria-current"] = ariaCurrentValue;
+                const aAttrs = (a.data.attrs = extend({}, a.data.attrs))
+                aAttrs.href = href
+                aAttrs['aria-current'] = ariaCurrentValue
             } else {
                 // doesn't have <a> child, apply listener to self
-                data.on = on;
+                data.on = on
             }
         }
 
-        return h(this.tag, data, this.$slots.default);
-    },
-};
+        return h(this.tag, data, this.$slots.default)
+    }
+}
 
 function guardEvent(e) {
     // don't redirect with control keys
-    if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return;
+    if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return
     // don't redirect when preventDefault called
-    if (e.defaultPrevented) return;
+    if (e.defaultPrevented) return
     // don't redirect on right click
-    if (e.button !== undefined && e.button !== 0) return;
+    if (e.button !== undefined && e.button !== 0) return
     // don't redirect if `target="_blank"`
     if (e.currentTarget && e.currentTarget.getAttribute) {
-        const target = e.currentTarget.getAttribute("target");
-        if (/\b_blank\b/i.test(target)) return;
+        const target = e.currentTarget.getAttribute('target')
+        if (/\b_blank\b/i.test(target)) return
     }
     // this may be a Weex event which doesn't have this method
     if (e.preventDefault) {
-        e.preventDefault();
+        e.preventDefault()
     }
-    return true;
+    return true
 }
 
 function findAnchor(children) {
     if (children) {
-        let child;
+        let child
         for (let i = 0; i < children.length; i++) {
-            child = children[i];
-            if (child.tag === "a") {
-                return child;
+            child = children[i]
+            if (child.tag === 'a') {
+                return child
             }
             if (child.children && (child = findAnchor(child.children))) {
-                return child;
+                return child
             }
         }
     }
