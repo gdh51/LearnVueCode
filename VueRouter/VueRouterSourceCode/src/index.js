@@ -280,9 +280,15 @@ export default class VueRouter {
 
         // 去查找对应该Location的RouteRecord
         const route = this.match(location, current)
+
+        // 获取要跳转的全路径
         const fullPath = route.redirectedFrom || route.fullPath
         const base = this.history.base
+
+        // 拼接为完整的URL
         const href = createHref(base, fullPath, this.mode)
+
+        // 返回关于该Raw Location对象生成的路径信息
         return {
             location,
             route,
@@ -309,6 +315,7 @@ function registerHook(list: Array<any>, fn: Function): Function {
     }
 }
 
+// 返回完整的路径
 function createHref(base: string, fullPath: string, mode) {
     var path = mode === 'hash' ? '#' + fullPath : fullPath
     return base ? cleanPath(base + '/' + path) : path
