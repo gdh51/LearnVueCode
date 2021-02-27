@@ -43,6 +43,7 @@ export function handleError(err: Error, vm: any, info: string) {
     }
 }
 
+// 带错误信息地调用某个函数
 export function invokeWithErrorHandling(
     handler: Function,
     context: any,
@@ -52,7 +53,11 @@ export function invokeWithErrorHandling(
 ) {
     let res;
     try {
+
+        // 以合适的方式调用函数
         res = args ? handler.apply(context, args) : handler.call(context);
+
+        // 返回的非被响应式观察的对象，且为Promise实例时
         if (res && !res._isVue && isPromise(res) && !res._handled) {
             res.catch(e => handleError(e, vm, info + ` (Promise/async)`));
             // issue #9511

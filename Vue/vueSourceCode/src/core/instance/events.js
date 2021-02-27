@@ -73,6 +73,8 @@ export function eventsMixin(Vue: Class < Component > ) {
 
             // optimize hook:event cost by using a boolean flag marked at registration
             // instead of a hash lookup
+            // 在注册hook:event类似的事件时，使用boolean值来标记，而不是通过一个hash map来查找
+            // 这样可以优化这个注册过程
 
             // 是否存在钩子函数
             if (hookRE.test(event)) {
@@ -139,6 +141,8 @@ export function eventsMixin(Vue: Class < Component > ) {
 
     Vue.prototype.$emit = function (event: string): Component {
         const vm: Component = this
+
+        // 如果用户用大写的形式触发事件，恰好有该名称为小写的事件，那么warning用户
         if (process.env.NODE_ENV !== 'production') {
             const lowerCaseEvent = event.toLowerCase();
             if (lowerCaseEvent !== event && vm._events[lowerCaseEvent]) {
@@ -151,6 +155,8 @@ export function eventsMixin(Vue: Class < Component > ) {
                 )
             }
         }
+
+        // 取出vm实例上该名称的事件数组
         let cbs = vm._events[event];
         if (cbs) {
 

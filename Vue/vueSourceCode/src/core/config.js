@@ -38,12 +38,13 @@ export type Config = {
 export default ({
   /**
    * Option merge strategies (used in core/util/options)
+   * 配置合并策略
    */
-  // $flow-disable-line
   optionMergeStrategies: Object.create(null),
 
   /**
    * Whether to suppress warnings.
+   * 是否不展示warning型错误
    */
   silent: false,
 

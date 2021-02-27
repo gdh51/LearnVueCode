@@ -61,9 +61,17 @@ if (process.env.NODE_ENV !== 'production') {
 
     const hasHandler = {
         has(target, key) {
+
+            // 是否存在该访问字段
             const has = key in target
+
+            // 查看该字段是否为全局变量（允许访问全局变量）
             const isAllowed = allowedGlobals(key) ||
+
+                // 以_开头但不定义在data中属性
                 (typeof key === 'string' && key.charAt(0) === '_' && !(key in target.$data))
+
+            // 如果是空属性或非法属性
             if (!has && !isAllowed) {
                 if (key in target.$data) warnReservedPrefix(target, key)
                 else warnNonPresent(target, key)
@@ -74,8 +82,14 @@ if (process.env.NODE_ENV !== 'production') {
 
     const getHandler = {
         get(target, key) {
+
+            // 当前VM实例上无该key字段（要么是没代理上来，要么是真没有该字段）
             if (typeof key === 'string' && !(key in target)) {
+
+                // 如果该字段存在于data中，那说明该字段用了内部命名形式命名_/$
                 if (key in target.$data) warnReservedPrefix(target, key)
+
+                // 缺失该字段，报错
                 else warnNonPresent(target, key)
             }
             return target[key]
@@ -86,6 +100,8 @@ if (process.env.NODE_ENV !== 'production') {
         if (hasProxy) {
             // determine which proxy handler to use
             const options = vm.$options
+
+            // 是否为webpack运行时通过template编译的render函数
             const handlers = options.render && options.render._withStripped ?
                 getHandler :
                 hasHandler

@@ -38,9 +38,13 @@ Vue.prototype.$on = function(
 
         // optimize hook:event cost by using a boolean flag marked at registration
         // instead of a hash lookup
+        // 在注册hook:event类似的事件时，使用boolean值来标记，而不是通过一个hash map来查找
+        // 这样可以优化这个注册过程
 
         // 是否存在钩子函数
         if (hookRE.test(event)) {
+
+            // 标记该实例有通过$on注册的生命周期事件
             vm._hasHookEvent = true;
         }
     }
@@ -53,7 +57,7 @@ Vue.prototype.$on = function(
 
 ## $off——取消一个自定义事件
 
-该方法用于取消一个事件，可以指定具体该事件的函数，但要注意如果该函数不存在于该事件队列中，则不会做事:
+该方法用于取消一个事件，可以指定具体该事件的函数，但要注意如果该函数不存在于该事件队列中，则不会做任何事:
 
 ```js
 Vue.prototype.$off = function(
@@ -115,6 +119,8 @@ Vue.prototype.$once = function(event: string, fn: Function): Component {
         vm.$off(event, on);
         fn.apply(vm, arguments);
     }
+
+    // 这里挂载.fn属性上是因为所以函数会挂在上面
     on.fn = fn;
     vm.$on(event, on);
     return vm;
@@ -130,6 +136,8 @@ Vue.prototype.$once = function(event: string, fn: Function): Component {
 ```js
 Vue.prototype.$emit = function(event: string): Component {
     const vm: Component = this;
+
+    // 如果用户用大写的形式触发事件，恰好有该名称为小写的事件，那么warning用户
     if (process.env.NODE_ENV !== 'production') {
         const lowerCaseEvent = event.toLowerCase();
         if (lowerCaseEvent !== event && vm._events[lowerCaseEvent]) {
@@ -184,7 +192,7 @@ function invokeWithErrorHandling(
         // 根据是否存在参数调用不同的call/apply方法来执行回调函数
         res = args ? handler.apply(context, args) : handler.call(context);
 
-        // 如果返回结果为promise对象，则对其进行错误处理
+        // 返回的非被响应式观察的对象，且为Promise实例时，则对其进行错误处理
         if (res && !res._isVue && isPromise(res) && !res._handled) {
             res.catch(e => handleError(e, vm, info + ` (Promise/async)`));
             // issue #9511

@@ -34,11 +34,18 @@ export default {
         // 判断当前view所处于的深度，同时查看当前组件是否处于失活的kept-alive中
         let depth = 0
         let inactive = false
+
+        // 从当前组件开始，一直找到根Router挂载的组件
         while (parent && parent._routerRoot !== parent) {
+            // 查看当前组件实例的占位节点属性
             const vnodeData = parent.$vnode ? parent.$vnode.data : {}
+
+            查看当前组件是否为routerView组件的持有者
             if (vnodeData.routerView) {
+                // 如果是，那么记录当前组件所处于的深度
                 depth++
             }
+
             if (
                 vnodeData.keepAlive &&
                 parent._directInactive &&
