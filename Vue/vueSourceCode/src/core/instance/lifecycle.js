@@ -2,26 +2,12 @@
 
 import config from '../config'
 import Watcher from '../observer/watcher'
-import {
-    mark,
-    measure
-} from '../util/perf'
-import {
-    createEmptyVNode
-} from '../vdom/vnode'
-import {
-    updateComponentListeners
-} from './events'
-import {
-    resolveSlots
-} from './render-helpers/resolve-slots'
-import {
-    toggleObserving
-} from '../observer/index'
-import {
-    pushTarget,
-    popTarget
-} from '../observer/dep'
+import { mark, measure } from '../util/perf'
+import { createEmptyVNode } from '../vdom/vnode'
+import { updateComponentListeners } from './events'
+import { resolveSlots } from './render-helpers/resolve-slots'
+import { toggleObserving } from '../observer/index'
+import { pushTarget, popTarget } from '../observer/dep'
 
 import {
     warn,
@@ -40,12 +26,11 @@ export let isUpdatingChildComponent: boolean = false
 
 // 该函数用于将当前的更新的实例变更为传入的实例，并存储上一个更新的实例
 export function setActiveInstance(vm: Component) {
-
     // 储存上一个更新的vm实例
-    const prevActiveInstance = activeInstance;
+    const prevActiveInstance = activeInstance
 
     // 设置更新的vm实例为当前实例;
-    activeInstance = vm;
+    activeInstance = vm
 
     // 返回一个接口，用于切换为上一个实例
     return () => {
@@ -54,27 +39,27 @@ export function setActiveInstance(vm: Component) {
 }
 
 export function initLifecycle(vm: Component) {
-    const options = vm.$options;
+    const options = vm.$options
 
     // locate first non-abstract parent
     // 定位第一个非抽象的父级组件vm实例(如keep-alive/transition为抽象组件)
-    let parent = options.parent;
+    let parent = options.parent
     if (parent && !options.abstract) {
         while (parent.$options.abstract && parent.$parent) {
-            parent = parent.$parent;
+            parent = parent.$parent
         }
 
         // 将该组件加入其子组件队列
-        parent.$children.push(vm);
+        parent.$children.push(vm)
     }
 
     // 定义根vm实例和父级vm实例
-    vm.$parent = parent;
-    vm.$root = parent ? parent.$root : vm;
+    vm.$parent = parent
+    vm.$root = parent ? parent.$root : vm
 
     // 存放该vm实例中的组件vm实例
-    vm.$children = [];
-    vm.$refs = {};
+    vm.$children = []
+    vm.$refs = {}
 
     // 存储该vm实例上全部的Watcher实例
     vm._watcher = null
@@ -93,22 +78,22 @@ export function initLifecycle(vm: Component) {
     vm._isBeingDestroyed = false
 }
 
-export function lifecycleMixin(Vue: Class < Component > ) {
-    Vue.prototype._update = function (vnode: VNode, hydrating ? : boolean) {
-        const vm: Component = this;
+export function lifecycleMixin(Vue: Class<Component>) {
+    Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
+        const vm: Component = this
 
         // 上一个元素(如果为根实例，那么此时就为挂载的元素)
-        const prevEl = vm.$el;
+        const prevEl = vm.$el
 
         // 上一个Vnode节点(如果为根实例那么此时就为空)(其他时候为根VNode节点)
-        const prevVnode = vm._vnode;
+        const prevVnode = vm._vnode
 
         // 设置当前更新的vm实例，并存储上一个vm实例，
         // 返回一个用于切换为上一个实例的函数
-        const restoreActiveInstance = setActiveInstance(vm);
+        const restoreActiveInstance = setActiveInstance(vm)
 
         // 将当前VNode节点，挂载至_vnode(所以当前节点)
-        vm._vnode = vnode;
+        vm._vnode = vnode
 
         // Vue.prototype.__patch__ is injected in entry points
         // based on the rendering backend used.
@@ -116,10 +101,14 @@ export function lifecycleMixin(Vue: Class < Component > ) {
 
         // 存不在上一个VNode时
         if (!prevVnode) {
-
             // initial render
             // 初始化渲染后
-            vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */ )
+            vm.$el = vm.__patch__(
+                vm.$el,
+                vnode,
+                hydrating,
+                false /* removeOnly */
+            )
         } else {
             // updates
             vm.$el = vm.__patch__(prevVnode, vnode)
@@ -153,7 +142,7 @@ export function lifecycleMixin(Vue: Class < Component > ) {
     }
 
     Vue.prototype.$destroy = function () {
-        const vm: Component = this;
+        const vm: Component = this
 
         // 如果该组件正在销毁，那么直接退出
         if (vm._isBeingDestroyed) {
@@ -161,14 +150,14 @@ export function lifecycleMixin(Vue: Class < Component > ) {
         }
 
         // 销毁前调用组件定义的beforeDestrory
-        callHook(vm, 'beforeDestroy');
+        callHook(vm, 'beforeDestroy')
 
         // 变更状态，防止重复销毁
-        vm._isBeingDestroyed = true;
+        vm._isBeingDestroyed = true
 
         // remove self from parent
         // 将自己从父组件的子组件数组中移除
-        const parent = vm.$parent;
+        const parent = vm.$parent
         if (parent && !parent._isBeingDestroyed && !vm.$options.abstract) {
             remove(parent.$children, vm)
         }
@@ -179,7 +168,7 @@ export function lifecycleMixin(Vue: Class < Component > ) {
             vm._watcher.teardown()
         }
 
-        let i = vm._watchers.length;
+        let i = vm._watchers.length
         // 同时销毁该组件中其他的watcher
         while (i--) {
             vm._watchers[i].teardown()
@@ -196,10 +185,10 @@ export function lifecycleMixin(Vue: Class < Component > ) {
         // 递归调用子组件的销毁函数
         vm.__patch__(vm._vnode, null)
         // fire destroyed hook
-        callHook(vm, 'destroyed');
+        callHook(vm, 'destroyed')
         // turn off all instance listeners.
         // 移除所有事件监听器
-        vm.$off();
+        vm.$off()
         // remove __vue__ reference
         if (vm.$el) {
             vm.$el.__vue__ = null
@@ -213,24 +202,27 @@ export function lifecycleMixin(Vue: Class < Component > ) {
 
 export function mountComponent(
     vm: Component,
-    el: ? Element,
-    hydrating ? : boolean
+    el: ?Element,
+    hydrating?: boolean
 ): Component {
-    vm.$el = el;
+    vm.$el = el
 
     // 当不存在渲染函数时
     if (!vm.$options.render) {
-
         // 将当前渲染函数赋值为创建一个空的VNode节点的函数
         vm.$options.render = createEmptyVNode
         if (process.env.NODE_ENV !== 'production') {
             /* istanbul ignore if */
-            if ((vm.$options.template && vm.$options.template.charAt(0) !== '#') ||
-                vm.$options.el || el) {
+            if (
+                (vm.$options.template &&
+                    vm.$options.template.charAt(0) !== '#') ||
+                vm.$options.el ||
+                el
+            ) {
                 warn(
                     'You are using the runtime-only build of Vue where the template ' +
-                    'compiler is not available. Either pre-compile the templates into ' +
-                    'render functions, or use the compiler-included build.',
+                        'compiler is not available. Either pre-compile the templates into ' +
+                        'render functions, or use the compiler-included build.',
                     vm
                 )
             } else {
@@ -243,7 +235,7 @@ export function mountComponent(
     }
 
     // 调用该vm实例的beforeMount狗子函数
-    callHook(vm, 'beforeMount');
+    callHook(vm, 'beforeMount')
 
     let updateComponent
 
@@ -276,21 +268,27 @@ export function mountComponent(
     // since the watcher's initial patch may call $forceUpdate (e.g. inside child
     // component's mounted hook), which relies on vm._watcher being already defined
     // 为vue的dom创建一个watcher
-    new Watcher(vm, updateComponent, noop, {
-        before() {
-            if (vm._isMounted && !vm._isDestroyed) {
-                callHook(vm, 'beforeUpdate')
+    new Watcher(
+        vm,
+        updateComponent,
+        noop,
+        {
+            before() {
+                if (vm._isMounted && !vm._isDestroyed) {
+                    callHook(vm, 'beforeUpdate')
+                }
             }
-        }
-    }, true /* isRenderWatcher */ )
+        },
+        true /* isRenderWatcher */
+    )
     hydrating = false
 
     // manually mounted instance, call mounted on self
     // mounted is called for render-created child components in its inserted hook
     if (vm.$vnode == null) {
         vm._isMounted = true
-        callHook(vm, 'mounted');
-    };
+        callHook(vm, 'mounted')
+    }
 
     return vm
 }
@@ -299,12 +297,12 @@ export function updateChildComponent(
     vm: Component,
 
     // props的值
-    propsData: ? Object,
-    listeners : ? Object,
-    parentVnode : MountedComponentVNode,
+    propsData: ?Object,
+    listeners: ?Object,
+    parentVnode: MountedComponentVNode,
 
     // 组件的占位节点
-    renderChildren: ? Array < VNode >
+    renderChildren: ?Array<VNode>
 ) {
     if (process.env.NODE_ENV !== 'production') {
         isUpdatingChildComponent = true
@@ -344,7 +342,8 @@ export function updateChildComponent(
     vm.$vnode = parentVnode // update vm's placeholder node without re-render
 
     // 更新组件根节点的父节点
-    if (vm._vnode) { // update child tree's parent
+    if (vm._vnode) {
+        // update child tree's parent
         vm._vnode.parent = parentVnode
     }
 
@@ -394,7 +393,6 @@ export function updateChildComponent(
 }
 
 function isInInactiveTree(vm) {
-
     // 查找其祖先vm实例，如果有一个vm实例为不活跃的，则为true
     while (vm && (vm = vm.$parent)) {
         if (vm._inactive) return true
@@ -402,11 +400,10 @@ function isInInactiveTree(vm) {
     return false
 }
 
-export function activateChildComponent(vm: Component, direct ? : boolean) {
-
+export function activateChildComponent(vm: Component, direct?: boolean) {
     // 直接激活子组件时，设置其不活跃状态为false
     if (direct) {
-        vm._directInactive = false;
+        vm._directInactive = false
 
         // 该vm实例是否处于一个不活跃的dom树中，如果是则直接返回
         if (isInInactiveTree(vm)) {
@@ -420,9 +417,8 @@ export function activateChildComponent(vm: Component, direct ? : boolean) {
 
     // 是否为不活跃状态
     if (vm._inactive || vm._inactive === null) {
-
         // 关闭不活跃状态
-        vm._inactive = false;
+        vm._inactive = false
 
         // 激活动态组件的子组件
         for (let i = 0; i < vm.$children.length; i++) {
@@ -434,7 +430,7 @@ export function activateChildComponent(vm: Component, direct ? : boolean) {
     }
 }
 
-export function deactivateChildComponent(vm: Component, direct ? : boolean) {
+export function deactivateChildComponent(vm: Component, direct?: boolean) {
     if (direct) {
         vm._directInactive = true
         if (isInInactiveTree(vm)) {
@@ -460,6 +456,8 @@ export function callHook(vm: Component, hook: string) {
             invokeWithErrorHandling(handlers[i], vm, null, vm, info)
         }
     }
+
+    // 触发自定义事件中的生命周期函数
     if (vm._hasHookEvent) {
         vm.$emit('hook:' + hook)
     }
