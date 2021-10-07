@@ -64,7 +64,7 @@ export const createDep = (effects?: ReactiveEffect[]): Dep => {
 }
 ```
 
-在上述一个依赖项上，具有一个`w`与一个`n`属性，它们都是一个`bitmap`(`bitmap`就相当于于一个`map`，只不过其用二进制的形式表示，比如`1010`，则表示在第一位和第三位上其有值，即`true`)，`w`表示已经追踪的副作用函数的`bitmap`，`n`表示即将追踪的副作用函数的`bitmap`。
+在上述一个依赖项上，具有一个`w(wasTracked)`与一个`n(newTracked)`属性，它们都是一个`bitmap`(`bitmap`就相当于于一个`map`，只不过其用二进制的形式表示，比如`1010`，则表示在第一位和第三位上其有值，即`true`)，`w`表示已经追踪的副作用函数的`bitmap`，`n`表示即将追踪的副作用函数的`bitmap`。
 
 最后对副作用函数进行追踪：
 
@@ -97,7 +97,7 @@ export const initDepMarkers = ({ deps }: ReactiveEffect) => {
 
 之后在`trackEffects()`函数中，其不会参考`dep.w`的`bitmap`而是直接将当前正在进行依赖收集的副作用函数写入到`dep.n`对应的`bit`位上。
 
-当然其会检查`dep.w`的`bitmap`上是否已有当前副作用函数的`bit`位，如果没有时，才会执行依赖收集、副作用函数追踪的操作。(所以操作都只会执行一次，重复不进行执行)
+当然其会检查`dep.n`的`bitmap`上是否已有当前副作用函数的`bit`位，如果没有时，才会执行依赖收集、副作用函数追踪的操作。(所以操作都只会执行一次，重复不进行执行)
 
 ```js
 // 是否需要追踪
