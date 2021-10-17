@@ -1,4 +1,4 @@
-# Watcher监听者对象(主要是区别于另一个观察者对象)
+# Watcher 监听者对象(主要是区别于另一个观察者对象)
 
 在我们定义的`watch`和`computed`属性时，它们都是依赖于`Watcher`对象来进行对属性的监听。下面我们就来具体学习`class Watcher`。
 
@@ -20,133 +20,130 @@ let uid = 0
  * 一个观察者解析一个表达式，收集依赖项，并在表达式的返回值改变时触发回调函数
  */
 class Watcher {
-    vm: Component;
+    vm: Component
 
     // 当为computed属性时，该值为函数，表示computed的求值表达式
     // 当为watch属性时，该值表示watch的名称字符串
-    expression: string;
+    expression: string
 
     // 仅监听属性具有实质的该函数，其他watcher为空函数
-    cb: Function;
-    id: number;
+    cb: Function
+    id: number
 
     // watch的特有属性，用于是否深度监听
-    deep: boolean;
+    deep: boolean
 
     // watch的特有属性，用于出错时是否报错
-    user: boolean;
+    user: boolean
 
     // 计算属性特有属性，是否延迟Watcher的求值
-    lazy: boolean;
-    sync: boolean;
+    lazy: boolean
+    sync: boolean
 
     // 是否允许允许Watcher进行表达式计算
-    dirty: boolean;
+    dirty: boolean
 
     // 渲染Watcher的特有属性，表示当前组件是否活跃(是否销毁)
-    active: boolean;
+    active: boolean
 
     // 当前观察者对象依赖的依赖项
-    deps: Array < Dep > ;
-    newDeps: Array < Dep > ;
-    depIds: SimpleSet;
-    newDepIds: SimpleSet;
+    deps: Array<Dep>
+    newDeps: Array<Dep>
+    depIds: SimpleSet
+    newDepIds: SimpleSet
 
     // 渲染Watcher特有属性，当前Watcher在重新计算(更新)前调用的函数
-    before: ? Function;
-    getter: Function;
-    value: any;
+    before: ?Function
+    getter: Function
+    value: any
 
     constructor(
         vm: Component,
         expOrFn: string | Function,
         cb: Function,
-        options ? : ? Object,
-        isRenderWatcher ? : boolean
+        options?: ?Object,
+        isRenderWatcher?: boolean
     ) {
         this.vm = vm
 
         // 是否为渲染watcher
         if (isRenderWatcher) {
-            vm._watcher = this;
+            vm._watcher = this
         }
 
         // 将Watcher加入vm上的_watchers数组
-        vm._watchers.push(this);
+        vm._watchers.push(this)
 
         // options
         // 初始化配置
         if (options) {
-            this.deep = !!options.deep;
-            this.user = !!options.user;
-            this.lazy = !!options.lazy;
-            this.sync = !!options.sync;
-            this.before = options.before;
+            this.deep = !!options.deep
+            this.user = !!options.user
+            this.lazy = !!options.lazy
+            this.sync = !!options.sync
+            this.before = options.before
         } else {
-
             // 未传入时默认为false
-            this.deep = this.user = this.lazy = this.sync = false;
+            this.deep = this.user = this.lazy = this.sync = false
         }
-        this.cb = cb;
-        this.id = ++uid; // uid for batching
-        this.active = true;
-        this.dirty = this.lazy; // for lazy watchers
-        this.deps = [];
-        this.newDeps = [];
-        this.depIds = new Set();
-        this.newDepIds = new Set();
-        this.expression = process.env.NODE_ENV !== 'production' ?
-            expOrFn.toString() : '';
+        this.cb = cb
+        this.id = ++uid // uid for batching
+        this.active = true
+        this.dirty = this.lazy // for lazy watchers
+        this.deps = []
+        this.newDeps = []
+        this.depIds = new Set()
+        this.newDepIds = new Set()
+        this.expression =
+            process.env.NODE_ENV !== 'production' ? expOrFn.toString() : ''
 
         // Watcher变动所涉及的函数
         // 这里即渲染Watcher的渲染函数或计算属性的计算函数
         if (typeof expOrFn === 'function') {
-            this.getter = expOrFn;
+            this.getter = expOrFn
         } else {
-
             // 当Watcher名为字符串时, 可以是.运算符指定对象的某个属性
             // getter为一个函数, 返回watch名所对应的属性(即监听函数)
-            this.getter = parsePath(expOrFn);
+            this.getter = parsePath(expOrFn)
 
             // 当存在不规范的定义时会报错
             if (!this.getter) {
                 this.getter = noop
-                process.env.NODE_ENV !== 'production' && warn(
-                    `Failed watching path: "${expOrFn}" ` +
-                    'Watcher only accepts simple dot-delimited paths. ' +
-                    'For full control, use a function instead.',
-                    vm
-                )
+                process.env.NODE_ENV !== 'production' &&
+                    warn(
+                        `Failed watching path: "${expOrFn}" ` +
+                            'Watcher only accepts simple dot-delimited paths. ' +
+                            'For full control, use a function instead.',
+                        vm
+                    )
             }
         }
 
         // 当前Watcher的值，当是computed时，延迟求值(即本次不求值)
-        this.value = this.lazy ?
-            undefined :
-            this.get();
+        this.value = this.lazy ? undefined : this.get()
     }
 }
 ```
 
 那么这里我们按照不同的`Watcher`分别来进行学习：
 
-- [计算属性Watcher](./计算属性Watcher/README.md)
-- [监听属性Watcher](./监听属性Watcher/README.md)
-- [渲染Watcher](./渲染Watcher/README.md)
+-   [计算属性 Watcher](./计算属性Watcher/README.md)
+-   [监听属性 Watcher](./监听属性Watcher/README.md)
+-   [渲染 Watcher](./渲染Watcher/README.md)
 
 在上面三个`Watcher`的更新中，涉及到一个[刷新/更新队列](../../Vue的Watcher更新机制/README.md)的运作，这里我们需要在学习这三个`Watcher`的中途进行进行学习。
 
 那么下面有`Watcher`原型方法的具体解析，当然也可以通过以上的具体`Watcher`来渐进式的学习：
 
-- [Watcher.prototype.evaluate()——计算Watcher的值(lazy Watcher专属)](#watcherprototypeevaluate%e8%ae%a1%e7%ae%97watcher%e7%9a%84%e5%80%bclazy-watcher%e4%b8%93%e5%b1%9e)
-- [Watcher.prototype.get()——计算Watcher的值，收集依赖项](#watcherprototypeget%e8%ae%a1%e7%ae%97watcher%e7%9a%84%e5%80%bc%e6%94%b6%e9%9b%86%e4%be%9d%e8%b5%96%e9%a1%b9)
-- [Watcher.prototype.addDep()——为Watcher添加依赖项](#watcherprototypeadddep%e4%b8%bawatcher%e6%b7%bb%e5%8a%a0%e4%be%9d%e8%b5%96%e9%a1%b9)
-- [traverse(value)——遍历 value，将其所有属性的依赖添加到当前 watcher](#traversevalue%e9%81%8d%e5%8e%86-value%e5%b0%86%e5%85%b6%e6%89%80%e6%9c%89%e5%b1%9e%e6%80%a7%e7%9a%84%e4%be%9d%e8%b5%96%e6%b7%bb%e5%8a%a0%e5%88%b0%e5%bd%93%e5%89%8d-watcher)
-- [Watcher.prototype.cleanupDeps()——清除已不存在依赖项，交替依赖项](#watcherprototypecleanupdeps%e6%b8%85%e9%99%a4%e5%b7%b2%e4%b8%8d%e5%ad%98%e5%9c%a8%e4%be%9d%e8%b5%96%e9%a1%b9%e4%ba%a4%e6%9b%bf%e4%be%9d%e8%b5%96%e9%a1%b9)
-- [Watcher.ptototype.update()——更新 watcher](#watcherptototypeupdate%e6%9b%b4%e6%96%b0-watcher)
-- [Watcher.prototype.run()——重新收集依赖项，并触发回调](#watcherprototyperun%e9%87%8d%e6%96%b0%e6%94%b6%e9%9b%86%e4%be%9d%e8%b5%96%e9%a1%b9%e5%b9%b6%e8%a7%a6%e5%8f%91%e5%9b%9e%e8%b0%83)
+-   [Watcher.prototype.evaluate()——计算 Watcher 的值(lazy Watcher 专属)](#watcherprototypeevaluate%e8%ae%a1%e7%ae%97watcher%e7%9a%84%e5%80%bclazy-watcher%e4%b8%93%e5%b1%9e)
+-   [Watcher.prototype.get()——计算 Watcher 的值，收集依赖项](#watcherprototypeget%e8%ae%a1%e7%ae%97watcher%e7%9a%84%e5%80%bc%e6%94%b6%e9%9b%86%e4%be%9d%e8%b5%96%e9%a1%b9)
+-   [Watcher.prototype.addDep()——为 Watcher 添加依赖项](#watcherprototypeadddep%e4%b8%bawatcher%e6%b7%bb%e5%8a%a0%e4%be%9d%e8%b5%96%e9%a1%b9)
+-   [traverse(value)——遍历 value，将其所有属性的依赖添加到当前 watcher](#traversevalue%e9%81%8d%e5%8e%86-value%e5%b0%86%e5%85%b6%e6%89%80%e6%9c%89%e5%b1%9e%e6%80%a7%e7%9a%84%e4%be%9d%e8%b5%96%e6%b7%bb%e5%8a%a0%e5%88%b0%e5%bd%93%e5%89%8d-watcher)
+-   [Watcher.prototype.cleanupDeps()——清除已不存在依赖项，交替依赖项](#watcherprototypecleanupdeps%e6%b8%85%e9%99%a4%e5%b7%b2%e4%b8%8d%e5%ad%98%e5%9c%a8%e4%be%9d%e8%b5%96%e9%a1%b9%e4%ba%a4%e6%9b%bf%e4%be%9d%e8%b5%96%e9%a1%b9)
+-   [Watcher.ptototype.update()——更新 watcher](#watcherptototypeupdate%e6%9b%b4%e6%96%b0-watcher)
+-   [Watcher.prototype.run()——重新收集依赖项，并触发回调](#watcherprototyperun%e9%87%8d%e6%96%b0%e6%94%b6%e9%9b%86%e4%be%9d%e8%b5%96%e9%a1%b9%e5%b9%b6%e8%a7%a6%e5%8f%91%e5%9b%9e%e8%b0%83)
 
-## Watcher.prototype.evaluate()——计算Watcher的值(lazy Watcher专属)
+## Watcher.prototype.evaluate()——计算 Watcher 的值(lazy Watcher 专属)
 
 该方法为`Computed Watcher`计算属性的专用方法，用于对`Watcher`求值，并更新其允许求值属性(`dirty`)
 
@@ -164,7 +161,7 @@ evaluate() {
 
 那么具体求值就是下面的这个方法。
 
-## Watcher.prototype.get()——计算Watcher的值，收集依赖项
+## Watcher.prototype.get()——计算 Watcher 的值，收集依赖项
 
 该方法用来触发`Watcher`的`getter`函数，对其进行求值，并收集依赖项, 并按以下的顺序：
 
@@ -230,7 +227,7 @@ get () {
 
 ```js
 if (this.deep) {
-    traverse(value);
+    traverse(value)
 }
 ```
 
@@ -255,47 +252,51 @@ const seenObjects = new Set()
  * is collected as a "deep" dependency.
  */
 function traverse(val: any) {
-    _traverse(val, seenObjects);
+    _traverse(val, seenObjects)
 
     // 清空Set表
-    seenObjects.clear();
+    seenObjects.clear()
 }
 
 function _traverse(val: any, seen: SimpleSet) {
-    let i, keys;
-    const isA = Array.isArray(val);
+    let i, keys
+    const isA = Array.isArray(val)
 
     // 非对象或数组或冻结属性或Vnode时直接返回
-    if ((!isA && !isObject(val)) || Object.isFrozen(val) || val instanceof VNode) {
+    if (
+        (!isA && !isObject(val)) ||
+        Object.isFrozen(val) ||
+        val instanceof VNode
+    ) {
         return
     }
 
     // 对于对象或数组，添加它们的依赖项到seen防止循环引用
     if (val.__ob__) {
-        const depId = val.__ob__.dep.id;
+        const depId = val.__ob__.dep.id
 
         // 已经进行收集则直接返回，防止循环引用
         if (seen.has(depId)) {
             return
         }
-        seen.add(depId);
+        seen.add(depId)
     }
 
     // 递归继续收集依赖项
     if (isA) {
         i = val.length
-        while (i--) _traverse(val[i], seen);
+        while (i--) _traverse(val[i], seen)
     } else {
         keys = Object.keys(val)
-        i = keys.length;
-        while (i--) _traverse(val[keys[i]], seen);
+        i = keys.length
+        while (i--) _traverse(val[keys[i]], seen)
     }
 }
 ```
 
-从该函数我们可以看到，对于**watch函数监听对象时，对象以及其内部对象的键值对增删是不会被监控到的**！
+从该函数我们可以看到，对于**watch 函数监听对象时，对象以及其内部对象的键值对增删是不会被监控到的**！
 
-## Watcher.prototype.addDep()——为Watcher添加依赖项
+## Watcher.prototype.addDep()——为 Watcher 添加依赖项
 
 该函数用于将该新增的依赖项添加至`Watcher`的依赖项数组中，并同时将该`Watcher`添加至`Dep`依赖项的观察者数组中。(该函数只处理新增的`Dep`，如果是重复的那么不做处理)
 
@@ -304,30 +305,27 @@ function _traverse(val: any, seen: SimpleSet) {
  * Add a dependency to this directive.
  * 向当前Watcher添加一个依赖项
  */
-Watcher.prototype.addDep = function(dep: Dep) {
-
+Watcher.prototype.addDep = function (dep: Dep) {
     // 获取当前dep的唯一标识符
-    const id = dep.id;
+    const id = dep.id
 
     // 防止重复添加dep
     if (!this.newDepIds.has(id)) {
-
         // 将当前dep添加至Watcher的新deps数组中
-        this.newDepIds.add(id);
-        this.newDeps.push(dep);
+        this.newDepIds.add(id)
+        this.newDeps.push(dep)
 
         // 如果旧的deps数组中没有该依赖项，
         // 那么新增的依赖项还应该将该Watcher添加到它的观察者队列中
         if (!this.depIds.has(id)) {
-            dep.addSub(this);
+            dep.addSub(this)
         }
     }
 }
 
 Dep.prototype.addSub = function (sub: Watcher) {
-
     // 将观察该依赖项的观察者添加至数组中
-    this.subs.push(sub);
+    this.subs.push(sub)
 }
 ```
 
@@ -346,55 +344,52 @@ Dep.prototype.addSub = function (sub: Watcher) {
  * 清理依赖项收集
  */
 Watcher.prototype.cleanupDeps = function () {
-
     // 获取该Watcher原的依赖项数组
     let i = this.deps.length
 
     // 如果该旧的dep依赖项已不存在于新的deps队列，则要从旧的dep依赖项中移除该watcher
     while (i--) {
-
         // 取出旧的依赖项
-        const dep = this.deps[i];
+        const dep = this.deps[i]
 
         // 当最新的依赖项队列已不存在该旧依赖项时，从该旧的依赖项移除该watcher
         if (!this.newDepIds.has(dep.id)) {
-
             // 将该Watcher从该依赖项的观察者队列中移除
-            dep.removeSub(this);
+            dep.removeSub(this)
         }
     }
 
-     // 替换新旧依赖项队列
-    let tmp = this.depIds;
+    // 替换新旧依赖项队列
+    let tmp = this.depIds
 
     // 更新依赖项id数组
-    this.depIds = this.newDepIds;
+    this.depIds = this.newDepIds
 
     // 这里是什么骚操作，没看懂
-    this.newDepIds = tmp;
-    this.newDepIds.clear();
-    tmp = this.deps;
+    this.newDepIds = tmp
+    this.newDepIds.clear()
+    tmp = this.deps
 
     // 这里又是什么骚操作，没看懂
     // 这里替换了两个依赖项数组
-    this.deps = this.newDeps;
-    this.newDeps = tmp;
+    this.deps = this.newDeps
+    this.newDeps = tmp
 
     // 清空newDeps
-    this.newDeps.length = 0;
+    this.newDeps.length = 0
 }
 ```
 
-至此，就是watcher函数全部的求值过程，用一张图来总结一下一个watcher的具体求值过程：
+至此，就是 watcher 函数全部的求值过程，用一张图来总结一下一个 watcher 的具体求值过程：
 ![watcher求值过程](../img/watcher求值.svg)
 
 ## Watcher.ptototype.update()——更新 watcher
 
 当依赖项发生更新时，首先会触发该函数，对于不同的`watcher`，有三种不同的做法：
 
-- 计算属性，更新允许求值的属性`.dirty`
-- 渲染`watcher`与监听属性，加入刷新队列等待更新。
-- 第三个表示`watcher`不通过刷新队列异步更新，而是直接同步进行求值(`VueX`就是基于这个来开启严格模式，这个配置在官网文档中没有说明)
+-   计算属性，更新允许求值的属性`.dirty`
+-   渲染`watcher`与监听属性，加入刷新队列等待更新。
+-   第三个表示`watcher`不通过刷新队列异步更新，而是直接同步进行求值(`VueX`就是基于这个来开启严格模式，这个配置在官网文档中没有说明)
 
 ```js
 /**
@@ -432,12 +427,10 @@ Watcher.prototype.update() {
  * 刷新任务调度的接口，仅被它调用
  */
 Watcher.prototype.run = function () {
-
     // 当前Watcher实例是否活跃(未销毁)
     if (this.active) {
-
         // 对当前Watcher重新求值，收集依赖项
-        const value = this.get();
+        const value = this.get()
 
         // 如果当前Watcher的值发生变化或为深度监听或为对象
         if (
@@ -449,15 +442,19 @@ Watcher.prototype.run = function () {
             this.deep
         ) {
             // set new value
-            const oldValue = this.value;
-            this.value = value;
+            const oldValue = this.value
+            this.value = value
 
             // 调用watch监听属性的回调函数
             if (this.user) {
                 try {
                     this.cb.call(this.vm, value, oldValue)
                 } catch (e) {
-                    handleError(e, this.vm, `callback for watcher "${this.expression}"`)
+                    handleError(
+                        e,
+                        this.vm,
+                        `callback for watcher "${this.expression}"`
+                    )
                 }
             } else {
                 this.cb.call(this.vm, value, oldValue)
